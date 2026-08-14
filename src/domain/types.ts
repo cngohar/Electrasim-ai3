@@ -1,0 +1,431 @@
+/**
+ * Domain types — pure, framework-agnostic.
+ *
+ * No React, no DOM, no rendering concerns. These types are the contract
+ * between the domain layer (simulation engine, circuit model) and every
+ * other layer (state store, renderer, UI, workers, persistence).
+ *
+ * Keep this file dependency-free so it can be imported into a Web Worker
+ * without dragging the rest of the app with it (PLAN.md §4 / §5).
+ */
+
+// ─── Geometry ──────────────────────────────────────────────────────────────
+
+export interface Point2D {
+  x: number;
+  y: number;
+}
+
+/**
+ * 2D position on the editor canvas. Identical shape to `Point2D` but kept
+ * as a distinct type so component instances and pure geometry helpers can
+ * evolve independently (e.g. components may later gain rotation while raw
+ * points stay primitive).
+ */
+export interface Position {
+  x: number;
+  y: number;
+}
+
+// ─── Ports & component definitions (the "registry") ────────────────────────
+
+export type PortType = 'live' | 'neutral' | 'earth';
+
+export interface PortDef {
+  type: PortType;
+  /** Relative X within the component box, 0..1. */
+  relX: number;
+  /** Relative Y within the component box, 0..1. */
+  relY: number;
+  /** Short human-readable label shown by the renderer (e.g. "L-in", "COM"). */
+  label: string;
+}
+
+export interface ComponentDef {
+  label: string;
+  description?: string;
+  category: string;
+
+  // Behavioural flags consumed by the simulation engine.
+  isSwitch?: boolean;
+  isLoad?: boolean;
+  isPassThrough?: boolean;
+  isMomentary?: boolean;
+  isSocket?: boolean;
+  isDimmer?: boolean;
+  isProtection?: boolean;
+  isSource?: boolean;
+  isJunction?: boolean;
+
+  /** For switch-like components, whether they default to on (e.g. MCB). */
+  defaultOn?: boolean;
+
+  /** For source terminals, the supply rail kind. */
+  sourceType?: PortType;
+
+  /**
+   * Optional single-pole changeover topology. `state.on` selects exactly one
+   * throw, so the common port never fans out to both throws at once.
+   */
+  changeover?: {
+    commonPortIndex: number;
+    onPortIndex: number;
+    offPortIndex: number;
+  };
+
+  ports: PortDef[];
+
+  /** Tier level for filtering between Basic Student Mode and Pro Electrician Mode. */
+  tier?: 'basic' | 'pro';
+  /** Rated active power consumption in Watts (for loads) or current capacity (for supplies). */
+  powerWatts?: number;
+  /** Default maximum voltage rating before overvoltage blow (e.g. 250V for 230V components). */
+  maxVolts?: number;
+  /** Default maximum current rating in Amps before overcurrent blow. */
+  maxAmps?: number;
+  /** BS 7671 recommended minimum cable cross-section in mm² for domestic/commercial wiring. */
+  recommendedCableMm2?: number;
+  /** Professional compliance & regulations note (e.g. BS 7671 requirements). */
+  proNotes?: string;
+
+  /** For MCB/RCBO: trip curve type per IEC 60898-1 ('B', 'C', or 'D'). */
+  mcbType?: 'B' | 'C' | 'D';
+
+  /** For RCD/RCBO: rated residual leakage current in mA (e.g., 30, 100, 300). */
+  ratedLeakage_mA?: number;
+
+  /** Visual glyph (emoji today; richer SVG paths in later phases). */
+  icon: string;
+
+  /** Bulb animation type for different lighting technologies. */
+  bulbAnimationType?: 'led' | 'cfl' | 'fluorescent' | 'incandescent' | 'halogen';
+}
+
+// ─── Runtime instances ─────────────────────────────────────────────────────
+
+/**
+ * Fault categories organizing the fault simulation system.
+ */
+export type FaultCategory =
+  | 'conductor'
+  | 'polarity'
+  | 'earth'
+  | 'protection'
+  | 'component'
+  | 'thermal'
+  | 'voltage';
+
+/**
+ * Injected fault types — applied by the user in Fault Simulation Mode.
+ *
+ *  - `'open-circuit'`          — wire/component break; no current can pass.
+ *  - `'short-circuit'`         — direct short between live and neutral/ground.
+ *  - `'reverse-polarity'`      — live/neutral swapped at this component or wire.
+ *  - `'earth-fault'`           — earth conductor missing or low impedance earth fault.
+ *  - `'open-live'`             — live line conductor disconnected/broken.
+ *  - `'open-neutral'`          — neutral return conductor disconnected/broken.
+ *  - `'open-earth'`            — CPC earth conductor disconnected/broken.
+ *  - `'terminal-disconnect'`   — loose/disconnected screw terminal on a specific port.
+ *  - `'switched-neutral'`      — switch installed on neutral line instead of live (BS 7671 violation).
+ *  - `'live-to-earth'`         — insulation breakdown from live to earth/chassis.
+ *  - `'protection-forced-open'`— breaker/fuse stuck in open position.
+ *  - `'protection-bypass'`     — protective device bypassed/bridged.
+ */
+export type FaultType =
+  | 'open-circuit'
+  | 'short-circuit'
+  | 'reverse-polarity'
+  | 'earth-fault'
+  | 'open-live'
+  | 'open-neutral'
+  | 'open-earth'
+  | 'terminal-disconnect'
+  | 'switched-neutral'
+  | 'live-to-earth'
+  | 'protection-forced-open'
+  | 'protection-bypass';
+
+export type FaultTargetType = 'component' | 'wire' | 'port';
+
+export type FaultTarget =
+  | { type: 'component'; id: string }
+  | { type: 'wire'; id: string }
+  | { type: 'port'; componentId: string; portIndex: number };
+
+export interface FaultDefinition {
+  id: FaultType;
+  label: string;
+  category: FaultCategory;
+  targetType: 'component' | 'wire' | 'port' | 'any';
+  description: string;
+  simulationEffect: string;
+  detectionBehavior: string;
+  repairBehavior: string;
+  severity: 'info' | 'warning' | 'error' | 'critical';
+  standardReference?: string;
+  icon?: string;
+  allowedWithOtherFaults?: boolean;
+}
+
+export interface InjectedFault {
+  id: string;
+  type: FaultType;
+  category: FaultCategory;
+  target: FaultTarget;
+  parameters?: Record<string, unknown>;
+  createdAt: number;
+  resolved?: boolean;
+  resolvedReason?: string;
+}
+
+export interface FaultDiagnostic {
+  id: string;
+  faultId?: string;
+  type: FaultType | string;
+  category: FaultCategory;
+  severity: 'info' | 'warning' | 'error' | 'critical';
+  title: string;
+  description: string;
+  affectedComponents: string[];
+  affectedWires: string[];
+  affectedPorts?: { componentId: string; portIndex: number }[];
+  reason: string;
+  resolutionHint: string;
+  isResolved?: boolean;
+  standardReference?: string;
+}
+
+export interface ComponentState {
+  /** Manual open/closed state for switch-like and protection components. */
+  on?: boolean;
+  /** Dimmer / fan speed level (0..N). */
+  speed?: number;
+  /** Computed by the simulation engine each tick — UI mirrors this. */
+  energized?: boolean;
+  /** Rotational animation angle for spinning loads (fans, motors). */
+  animAngle?: number;
+  /**
+   * Fault injected by the user in Fault Simulation Mode.
+   * Undefined = healthy component.
+   */
+  fault?: FaultType;
+
+  /** Pro Mode Customizations: */
+  /** Custom supply voltage in Volts (for source terminals). */
+  customVoltage?: number;
+  /** Custom active power rating in Watts (for loads). */
+  customPowerWatts?: number;
+  /** Custom max current threshold in Amps before overcurrent/overload. */
+  customMaxAmps?: number;
+  /** Custom max voltage threshold in Volts before overvoltage blow. */
+  customMaxVolts?: number;
+  /** Custom cable cross-section in mm² (e.g. 1.0, 1.5, 2.5, 4.0, 6.0, 10.0, 16.0). */
+  customCableMm2?: number;
+
+  /** Overload / overvoltage / overcurrent blown status (Pro Mode simulation). */
+  isBlown?: boolean;
+  blownReason?: 'overvoltage' | 'overcurrent' | 'overload';
+
+  /** Protection device tripped status (for breakers/fuses). */
+  isTripped?: boolean;
+  tripReason?: 'overload' | 'short-circuit' | 'ground-fault' | 'manual-fault';
+
+  /** Battery chemistry affecting internal resistance and discharge curve. */
+  batteryChemistry?: 'alkaline' | 'li-ion' | 'lead-acid';
+
+  /** Component grouping for complex circuit management. */
+  groupId?: string;
+
+  /** Auto-generated label for component organization. */
+  autoLabel?: string;
+}
+
+export interface ComponentInstance {
+  id: string;
+  type: string;
+  x: number;
+  y: number;
+  rotation?: number;
+  state: ComponentState;
+}
+
+/**
+ * How a wire's path is drawn between its two endpoints.
+ *
+ * - `bezier` — smooth cubic Bezier curve (legacy default; what every wire
+ *   created before Phase 6.2 uses).
+ * - `orthogonal` — Manhattan-style right-angle path computed automatically
+ *   from current endpoints + nearby components (Phase 6.2 "Smart routing").
+ *
+ * Stored on the wire itself so existing bezier circuits keep their look
+ * after the smart-routing default flips on (PLAN.md §8.2 SR1 — additive
+ * coexistence). New wires take the user's `settingsStore.routingStyle`.
+ */
+export type WirePathKind = 'bezier' | 'orthogonal';
+
+export interface WireInstance {
+  id: string;
+  fromComponentId: string;
+  fromPortIndex: number;
+  toComponentId: string;
+  toPortIndex: number;
+  /**
+   * Optional intermediate routing waypoints. For bezier wires these are
+   * user-placed control points; for orthogonal wires they are corner
+   * vertices of a hand-drawn polyline (Phase 7 custom wiring). When empty
+   * (the common case for orthogonal wires), the renderer recomputes the
+   * path on every frame from the current endpoints + obstacles.
+   */
+  controlPoints: Point2D[];
+  /**
+   * Path drawing style. Optional for back-compat — saved JSON written
+   * before Phase 6.2 has no `pathKind` and is treated as `bezier`.
+   */
+  pathKind?: WirePathKind;
+  /**
+   * Fault injected by the user in Fault Simulation Mode.
+   * `'open-circuit'` = wire break; the BFS skips this wire entirely.
+   * `'short-circuit'` = wire short circuit.
+   */
+  fault?: 'open-circuit' | 'short-circuit';
+  /** Optional one-way cable run length used for voltage-drop calculations. */
+  lengthMeters?: number;
+  /** Optional installation derating factor, from 0.1 to 1. */
+  deratingFactor?: number;
+  /** Optional custom cross-section gauge in mm² (e.g. 1.0, 1.5, 2.5, 4.0, 6.0, 10.0, 16.0). */
+  customCableMm2?: number;
+  /** True if wire was melted/busted due to severe current overload without protection. */
+  isBusted?: boolean;
+  bustedReason?: string;
+  /** Wire conductor material affecting resistance and ampacity. */
+  material?: 'copper' | 'aluminum';
+  /** Wire gauge in AWG or mm² for ampacity calculations. */
+  gauge?: number;
+}
+
+/** A reference to a specific port on a specific component instance. */
+export interface PortRef {
+  componentId: string;
+  portIndex: number;
+}
+
+/** Top-level model handed to the simulation engine. */
+export interface Circuit {
+  components: ComponentInstance[];
+  wires: WireInstance[];
+  globalVoltage?: number;
+  /** Active user-injected faults (Fault Simulation System). */
+  faults?: InjectedFault[];
+}
+
+// ─── Simulation output ─────────────────────────────────────────────────────
+
+export interface ElectricalWireCalculation {
+  currentAmps: number;
+  cableMm2: number;
+  lengthMeters: number;
+  ampacityAmps: number;
+  deratedAmpacityAmps: number;
+  resistanceOhms: number;
+  voltageDropVolts: number;
+  voltageDropPercent: number;
+  status: 'pass' | 'warning' | 'fail';
+  message: string;
+}
+
+export interface SimulationResult {
+  /** Components reached by both Live and Neutral traversals, including loads and pass-throughs. */
+  energizedComponents: Set<string>;
+  /** Wires that carry current in either the Live or Neutral subgraphs. */
+  energizedWires: Set<string>;
+  /** Components flagged as faulty (e.g. short-circuited). */
+  errorComponents: Set<string>;
+  /** Wires touching a faulty component. */
+  errorWires: Set<string>;
+  /** Human-readable errors for the log panel. */
+  errors: string[];
+  /** Human-readable warnings for the log panel. */
+  warnings: string[];
+  /** Structured diagnostics for all active/detected faults. */
+  faultDiagnostics?: FaultDiagnostic[];
+  /** All active injected faults evaluated in this simulation run. */
+  activeInjectedFaults?: InjectedFault[];
+  /** Components that blew during Pro Mode overvoltage / overcurrent simulation. */
+  blownComponents?: { id: string; reason: 'overvoltage' | 'overcurrent' | 'overload' }[];
+  /** Wires where load current exceeds cable gauge capacity (Pro Mode). */
+  overloadedWires?: Set<string>;
+  /** Calculated effective supply voltage level in Volts. */
+  supplyVoltage?: number;
+  /** Map of wire ID to heating ratio (current / capacity) */
+  wireHeatRatios?: Record<string, number>;
+  /** Detailed cable sizing and voltage-drop calculations by wire. */
+  wireCalculations?: Record<string, ElectricalWireCalculation>;
+  /** Wires that melted/busted due to severe overload without protection */
+  bustedWires?: Set<string>;
+  /** Protection devices that tripped in this simulation pass */
+  trippedComponents?: {
+    id: string;
+    label: string;
+    reason: string;
+    currentAmps: number;
+    ratingAmps: number;
+  }[];
+  /** Wire melt/busted events in this simulation pass */
+  wireMeltEvents?: {
+    wireId: string;
+    currentAmps: number;
+    capacityAmps: number;
+    cableMm2: number;
+  }[];
+  /**
+   * True when the last simulation pass produced no error-level findings.
+   * Gates pro-mode breaker resets — a tripped device may only be reset
+   * once the underlying circuit fault has been cleared.
+   */
+  faultsCleared?: boolean;
+  /** Thermal data for each component based on power dissipation. */
+  thermalData?: Record<string, ThermalComponentData>;
+  /** Live calculation metrics for active components */
+  componentCalculations?: Record<
+    string,
+    {
+      voltage?: number;
+      currentAmps?: number;
+      powerWatts?: number;
+    }
+  >;
+}
+
+export interface ThermalComponentData {
+  componentId?: string;
+  powerWatts: number;
+  temperature: number;
+  maxTemperature: number;
+  colorCode: string;
+  status?: 'normal' | 'warm' | 'hot' | 'critical';
+}
+
+// ─── Component Groups ──────────────────────────────────────────────────────
+
+/** A group of components that can be moved together as a single block. */
+export interface ComponentGroup {
+  id: string;
+  name: string;
+  componentIds: string[];
+  position: { x: number; y: number };
+}
+
+// ─── Logs (UI concern but the engine emits structured entries) ─────────────
+
+export type LogLevel = 'error' | 'warning' | 'success' | 'info';
+
+export interface LogEntry {
+  id: string;
+  type: LogLevel;
+  message: string;
+}
+
+// ─── Interaction modes (UI layer; lives here only because legacy
+//     code relies on it — will move to /store in Phase 2) ────────────────────
+
+export type InteractionMode = 'idle' | 'wiring' | 'dragging' | 'deleting' | 'panning' | 'placing';

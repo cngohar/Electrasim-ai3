@@ -1,0 +1,6 @@
+{
+  "name": "ElectraSim — Interactive Wiring Lab",
+  "description": "A high-fidelity domestic electrical wiring simulator for learning and prototyping circuits with live simulation logic.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

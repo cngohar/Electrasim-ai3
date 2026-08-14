@@ -1,0 +1,575 @@
+@import "tailwindcss";
+
+/* Phase 6.11: Use class-based dark mode so `dark:` variants activate when
+   Editor.tsx adds `dark` to <html>, not just on OS preference.
+   Tailwind v4 uses @media by default; this overrides to the .dark class. */
+@variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --color-bg-main: #f8fafc;
+  --color-panel-bg: #ffffff;
+  --color-panel-border: #e2e8f0;
+  --color-text-primary: #0f172a;
+  --color-text-secondary: #475569;
+  --color-accent: #2563eb;
+
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+}
+
+@layer base {
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  html {
+    color-scheme: light;
+    background: #f8fafc;
+    --app-scroll-track: #f8fafc;
+    --app-scroll-thumb: #cbd5e1;
+    --app-scroll-thumb-hover: #94a3b8;
+  }
+
+  html.dark {
+    color-scheme: dark;
+    background: #0f172a;
+    --app-scroll-track: #0f172a;
+    --app-scroll-thumb: #475569;
+    --app-scroll-thumb-hover: #64748b;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    html:not([data-app-theme]) {
+      color-scheme: dark;
+      background: #0f172a;
+    }
+  }
+
+  body {
+    @apply bg-bg-main text-text-primary font-sans;
+    margin: 0;
+    overflow: hidden;
+    /* Touch / pen friendly: prevent the browser's native pinch-zoom and
+       text selection on the canvas surface so our gesture handler owns it.
+       Components that need text selection re-enable it locally. */
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
+
+  html.dark body {
+    background-color: #0f172a;
+    color: #f1f5f9;
+  }
+
+  canvas {
+    @apply cursor-crosshair;
+  }
+}
+
+@layer components {
+  .btn {
+    @apply px-4 py-2 rounded-lg font-medium transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  .btn-primary {
+    @apply bg-accent text-white hover:bg-blue-700 shadow-sm;
+  }
+
+  .btn-secondary {
+    @apply bg-white border border-panel-border text-text-secondary hover:bg-slate-50;
+  }
+
+  .btn-danger {
+    @apply bg-red-50 text-red-600 border border-red-100 hover:bg-red-100;
+  }
+}
+
+[data-component-hitbox]:focus,
+[data-component-hitbox]:focus-visible,
+[data-wire-hitbox]:focus,
+[data-wire-hitbox]:focus-visible {
+  outline: none;
+}
+
+/* Custom scrollbar for webkit */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--app-scroll-track);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--app-scroll-thumb);
+  border-radius: 999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--app-scroll-thumb-hover);
+}
+
+/* ─── Phase 6.1 — simulation visuals ─────────────────────────────────────
+   These animations are gated by the `useSettingsStore` flags
+   `currentFlowAnimation` and `activeLoadEffects`. The CSS classes are
+   added/removed by the renderer in response to those flags, so disabling
+   the setting removes the class and the animation stops paying.
+   `prefers-reduced-motion` honours the user's OS setting and stops every
+   animation we add here. */
+
+/*
+ * Phase 6.2.2g: wire-flow animation re-enabled now that feDropShadow is
+ * removed from component rects.
+ *
+ * Previously the drop-shadow filter cascaded: every animation step on any
+ * SVG child forced Chromium to re-rasterise ALL 16 filter regions, not
+ * just the wire path. With shadow: false in theme.ts the filter is gone,
+ * so each wire path repaints only itself — small geometry, negligible cost.
+ *
+ * `steps(12, end)` ≈ 8 paints/sec per wire: visually reads as flowing motion
+ * while keeping the per-wire paint budget low. The `stroke-dashoffset`
+ * decrements by one dash-period (14 px) per step so the dashes appear to
+ * march continuously. `currentFlowAnimation` setting still gates this.
+ */
+@keyframes electrasim-wire-flow {
+  to {
+    stroke-dashoffset: -28;
+  }
+}
+
+.electrasim-wire-flow {
+  animation: electrasim-wire-flow 1.5s steps(12, end) infinite;
+  /* Hint to the browser to promote these paths to their own compositor layers
+     to avoid full-SVG repaints on every animation tick. */
+  will-change: stroke-dashoffset;
+  transform: translateZ(0);
+}
+
+@keyframes electrasim-fan-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/*
+ * Phase 6.2.2e: reduced to 18 steps (≈13 paints/sec). SVG text transform
+ * is still software-painted, but at 13 fps the rotation is still legible
+ * as motion. Users who need it smooth can switch to the GPU renderer.
+ */
+.electrasim-fan-spin {
+  animation: electrasim-fan-spin 1.4s steps(18, end) infinite;
+  transform-origin: center;
+  transform-box: fill-box;
+}
+
+/*
+ * Phase 6.2.2e: bulb/motor opacity pulse — opacity IS compositable.
+ * Removed steps() so it runs smooth at full fps with zero paint cost.
+ * will-change: opacity lets the browser promote the element to its own
+ * compositor layer.
+ */
+@keyframes electrasim-energised-pulse {
+  0%,
+  100% {
+    opacity: 0.25;
+  }
+
+  50% {
+    opacity: 0.65;
+  }
+}
+
+.electrasim-bulb-pulse {
+  animation: electrasim-energised-pulse 1.8s ease-in-out infinite;
+  will-change: opacity;
+}
+
+@keyframes electrasim-bell-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.45;
+  }
+}
+
+.electrasim-bell-pulse {
+  animation: electrasim-bell-pulse 0.8s ease-in-out infinite;
+  will-change: opacity;
+}
+
+/*
+ * Phase 6.2.2e: motor-pulse now uses opacity instead of stroke-width.
+ * stroke-width is a geometry attribute (triggers repaint); opacity is
+ * composited. Apply to the same motor body rect.
+ */
+.electrasim-motor-pulse {
+  animation: electrasim-motor-pulse 1s ease-in-out infinite alternate;
+  /* Promotion hint: avoid re-rasterising the component group filter region. */
+  will-change: opacity;
+}
+
+/* Phase 6.1.1 — motor wheel spin. */
+@keyframes electrasim-motor-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Phase 6.2.2e: same steps reduction as fan. */
+.electrasim-motor-spin {
+  animation: electrasim-motor-spin 2.5s steps(18, end) infinite;
+  transform-origin: center;
+  transform-box: fill-box;
+}
+
+@keyframes electrasim-shattered-body {
+  0% {
+    opacity: 0;
+  }
+  22% {
+    opacity: 0;
+  }
+  34% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+.electrasim-shattered-body {
+  animation: electrasim-shattered-body 0.9s ease-out both;
+}
+
+@keyframes electrasim-shattered-cracks {
+  0%,
+  20% {
+    opacity: 0;
+    stroke-dasharray: 0 120;
+  }
+  38% {
+    opacity: 1;
+    stroke-dasharray: 48 72;
+  }
+  100% {
+    opacity: 0.8;
+    stroke-dasharray: 120 0;
+  }
+}
+
+.electrasim-shattered-cracks {
+  animation: electrasim-shattered-cracks 0.9s ease-out both;
+}
+
+@keyframes electrasim-blown-smoke {
+  0% {
+    opacity: 0;
+    transform: translate(0, 12px) scale(0.35);
+  }
+  22% {
+    opacity: 0.85;
+    transform: translate(1px, 2px) scale(0.8);
+  }
+  58% {
+    opacity: 0.55;
+    transform: translate(-3px, -15px) scale(1.1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(4px, -31px) scale(1.45);
+  }
+}
+
+.electrasim-blown-smoke {
+  fill: #64748b;
+  opacity: 0;
+  filter: blur(1.2px);
+  transform-origin: center bottom;
+  transform-box: fill-box;
+  animation: electrasim-blown-smoke 2.2s ease-out 0.35s both;
+}
+
+@keyframes electrasim-wire-heat {
+  0%,
+  100% {
+    stroke-opacity: 0.8;
+  }
+  50% {
+    stroke-opacity: 1;
+  }
+}
+
+.electrasim-wire-heat {
+  animation: electrasim-wire-heat 0.5s ease-in-out infinite;
+  will-change: stroke-opacity;
+}
+
+@keyframes electrasim-wire-busted {
+  0%,
+  100% {
+    stroke: #991b1b;
+    stroke-opacity: 1;
+  }
+  50% {
+    stroke: #18181b;
+    stroke-opacity: 0.5;
+  }
+}
+
+.electrasim-wire-busted {
+  animation: electrasim-wire-busted 0.35s steps(8, end) infinite;
+  will-change: stroke, stroke-opacity;
+}
+
+@keyframes electrasim-flame-flicker {
+  0%,
+  100% {
+    transform: scale(1) rotate(-3deg);
+    opacity: 0.9;
+  }
+  50% {
+    transform: scale(1.25) rotate(4deg);
+    opacity: 1;
+  }
+}
+
+.electrasim-flame-flicker {
+  animation: electrasim-flame-flicker 0.3s ease-in-out infinite;
+  transform-origin: center;
+  transform-box: fill-box;
+}
+
+@keyframes electrasim-blown-sparks {
+  0%,
+  100% {
+    opacity: 0.35;
+    stroke-width: 1;
+  }
+  45% {
+    opacity: 1;
+    stroke-width: 2.5;
+  }
+  70% {
+    opacity: 0.05;
+    stroke-width: 1;
+  }
+}
+
+.electrasim-blown-sparks {
+  animation: electrasim-blown-sparks 0.5s steps(3, end) both;
+  transform-origin: center;
+  transform-box: fill-box;
+}
+
+@keyframes electrasim-trip-pulse {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.3;
+    transform: scale(1.15);
+  }
+}
+
+.electrasim-trip-pulse {
+  animation: electrasim-trip-pulse 0.5s ease-in-out infinite;
+  transform-origin: center;
+  transform-box: fill-box;
+}
+
+@keyframes electrasim-led-startup {
+  0% {
+    opacity: 0;
+    transform: scale(0.85);
+  }
+  20% {
+    opacity: 1;
+    transform: scale(1.05);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.electrasim-led-startup {
+  animation: electrasim-led-startup 0.15s ease-out forwards;
+  transform-origin: center;
+  transform-box: fill-box;
+}
+
+@keyframes electrasim-cfl-startup {
+  0% {
+    opacity: 0.1;
+    transform: scale(0.8);
+  }
+  15% {
+    opacity: 0.9;
+    transform: scale(0.95);
+  }
+  30% {
+    opacity: 0.2;
+    transform: scale(0.85);
+  }
+  50% {
+    opacity: 0.85;
+    transform: scale(0.98);
+  }
+  65% {
+    opacity: 0.4;
+    transform: scale(0.92);
+  }
+  85% {
+    opacity: 0.95;
+    transform: scale(1);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.electrasim-cfl-startup {
+  animation: electrasim-cfl-startup 0.9s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  transform-origin: center;
+  transform-box: fill-box;
+}
+
+@keyframes electrasim-fluorescent-startup {
+  0% {
+    opacity: 0.05;
+  }
+  10% {
+    opacity: 0.8;
+  }
+  18% {
+    opacity: 0.1;
+  }
+  30% {
+    opacity: 0.9;
+  }
+  42% {
+    opacity: 0.25;
+  }
+  58% {
+    opacity: 0.95;
+  }
+  70% {
+    opacity: 0.6;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+.electrasim-fluorescent-startup {
+  animation: electrasim-fluorescent-startup 0.75s steps(6, end) forwards;
+  transform-origin: center;
+  transform-box: fill-box;
+}
+
+@keyframes electrasim-incandescent-startup {
+  0% {
+    opacity: 0.05;
+    filter: brightness(0.6);
+  }
+  40% {
+    opacity: 0.55;
+    filter: brightness(0.85);
+  }
+  100% {
+    opacity: 1;
+    filter: brightness(1);
+  }
+}
+
+.electrasim-incandescent-startup {
+  animation: electrasim-incandescent-startup 0.45s ease-in forwards;
+  transform-origin: center;
+  transform-box: fill-box;
+}
+
+@keyframes electrasim-halogen-startup {
+  0% {
+    opacity: 0.1;
+    transform: scale(0.85);
+  }
+  50% {
+    opacity: 0.8;
+    transform: scale(1.08);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.electrasim-halogen-startup {
+  animation: electrasim-halogen-startup 0.25s ease-out forwards;
+  transform-origin: center;
+  transform-box: fill-box;
+}
+
+@keyframes electrasim-rgb-startup {
+  0% {
+    opacity: 0.2;
+    transform: scale(0.9);
+  }
+  50% {
+    opacity: 0.9;
+    transform: scale(1.05);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.electrasim-rgb-startup {
+  animation: electrasim-rgb-startup 0.3s ease-in-out forwards;
+  transform-origin: center;
+  transform-box: fill-box;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .electrasim-wire-flow,
+  .electrasim-fan-spin,
+  .electrasim-bulb-pulse,
+  .electrasim-bell-pulse,
+  .electrasim-motor-pulse,
+  .electrasim-motor-spin,
+  .electrasim-shattered-body,
+  .electrasim-shattered-cracks,
+  .electrasim-blown-smoke,
+  .electrasim-blown-sparks,
+  .electrasim-wire-heat,
+  .electrasim-wire-busted,
+  .electrasim-flame-flicker,
+  .electrasim-trip-pulse {
+    animation: none !important;
+  }
+
+  .electrasim-shattered-body {
+    opacity: 1;
+  }
+
+  .electrasim-shattered-cracks {
+    opacity: 0.8;
+    stroke-dasharray: 120 0;
+  }
+
+  .electrasim-blown-smoke {
+    opacity: 0.45;
+    transform: translate(2px, -10px) scale(1.1);
+  }
+}

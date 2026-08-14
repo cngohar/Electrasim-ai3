@@ -1,0 +1,35 @@
+{
+  "seo_title": "About ElectraSim — Free Browser-Based Circuit Simulator",
+  "seo_description": "Learn about ElectraSim — who built it, why it exists, and what makes it different. A free, browser-based electrical circuit simulator for students, teachers, and electricians.",
+  "hero_heading": "Built for Everyone Who Touches a Wire",
+  "hero_sub": "ElectraSim started from a simple question: why is there no free, modern, browser-based tool for learning and simulating household electrical circuits?",
+  "mission_heading": "Our Mission",
+  "mission_body": "ElectraSim exists to make electrical circuit education **free, accessible, and interactive**. Whether you're a student studying for an exam, a teacher preparing a classroom demo, an electrician planning a wiring layout, or simply a curious person who wants to understand why flipping a switch turns on a light — ElectraSim is built for you.\n\nWe believe the best way to learn electricity is to **see it in action**. That's why every component in ElectraSim behaves exactly as it would in the real world: switches break circuits, MCBs trip on overload, bulbs glow when current flows, and faults light up in red so you can diagnose them immediately.",
+  "values": [
+    {
+      "icon": "🔓",
+      "title": "Always Free",
+      "body": "No paywalls, no premium tiers, no ads. ElectraSim is and will remain 100% free for everyone."
+    },
+    {
+      "icon": "🔒",
+      "title": "Privacy First",
+      "body": "Your circuits stay in your browser unless you explicitly export or share one. Share-link fragments are not sent to our servers. No account required, no tracking cookies."
+    },
+    {
+      "icon": "⚡",
+      "title": "Performance",
+      "body": "60fps simulation on any modern device. Offline-capable PWA. Instant load. No installation ever."
+    },
+    {
+      "icon": "📖",
+      "title": "Education First",
+      "body": "Every feature is designed to teach, not just simulate. Real fault detection, real component behaviour."
+    }
+  ],
+  "tech_heading": "How It's Built",
+  "tech_body": "ElectraSim is a fully **client-side web application**. Your browser performs the simulation and stores circuits locally; only an export or share action you initiate transfers circuit data. Share links keep their payload after the URL's `#` fragment, which is not sent to our servers. The circuit simulation engine is written in TypeScript and runs in a dedicated Web Worker so circuit solving stays outside the main interaction path.\n\nThe production editor uses an accessible SVG renderer with automatic dense-circuit detail and animation limits. A **PixiJS WebGL prototype** remains development-only until it reaches editing, accessibility, and export parity. The site and blog are built with **Astro** for maximum SEO and performance, with content managed through **Sveltia CMS**.",
+  "contact_body": "Have a question, a feature suggestion, or want to report a bug? We'd love to hear from you. Reach out via our [contact page](/contact/) or find us on [Facebook](https://web.facebook.com/electrasimweb).",
+  "cta_heading": "Try ElectraSim Now",
+  "cta_body": "It's free, instant, and works right in your browser. No sign-up required."
+}

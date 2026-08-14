@@ -1,0 +1,60 @@
+---
+import { levelClass } from '../../lib/guide';
+import type { GuideCircuit } from '../../types/pages';
+
+interface Props {
+  circuit: GuideCircuit;
+}
+
+const { circuit } = Astro.props;
+---
+
+<article class="circuit-card" id={circuit.id}>
+  <div class="card-head">
+    <div class="step-badge">{circuit.step}</div>
+    <div class="card-head-text">
+      <h2>{circuit.title}</h2>
+      <div class="circuit-meta-row">
+        <span class:list={['level-pill', levelClass(circuit.level)]}>
+          <span class="level-dot" aria-hidden="true"></span>
+          {circuit.level}
+        </span>
+        <span class="circuit-description">{circuit.description}</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="card-body">
+    <div class="card-col">
+      <h3>Components Needed</h3>
+      <div class="comp-list">
+        {circuit.components.map((component) => <span class="comp-chip">{component}</span>)}
+      </div>
+
+      <h3 class="circuit-diagram-heading">Circuit Diagram</h3>
+      <div class="diagram-box"><pre>{circuit.diagram}</pre></div>
+    </div>
+
+    <div class="card-col">
+      <h3>Steps</h3>
+      <ol class="step-list">
+        {circuit.steps.map((step, index) => (
+          <li class="step-item">
+            <span class="step-n">{index + 1}</span>
+            <span class="step-text">{step}</span>
+          </li>
+        ))}
+      </ol>
+
+      <div class="insight">
+        <span class="insight-label">💡 Key insight</span>
+        <p>{circuit.insight}</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="try-row">
+    <span>Ready to try it? Open ElectraSim and follow the steps above.</span>
+    <a href="/app/" class="btn-try">Build this circuit →</a>
+  </div>
+</article>

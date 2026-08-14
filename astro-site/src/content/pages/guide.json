@@ -1,0 +1,240 @@
+{
+  "seo_title": "ElectraSim Guide — Circuits, Faults, Smart Wiring and Guided Templates",
+  "seo_description": "Learn the current ElectraSim workflow: guided circuit templates, smart and custom wiring, fault simulation, import/export, alignment tools, mini-map, and eight step-by-step wiring walkthroughs.",
+  "hero_heading": "Build Real Circuits.\nLearn by Simulating.",
+  "hero_description": "A practical guide to the current ElectraSim app: start with guided templates, wire circuits with smart or custom routing, test faults, organise large diagrams, and practise eight real wiring walkthroughs.",
+  "hero_cta_primary": "⚡ Open ElectraSim",
+  "hero_cta_secondary": "See Latest Features ↓",
+  "cta_heading": "You know the current workflow. Now build your own circuit.",
+  "cta_description": "Use guided templates, fault mode, smart routing, custom wiring, and export tools for free in your browser. No sign-up, no installation.",
+  "cta_primary": "⚡ Open ElectraSim Free",
+  "cta_secondary": "Read the Blog →",
+  "latest_features": [
+    {
+      "icon": "🧭",
+      "title": "Guided Circuit Templates",
+      "body": "Open ready-made circuits inside the app for lamps, two-way switching, RCD fault checks, contactor motor starters, and timer-controlled bells."
+    },
+    {
+      "icon": "⚠️",
+      "title": "Fault Simulation Mode",
+      "body": "Inject wire breaks, reverse polarity, and missing-earth faults directly on the canvas, then compare the warning and error feedback."
+    },
+    {
+      "icon": "┗",
+      "title": "Smart and Custom Wiring",
+      "body": "Use default smart right-angle routing around components, or enable custom wiring to place manual checkpoint corners for real cable-run teaching."
+    },
+    {
+      "icon": "🧰",
+      "title": "Import, Export and Share",
+      "body": "Export circuits as JSON, SVG, PNG, PDF/print sheets, or shareable URLs. Import is schema-validated so broken files do not corrupt your work."
+    },
+    {
+      "icon": "🧲",
+      "title": "Canvas Organisation Tools",
+      "body": "Use drag-select, copy/paste, alignment, distribution, mini-map navigation, zoom-to-fit, gridless mode, and colour presets for larger diagrams."
+    },
+    {
+      "icon": "🌙",
+      "title": "Performance and Accessibility",
+      "body": "Choose light, dark, or system theme, high-contrast and colour-blind canvas palettes, and reduced visual effects for lower-powered devices."
+    }
+  ],
+  "guided_templates": [
+    {
+      "title": "Simple Protected Lamp",
+      "level": "Beginner",
+      "body": "Trace live through an MCB to a bulb and follow neutral back to source."
+    },
+    {
+      "title": "One-Way Light Switch",
+      "level": "Beginner",
+      "body": "Learn why a switch belongs on the live conductor, not the neutral return."
+    },
+    {
+      "title": "Two-Way Staircase Light",
+      "level": "Intermediate",
+      "body": "Compare COM, L1, and L2 traveller paths as either switch changes state."
+    },
+    {
+      "title": "RCD and Earth Fault Check",
+      "level": "Intermediate",
+      "body": "Inspect an RCD-protected socket branch with an intentional earth-fault warning."
+    },
+    {
+      "title": "Contactor Motor Starter",
+      "level": "Intermediate",
+      "body": "Switch a motor load through a contactor after MCB protection."
+    },
+    {
+      "title": "Timer-Controlled Bell",
+      "level": "Beginner",
+      "body": "Use a timer switch as a controlled live path feeding a bell or buzzer."
+    }
+  ],
+  "circuits": [
+    {
+      "id": "circuit-1",
+      "step": "01",
+      "title": "Single-Lamp Switched Circuit",
+      "level": "Beginner",
+      "description": "The most fundamental circuit in household wiring. A switch in series controls one bulb. This is the exact wiring behind every ceiling light.",
+      "components": ["Live (L)", "Neutral (N)", "MCB", "Single-way Switch", "Bulb (E27)"],
+      "diagram": "Live → MCB → Switch → Bulb → Neutral",
+      "steps": [
+        "Place a Live (L) terminal and a Neutral (N) terminal on the canvas.",
+        "Place an MCB to the right of the Live terminal.",
+        "Place a Single-way Switch to the right of the MCB.",
+        "Place a Bulb (E27) to the right of the Switch.",
+        "Wire: Live → MCB → Switch → Bulb → Neutral.",
+        "Press Run. Toggle the Switch to turn the bulb on and off."
+      ],
+      "insight": "The MCB is always wired in series — it protects the entire circuit. The switch interrupts only the Live wire, keeping Neutral permanently connected back to supply."
+    },
+    {
+      "id": "circuit-2",
+      "step": "02",
+      "title": "Two-Bulb Parallel Circuit",
+      "level": "Beginner",
+      "description": "Wire two bulbs in parallel so each receives full voltage independently. This is how all household lighting and sockets are wired — one bulb failing or being removed has no effect on the other.",
+      "components": [
+        "Live (L)",
+        "Neutral (N)",
+        "MCB",
+        "Single-way Switch",
+        "Bulb × 2",
+        "Junction Box"
+      ],
+      "diagram": "Live → MCB → Switch → Junction Box → Bulb A\n                                        → Bulb B → Neutral",
+      "steps": [
+        "Build the single-lamp circuit from Circuit 1.",
+        "Add a Junction Box after the Switch.",
+        "Place a second Bulb below the first.",
+        "Wire the Junction Box output to both bulbs.",
+        "Connect both Bulb Neutral ports back to the Neutral terminal.",
+        "Press Run — both bulbs light at full brightness.",
+        "Disconnect one bulb wire — the other stays on. That's parallel wiring."
+      ],
+      "insight": "In a parallel circuit, every branch receives the full supply voltage. Adding more branches increases total current drawn — the MCB protects against overload if too many loads are connected."
+    },
+    {
+      "id": "circuit-3",
+      "step": "03",
+      "title": "Two-Way Switching (Staircase Circuit)",
+      "level": "Intermediate",
+      "description": "Control one light from two separate locations — the classic staircase or hallway circuit. Switch the light on upstairs, switch it off downstairs, and vice versa.",
+      "components": ["Live (L)", "Neutral (N)", "MCB", "Two-way Switch × 2", "Bulb (E27)"],
+      "diagram": "Live → MCB → SW1 COM\nSW1 L1 ——→ SW2 L1 (strapping)\nSW1 L2 ——→ SW2 L2 (strapping)\nSW2 COM → Bulb → Neutral",
+      "steps": [
+        "Place Live, Neutral, MCB, and a Bulb.",
+        "Place two Two-way Switches between the MCB and the Bulb.",
+        "Wire MCB → Switch 1 COM port.",
+        "Wire Switch 1 L1 → Switch 2 L1 (first strapping wire).",
+        "Wire Switch 1 L2 → Switch 2 L2 (second strapping wire).",
+        "Wire Switch 2 COM → Bulb.",
+        "Wire Bulb Neutral → Neutral terminal.",
+        "Press Run. Toggle either switch — the bulb responds from both locations."
+      ],
+      "insight": "Two-way switching works because the two strapping wires always form exactly one complete path — toggling either switch swaps which wire is connected, turning the circuit on or off."
+    },
+    {
+      "id": "circuit-4",
+      "step": "04",
+      "title": "RCD-Protected Socket Circuit",
+      "level": "Intermediate",
+      "description": "Add earth fault protection to a socket outlet using an RCD. This is mandatory in bathrooms, kitchens, and outdoor circuits in modern installations.",
+      "components": ["Live (L)", "Neutral (N)", "Earth (E)", "MCB", "RCD", "3-Pin Socket"],
+      "diagram": "Live → MCB → RCD (L-in→L-out) → Socket (L)\nNeutral → RCD (N-in→N-out) → Socket (N)\nEarth → Socket (E)",
+      "steps": [
+        "Place Live, Neutral, and Earth terminals.",
+        "Place an MCB and wire Live → MCB.",
+        "Place an RCD. Wire MCB output → RCD L-in. Wire Neutral → RCD N-in.",
+        "Place a 3-Pin Socket.",
+        "Wire RCD L-out → Socket L.",
+        "Wire RCD N-out → Socket N.",
+        "Wire Earth terminal → Socket E.",
+        "Press Run — the socket is live and protected by both the MCB and RCD."
+      ],
+      "insight": "The RCD monitors the difference between Live and Neutral current. Any leakage (e.g. through a person to earth) causes an imbalance and trips the RCD in under 40ms — far faster than an MCB and before lethal harm can occur."
+    },
+    {
+      "id": "circuit-5",
+      "step": "05",
+      "title": "Timed Outdoor Lighting",
+      "level": "Intermediate",
+      "description": "Automate an outdoor light to turn on and off at set times using a Timer Switch — no manual intervention required once programmed.",
+      "components": ["Live (L)", "Neutral (N)", "MCB", "Timer Switch", "Bulb (E27)"],
+      "diagram": "Live → MCB → Timer Switch → Bulb → Neutral",
+      "steps": [
+        "Place Live, Neutral, MCB, a Timer Switch, and a Bulb.",
+        "Wire: Live → MCB → Timer Switch (L-in) → Timer Switch (L-out) → Bulb → Neutral.",
+        "Press Run. The circuit is live.",
+        "Click the Timer Switch to simulate it reaching its ON trigger time — the bulb activates.",
+        "Click again to simulate the OFF time — the bulb goes dark."
+      ],
+      "insight": "A Timer Switch is just a switch with an internal clock mechanism. In ElectraSim you toggle it manually to represent time events. In a real installation, the timer's ON/OFF schedule is programmed with physical pegs or a digital interface."
+    },
+    {
+      "id": "circuit-6",
+      "step": "06",
+      "title": "Dimmable Lighting Circuit",
+      "level": "Intermediate",
+      "description": "Add a Dimmer Switch to a lighting circuit for variable brightness control. Use this for living rooms, dining rooms, and any space where ambience matters.",
+      "components": ["Live (L)", "Neutral (N)", "MCB", "Dimmer Switch", "Bulb (E27)"],
+      "diagram": "Live → MCB → Dimmer Switch → Bulb → Neutral",
+      "steps": [
+        "Place Live, Neutral, MCB, a Dimmer Switch, and a Bulb.",
+        "Wire: Live → MCB → Dimmer (L-in) → Dimmer (L-out) → Bulb → Neutral.",
+        "Press Run — the bulb is powered through the dimmer.",
+        "Toggle the Dimmer to see the controlled state."
+      ],
+      "insight": "In real installations, a dimmer switch must be matched to the bulb type — trailing-edge for LED, leading-edge for incandescent/halogen. Never connect a Dimmer Switch to a motor or fan (use a Fan Dimmer instead)."
+    },
+    {
+      "id": "circuit-7",
+      "step": "07",
+      "title": "Doorbell Circuit",
+      "level": "Beginner",
+      "description": "Build the classic doorbell: a Push Button (momentary switch) in series with a Bell/Buzzer. The bell sounds only while the button is held — exactly like a real doorbell.",
+      "components": ["Live (L)", "Neutral (N)", "MCB", "Push Button", "Bell / Buzzer"],
+      "diagram": "Live → MCB → Push Button → Bell → Neutral",
+      "steps": [
+        "Place Live, Neutral, MCB, a Push Button, and a Bell/Buzzer.",
+        "Wire: Live → MCB → Push Button (L-in → L-out) → Bell (L) → Neutral (N).",
+        "Press Run.",
+        "Click and hold the Push Button — the Bell activates.",
+        "Release the button — the Bell stops. That's a momentary circuit."
+      ],
+      "insight": "Push Buttons are momentary — they close the circuit only while physically held. A standard switch latches open or closed. This distinction is critical: a latching switch would leave the bell ringing continuously."
+    },
+    {
+      "id": "circuit-8",
+      "step": "08",
+      "title": "Full Consumer Unit (3-Circuit Panel)",
+      "level": "Advanced",
+      "description": "Build a complete home breaker panel using a Distribution Board. Three independent circuits — lighting, sockets, and a motor — each protected by their own MCB.",
+      "components": [
+        "Live (L)",
+        "Neutral (N)",
+        "Distribution Board",
+        "MCB × 3",
+        "Switch",
+        "Bulb",
+        "3-Pin Socket",
+        "Electric Motor"
+      ],
+      "diagram": "Live → DB (L-in) → L1 → MCB1 → Switch → Bulb\n                    → L2 → MCB2 → 3-Pin Socket\n                    → L3 → MCB3 → Motor\nNeutral → DB (N-in) → N1/N2 → (all returns)",
+      "steps": [
+        "Place a Live terminal, Neutral terminal, and a Distribution Board.",
+        "Wire: Live → DB L-in. Wire: Neutral → DB N-in.",
+        "Circuit 1 (Lighting): DB L1 → MCB1 → Switch → Bulb → DB N1.",
+        "Circuit 2 (Sockets): DB L2 → MCB2 → 3-Pin Socket (L) → DB N1.",
+        "Circuit 3 (Motor): DB L3 → MCB3 → Motor (L) → DB N2.",
+        "Press Run — all three circuits operate independently.",
+        "Trip MCB2 — only the socket goes dead. Lighting and motor stay running."
+      ],
+      "insight": "The key principle of a consumer unit is circuit isolation: a fault on one circuit trips only that MCB, leaving all other circuits unaffected. This is why each circuit has its own dedicated breaker."
+    }
+  ]
+}

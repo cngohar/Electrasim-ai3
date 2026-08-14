@@ -1,0 +1,353 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#2563eb" />
+  <title>ElectraSim — Free Interactive Electrical Circuit Simulator</title>
+  <meta name="description" content="ElectraSim is a free browser-based electrical circuit simulator. Drag and drop MCBs, switches, bulbs, fans and sockets, wire them up, and watch your circuit come alive in real time. No installation required." />
+  <meta name="author" content="ElectraSim" />
+  <meta name="keywords" content="electrical circuit simulator, interactive wiring lab, learn electrical wiring, MCB simulator, circuit builder online, free circuit simulator" />
+  <link rel="canonical" href="https://electrasim.com/" />
+  <meta name="robots" content="index, follow" />
+  <meta name="google-site-verification" content="OjfkIUfSKhmhu6iuwXIaBisuhtpoTxAZgx35acQko2I" />
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="ElectraSim" />
+  <meta property="og:title" content="ElectraSim — Free Interactive Electrical Circuit Simulator" />
+  <meta property="og:description" content="Build, simulate, and learn real-world electrical circuits in your browser. Live simulation, fault detection, offline PWA. Completely free." />
+  <meta property="og:url" content="https://electrasim.com/" />
+  <meta property="og:image" content="https://electrasim.com/og-image.png" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta property="og:image:alt" content="ElectraSim circuit simulator showing MCB, bulb, fan and socket wired together" />
+  <meta property="og:locale" content="en_US" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="ElectraSim — Free Interactive Electrical Circuit Simulator" />
+  <meta name="twitter:description" content="Build and simulate real-world electrical circuits in your browser. Free, offline-capable, no sign-up." />
+  <meta name="twitter:image" content="https://electrasim.com/og-image.png" />
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <link rel="apple-touch-icon" href="/pwa-192.svg" />
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"ElectraSim","applicationCategory":"EducationalApplication","operatingSystem":"Web","description":"Browser-based interactive electrical circuit simulator with live simulation, fault detection, smart wire routing, and offline PWA support.","url":"https://electrasim.com/","image":"https://electrasim.com/og-image.png","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"}}</script>
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebSite","name":"ElectraSim","url":"https://electrasim.com/"}</script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--blue:#2563eb;--blue-d:#1d4ed8;--blue-l:#eff6ff;--slate:#0f172a;--mid:#475569;--light:#f8fafc;--border:#e2e8f0;--r:1rem;--font:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif}
+html{scroll-behavior:smooth}
+body{font-family:var(--font);color:var(--slate);background:#fff;line-height:1.6;-webkit-font-smoothing:antialiased}
+a{color:inherit;text-decoration:none}
+img{max-width:100%;height:auto;display:block}
+.wrap{max-width:1100px;margin:0 auto;padding:0 1.5rem}
+.sec{padding:5rem 0}
+.sec-alt{background:var(--light)}
+
+/* nav */
+.nav{position:sticky;top:0;z-index:100;background:rgba(255,255,255,.92);backdrop-filter:blur(12px);border-bottom:1px solid var(--border)}
+.nav-in{display:flex;align-items:center;justify-content:space-between;padding:.9rem 1.5rem;max-width:1100px;margin:0 auto}
+.logo{display:flex;align-items:center;gap:.5rem;font-size:1.1rem;font-weight:700}
+.logo-icon{width:2rem;height:2rem;background:var(--blue);border-radius:.5rem;display:flex;align-items:center;justify-content:center;color:#fff;font-size:1rem}
+.nav-links{display:flex;align-items:center;gap:1.5rem}
+.nav-links a{font-size:.875rem;color:var(--mid);font-weight:500;transition:color .15s}
+.nav-links a:hover{color:var(--blue)}
+.btn-nav{background:var(--blue);color:#fff!important;padding:.45rem 1.2rem;border-radius:999px;font-weight:600;transition:background .15s}
+.btn-nav:hover{background:var(--blue-d)}
+
+/* hero */
+.hero{background:linear-gradient(135deg,#eff6ff 0%,#f0f9ff 60%,#e0f2fe 100%);padding:5rem 0 4rem;text-align:center}
+.badge{display:inline-flex;align-items:center;gap:.4rem;background:#fff;border:1px solid #bfdbfe;color:var(--blue);border-radius:999px;padding:.3rem .9rem;font-size:.75rem;font-weight:700;margin-bottom:1.5rem;text-transform:uppercase;letter-spacing:.05em}
+.hero h1{font-size:clamp(1.9rem,5vw,3.2rem);font-weight:800;line-height:1.15;letter-spacing:-.02em;max-width:780px;margin:0 auto .9rem}
+.hero h1 span{color:var(--blue)}
+.hero-desc{font-size:1.1rem;color:var(--mid);max-width:580px;margin:0 auto 2.5rem;line-height:1.7}
+.cta-row{display:flex;gap:1rem;justify-content:center;flex-wrap:wrap;margin-bottom:2.5rem}
+.btn-p{display:inline-flex;align-items:center;gap:.5rem;background:var(--blue);color:#fff;padding:.875rem 2rem;border-radius:999px;font-size:1rem;font-weight:700;box-shadow:0 4px 14px rgba(37,99,235,.35);transition:background .15s,transform .15s}
+.btn-p:hover{background:var(--blue-d);color:#fff;transform:translateY(-1px)}
+.btn-s{display:inline-flex;align-items:center;gap:.5rem;background:#fff;color:var(--slate);padding:.875rem 2rem;border-radius:999px;font-size:1rem;font-weight:600;border:1.5px solid var(--border);transition:border-color .15s,transform .15s}
+.btn-s:hover{border-color:var(--blue);color:var(--blue);transform:translateY(-1px)}
+.trust{display:flex;gap:1.75rem;justify-content:center;flex-wrap:wrap;font-size:.8rem;color:var(--mid);font-weight:500}
+.hero-img{margin:3rem auto 0;border-radius:1.25rem;overflow:hidden;box-shadow:0 20px 60px rgba(15,23,42,.12);border:1px solid var(--border);max-width:880px}
+
+/* section header */
+.sh{text-align:center;max-width:640px;margin:0 auto}
+.sh h2{font-size:clamp(1.5rem,3vw,2.2rem);font-weight:800;letter-spacing:-.02em;margin-bottom:.75rem}
+.sh p{font-size:1rem;color:var(--mid);line-height:1.7}
+.label{font-size:.75rem;font-weight:700;color:var(--blue);text-transform:uppercase;letter-spacing:.08em;margin-bottom:.5rem;display:block}
+
+/* feature grid */
+.fg{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:1.5rem;margin-top:3rem}
+.fc{background:#fff;border:1px solid var(--border);border-radius:var(--r);padding:1.75rem;transition:box-shadow .2s,transform .2s}
+.fc:hover{box-shadow:0 8px 30px rgba(15,23,42,.08);transform:translateY(-2px)}
+.fi{font-size:1.6rem;width:3rem;height:3rem;background:var(--blue-l);border-radius:.75rem;display:flex;align-items:center;justify-content:center;margin-bottom:1rem}
+.fc h3{font-size:1rem;font-weight:700;margin-bottom:.5rem}
+.fc p{font-size:.875rem;color:var(--mid);line-height:1.65}
+
+/* steps */
+.steps{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:2rem;margin-top:3rem;text-align:center}
+.sn{width:3rem;height:3rem;border-radius:50%;background:var(--blue);color:#fff;font-size:1.1rem;font-weight:800;display:flex;align-items:center;justify-content:center;margin:0 auto 1rem}
+.step h3{font-size:.9375rem;font-weight:700;margin-bottom:.4rem}
+.step p{font-size:.875rem;color:var(--mid)}
+
+/* use cases */
+.ug{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1rem;margin-top:2.5rem}
+.uc{border:1px solid var(--border);border-radius:.75rem;padding:1.25rem;display:flex;gap:.75rem}
+.uc-i{font-size:1.5rem;flex-shrink:0}
+.uc h3{font-size:.875rem;font-weight:700;margin-bottom:.25rem}
+.uc p{font-size:.8125rem;color:var(--mid)}
+
+/* blog */
+.bg{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:1.5rem;margin-top:2.5rem}
+.bc{border:1px solid var(--border);border-radius:var(--r);background:#fff;padding:1.5rem;transition:box-shadow .2s,transform .2s}
+.bc:hover{box-shadow:0 8px 30px rgba(15,23,42,.08);transform:translateY(-2px)}
+.btag{display:inline-block;background:var(--blue-l);color:var(--blue);font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;border-radius:999px;padding:.2rem .6rem;margin-bottom:.75rem}
+.bc h3{font-size:1rem;font-weight:700;color:var(--slate);margin-bottom:.5rem;line-height:1.4}
+.bc p{font-size:.875rem;color:var(--mid);line-height:1.6;margin-bottom:1rem}
+.bread{font-size:.8125rem;font-weight:600;color:var(--blue)}
+.bread:hover{color:var(--blue-d)}
+
+/* cta */
+.cta-box{background:linear-gradient(135deg,var(--blue) 0%,#1e40af 100%);border-radius:1.5rem;padding:3.5rem 2rem;text-align:center;color:#fff;box-shadow:0 20px 60px rgba(37,99,235,.3)}
+.cta-box h2{font-size:clamp(1.5rem,3vw,2rem);font-weight:800;margin-bottom:.75rem}
+.cta-box p{font-size:1rem;opacity:.85;margin-bottom:2rem;max-width:480px;margin-left:auto;margin-right:auto}
+.btn-cta{display:inline-flex;align-items:center;gap:.5rem;background:#fff;color:var(--blue);padding:.875rem 2.25rem;border-radius:999px;font-size:1rem;font-weight:700;box-shadow:0 4px 14px rgba(0,0,0,.15);transition:transform .15s}
+.btn-cta:hover{transform:translateY(-2px);color:var(--blue)}
+
+/* footer */
+footer{background:#0f172a;color:#94a3b8;padding:3rem 0 2rem}
+.ft{max-width:1100px;margin:0 auto;padding:0 1.5rem}
+.ft-top{display:flex;gap:3rem;flex-wrap:wrap;padding-bottom:2rem;border-bottom:1px solid #1e293b;margin-bottom:1.5rem}
+.ft-brand{flex:1;min-width:200px}
+.ft-name{font-size:1.1rem;font-weight:700;color:#fff;margin-bottom:.5rem;display:flex;align-items:center;gap:.5rem}
+.ft-brand p{font-size:.875rem;line-height:1.6;max-width:260px}
+.ft-col h4{font-size:.8rem;font-weight:700;color:#fff;text-transform:uppercase;letter-spacing:.07em;margin-bottom:1rem}
+.ft-col ul{list-style:none;display:flex;flex-direction:column;gap:.6rem}
+.ft-col a{font-size:.875rem;transition:color .15s}
+.ft-col a:hover{color:#fff}
+.ft-bot{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:1rem;font-size:.8rem}
+.ft-bot a{color:#94a3b8}
+.ft-bot a:hover{color:#fff}
+
+@media(max-width:640px){
+  .hide-m{display:none}
+  .hero{padding:3.5rem 0 3rem}
+  .sec{padding:3.5rem 0}
+  .ft-top{flex-direction:column;gap:2rem}
+}
+</style>
+</head>
+<body>
+
+<nav class="nav" role="navigation" aria-label="Main navigation">
+  <div class="nav-in">
+    <a href="/" class="logo" aria-label="ElectraSim home">
+      <span class="logo-icon" aria-hidden="true">⚡</span>ElectraSim
+    </a>
+    <div class="nav-links">
+      <a href="#features" class="hide-m">Features</a>
+      <a href="#how-it-works" class="hide-m">How it works</a>
+      <a href="/blog/" class="hide-m">Blog</a>
+      <a href="/app/" class="btn-nav">Open App →</a>
+    </div>
+  </div>
+</nav>
+
+<header class="hero" role="banner">
+  <div class="wrap">
+    <div class="badge"><span aria-hidden="true">⚡</span> Free &amp; No Sign-Up Required</div>
+    <h1>Build Real Electrical Circuits<br><span>Right in Your Browser</span></h1>
+    <p class="hero-desc">ElectraSim is a free, interactive electrical wiring lab. Drag real-world components — MCBs, switches, bulbs, fans, sockets — wire them together and watch your circuit come alive with live simulation.</p>
+    <div class="cta-row">
+      <a href="/app/" class="btn-p">⚡ Launch the Simulator</a>
+      <a href="#how-it-works" class="btn-s">See how it works ↓</a>
+    </div>
+    <div class="trust">
+      <span>✅ Works offline</span>
+      <span>✅ No installation</span>
+      <span>✅ No sign-up</span>
+      <span>✅ Data stays local</span>
+      <span>✅ Installable PWA</span>
+    </div>
+    <div class="hero-img">
+      <img src="/og-image.png" alt="ElectraSim circuit simulator showing MCB breaker, bulb, fan and socket connected on the canvas" width="1200" height="630" loading="eager" fetchpriority="high" />
+    </div>
+  </div>
+</header>
+
+<section class="sec" id="features" aria-labelledby="feat-h">
+  <div class="wrap">
+    <div class="sh">
+      <span class="label">Features</span>
+      <h2 id="feat-h">Everything you need to learn, build &amp; simulate</h2>
+      <p>A complete electrical circuit toolkit — all running locally in your browser, no server, no cloud, no account needed.</p>
+    </div>
+    <div class="fg">
+      <article class="fc">
+        <div class="fi" aria-hidden="true">🔌</div>
+        <h3>Drag &amp; Drop Components</h3>
+        <p>Place MCB breakers, switches, light bulbs, fans, motors and sockets from the palette. Components snap to a grid for clean, professional layouts.</p>
+      </article>
+      <article class="fc">
+        <div class="fi" aria-hidden="true">⚡</div>
+        <h3>Real-Time Simulation</h3>
+        <p>Hit Run and watch electricity flow instantly. Energised wires animate, bulbs light up, fans spin. Toggle switches and see changes propagate live.</p>
+      </article>
+      <article class="fc">
+        <div class="fi" aria-hidden="true">🔴</div>
+        <h3>Fault Detection</h3>
+        <p>The simulation engine detects open circuits, short circuits and overloads automatically. Faulty wires highlight in red for instant diagnosis.</p>
+      </article>
+      <article class="fc">
+        <div class="fi" aria-hidden="true">🔀</div>
+        <h3>Smart Wire Routing</h3>
+        <p>Click a port to start wiring — ElectraSim auto-routes orthogonal wires around components. Custom multi-step wiring also supported.</p>
+      </article>
+      <article class="fc">
+        <div class="fi" aria-hidden="true">📐</div>
+        <h3>Multi-Select &amp; Align</h3>
+        <p>Shift-click or drag-select multiple components. Align left, center, right, top or bottom with one click for professional diagrams.</p>
+      </article>
+      <article class="fc">
+        <div class="fi" aria-hidden="true">💾</div>
+        <h3>Import, Export &amp; Share</h3>
+        <p>Save your circuit as JSON, export as SVG or PNG, or generate a shareable URL. Your work is autosaved locally and survives page reloads.</p>
+      </article>
+    </div>
+  </div>
+</section>
+
+<section class="sec sec-alt" id="how-it-works" aria-labelledby="how-h">
+  <div class="wrap">
+    <div class="sh">
+      <span class="label">How it works</span>
+      <h2 id="how-h">Up and running in 4 steps</h2>
+      <p>No account, no download, no setup. Open ElectraSim and start building immediately.</p>
+    </div>
+    <div class="steps">
+      <div class="step">
+        <div class="sn">1</div>
+        <h3>Open the app</h3>
+        <p>Click "Launch the Simulator". It loads instantly — no installation, works offline after the first visit.</p>
+      </div>
+      <div class="step">
+        <div class="sn">2</div>
+        <h3>Place components</h3>
+        <p>Open the Components panel and click any component — MCB, switch, bulb, fan — to place it on the canvas.</p>
+      </div>
+      <div class="step">
+        <div class="sn">3</div>
+        <h3>Wire them up</h3>
+        <p>Click a port dot on one component, then a port on another. ElectraSim routes the wire automatically.</p>
+      </div>
+      <div class="step">
+        <div class="sn">4</div>
+        <h3>Run &amp; learn</h3>
+        <p>Press Run to simulate. Toggle switches, add faults, and see exactly how your circuit behaves.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="sec" id="use-cases" aria-labelledby="uc-h">
+  <div class="wrap">
+    <div class="sh">
+      <span class="label">Who is it for?</span>
+      <h2 id="uc-h">Students, teachers, electricians &amp; curious minds</h2>
+      <p>ElectraSim is designed for anyone who wants to understand or teach how electrical circuits work.</p>
+    </div>
+    <div class="ug">
+      <div class="uc">
+        <div class="uc-i" aria-hidden="true">🎓</div>
+        <div><h3>Students</h3><p>Learn electrical wiring concepts hands-on without real wire and voltage. Build and test circuits safely.</p></div>
+      </div>
+      <div class="uc">
+        <div class="uc-i" aria-hidden="true">📚</div>
+        <div><h3>Teachers</h3><p>Create live circuit demonstrations in the classroom. Share circuits via URL for homework assignments.</p></div>
+      </div>
+      <div class="uc">
+        <div class="uc-i" aria-hidden="true">🔧</div>
+        <div><h3>Electricians</h3><p>Prototype wiring layouts and validate circuit logic before installation on site.</p></div>
+      </div>
+      <div class="uc">
+        <div class="uc-i" aria-hidden="true">🤓</div>
+        <div><h3>Hobbyists</h3><p>Experiment with circuit ideas, test different configurations, and learn by doing at your own pace.</p></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="sec sec-alt" id="blog" aria-labelledby="blog-h">
+  <div class="wrap">
+    <div class="sh">
+      <span class="label">From the Blog</span>
+      <h2 id="blog-h">Learn electrical wiring the easy way</h2>
+      <p>Practical guides on circuits, wiring, and electrical safety — written for beginners and professionals alike.</p>
+    </div>
+    <div class="bg">
+      <a href="/blog/how-household-wiring-works/" class="bc">
+        <span class="btag">Beginner Guide</span>
+        <h3>How Household Wiring Works: A Complete Beginner's Guide</h3>
+        <p>From the main panel to your light switch — understand how electricity flows through a home and why each component matters.</p>
+        <span class="bread">Read article →</span>
+      </a>
+      <div class="bc" style="opacity:.6;pointer-events:none;">
+        <span class="btag">Coming Soon</span>
+        <h3>Series vs Parallel Circuits: What's the Difference?</h3>
+        <p>A visual explanation of series and parallel wiring with interactive examples you can try in ElectraSim.</p>
+        <span class="bread">Coming soon</span>
+      </div>
+      <div class="bc" style="opacity:.6;pointer-events:none;">
+        <span class="btag">Coming Soon</span>
+        <h3>What is an MCB Breaker and How Does It Protect Your Circuit?</h3>
+        <p>MCBs are the first line of defence against overloads and short circuits. Here's how they actually work.</p>
+        <span class="bread">Coming soon</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="sec">
+  <div class="wrap">
+    <div class="cta-box">
+      <h2>Ready to build your first circuit?</h2>
+      <p>No installation. No sign-up. Just open ElectraSim and start wiring in seconds.</p>
+      <a href="/app/" class="btn-cta">⚡ Launch ElectraSim Free</a>
+    </div>
+  </div>
+</section>
+
+<footer role="contentinfo">
+  <div class="ft">
+    <div class="ft-top">
+      <div class="ft-brand">
+        <div class="ft-name"><span aria-hidden="true">⚡</span> ElectraSim</div>
+        <p>Free online electrical circuit simulator for learning wiring, building circuit diagrams, testing faults, and simulating circuits in your browser.</p>
+      </div>
+      <nav class="ft-col" aria-label="Product links">
+        <h4>Product</h4>
+        <ul>
+          <li><a href="/app/">Launch App</a></li>
+          <li><a href="#features">Features</a></li>
+          <li><a href="#how-it-works">How it works</a></li>
+          <li><a href="#use-cases">Who is it for?</a></li>
+        </ul>
+      </nav>
+      <nav class="ft-col" aria-label="Learn links">
+        <h4>Learn</h4>
+        <ul>
+          <li><a href="/blog/">Blog</a></li>
+          <li><a href="/blog/how-household-wiring-works/">Household Wiring Guide</a></li>
+        </ul>
+      </nav>
+      <nav class="ft-col" aria-label="Connect links">
+        <h4>Connect</h4>
+        <ul>
+          <li><a href="https://web.facebook.com/electrasimweb" target="_blank" rel="noopener noreferrer">Facebook</a></li>
+        </ul>
+      </nav>
+    </div>
+    <div class="ft-bot">
+      <span>© 2026 ElectraSim. All rights reserved.</span>
+      <span>Built with ⚡ · Data stays on your device · No tracking cookies</span>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>

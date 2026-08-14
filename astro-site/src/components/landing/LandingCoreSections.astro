@@ -1,0 +1,65 @@
+---
+import type { LandingPage } from '../../types/pages';
+
+interface Props {
+  content: LandingPage;
+}
+
+const { content: d } = Astro.props;
+---
+
+<section class="sec" id="features" aria-labelledby="feat-h">
+  <div class="wrap">
+    <div class="sh">
+      <span class="label">{d.features_label}</span>
+      <h2 id="feat-h">{d.features_heading}</h2>
+      <p>{d.features_description}</p>
+    </div>
+    <div class="fg">
+      {d.features.map((feature) => (
+        <article class="fc">
+          <div class="fi">{feature.icon}</div>
+          <h3>{feature.title}</h3>
+          <p>{feature.body}</p>
+        </article>
+      ))}
+    </div>
+  </div>
+</section>
+
+<section class="sec sec-alt" id="how-it-works" aria-labelledby="how-h">
+  <div class="wrap">
+    <div class="sh">
+      <span class="label">{d.how_label}</span>
+      <h2 id="how-h">{d.how_heading}</h2>
+      <p>{d.how_description}</p>
+    </div>
+    <div class="steps">
+      {d.steps.map((step, index) => (
+        <div class="step">
+          <div class="sn">{index + 1}</div>
+          <h3>{step.title}</h3>
+          <p>{step.body}</p>
+        </div>
+      ))}
+    </div>
+  </div>
+</section>
+
+<section class="sec" id="use-cases" aria-labelledby="uc-h">
+  <div class="wrap">
+    <div class="sh">
+      <span class="label">{d.usecases_label}</span>
+      <h2 id="uc-h">{d.usecases_heading}</h2>
+      <p>{d.usecases_description}</p>
+    </div>
+    <div class="ug">
+      {d.use_cases.map((useCase) => (
+        <div class="uc">
+          <div class="uc-i">{useCase.icon}</div>
+          <div><h3>{useCase.title}</h3><p>{useCase.body}</p></div>
+        </div>
+      ))}
+    </div>
+  </div>
+</section>

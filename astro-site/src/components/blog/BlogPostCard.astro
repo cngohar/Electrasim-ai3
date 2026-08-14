@@ -1,0 +1,39 @@
+---
+import type { CollectionEntry } from 'astro:content';
+import { readingTime } from '../../lib/blog';
+
+interface Props {
+  post: CollectionEntry<'blog'>;
+  headingLevel?: 2 | 3;
+}
+
+const { post, headingLevel = 2 } = Astro.props;
+const Heading = headingLevel === 3 ? 'h3' : 'h2';
+const isAppUpdate = post.data.category === 'App Update';
+const published = post.data.pubDate.toLocaleDateString('en-GB', {
+  year: 'numeric',
+  month: 'short',
+  day: 'numeric',
+});
+---
+
+<a
+  href={`/blog/${post.id}/`}
+  class:list={['card', { featured: post.data.featured, 'app-update': isAppUpdate }]}
+>
+  <div class="card-body">
+    <div class="card-top">
+      <span class="tag">{isAppUpdate ? 'Product update' : post.data.category}</span>
+      {post.data.featured && <span class="featured-badge">Featured</span>}
+    </div>
+    <Heading>{post.data.title}</Heading>
+    <p>{post.data.description}</p>
+  </div>
+  <div class="card-meta">
+    <div class="card-meta-left">
+      <time datetime={post.data.pubDate.toISOString()}>{published}</time>
+      <span class="read-time">{readingTime(post.body ?? '')} min read</span>
+    </div>
+    <span class="read-link">Read <span aria-hidden="true">&rarr;</span></span>
+  </div>
+</a>

@@ -1,0 +1,27 @@
+---
+import { marked } from 'marked';
+import data from '../content/pages/terms.json';
+import Base from '../layouts/Base.astro';
+import '../styles/legal.css';
+
+const lastUpdated = data.last_updated;
+const bodyHtml = marked.parse(data.content);
+---
+
+<Base
+  title={data.seo_title}
+  description={data.seo_description}
+  canonical="https://electrasim.com/terms/"
+>
+  <div class="legal-hero">
+    <div class="wrap">
+      <span class="label">Legal</span>
+      <h1>Terms of Use</h1>
+      <p>Last updated: {lastUpdated}</p>
+    </div>
+  </div>
+
+  <main class="legal-wrap">
+    <Fragment set:html={bodyHtml} />
+  </main>
+</Base>

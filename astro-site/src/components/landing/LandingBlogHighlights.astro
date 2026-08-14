@@ -1,0 +1,32 @@
+---
+import type { CollectionEntry } from 'astro:content';
+
+interface Props {
+  label: string;
+  heading: string;
+  description: string;
+  posts: CollectionEntry<'blog'>[];
+}
+
+const { label, heading, description, posts } = Astro.props;
+---
+
+<section class="sec sec-alt" id="blog" aria-labelledby="blog-h">
+  <div class="wrap">
+    <div class="sh">
+      <span class="label">{label}</span>
+      <h2 id="blog-h">{heading}</h2>
+      <p>{description}</p>
+    </div>
+    <div class="bg-grid">
+      {posts.map((post) => (
+        <a href={`/blog/${post.id}/`} class="bc">
+          <span class="btag">{post.data.category}</span>
+          <h3>{post.data.title}</h3>
+          <p>{post.data.description}</p>
+          <span class="bread">Read article →</span>
+        </a>
+      ))}
+    </div>
+  </div>
+</section>

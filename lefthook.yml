@@ -1,0 +1,39 @@
+# Lefthook — git hooks (https://github.com/evilmartians/lefthook)
+#
+# Install once:
+#   npx lefthook install
+#
+# Hooks below enforce PLAN.md §9 (Process & Discipline Rules):
+#   - every commit changes CHANGELOG.md (Unreleased section) and progress.md
+#   - staged code is auto-formatted via Biome
+#   - typecheck runs on commits that touch TS/TSX
+
+pre-commit:
+  parallel: true
+  commands:
+    biome-format-and-lint:
+      glob: "*.{ts,tsx,js,jsx,json,css}"
+      run: npx biome check --write --no-errors-on-unmatched {staged_files}
+      stage_fixed: true
+
+    typecheck:
+      glob: "*.{ts,tsx}"
+      run: npm run typecheck
+
+commit-msg:
+  commands:
+    require-changelog-and-progress:
+      run: |
+        # Soft-enforce: warn (don't block) if CHANGELOG.md or progress.md
+        # is not in the staged files. Discipline rule from PLAN.md §9.
+        STAGED=$(git diff --cached --name-only)
+        MISSING=""
+        echo "$STAGED" | grep -q "^CHANGELOG.md$"  || MISSING="$MISSING CHANGELOG.md"
+        echo "$STAGED" | grep -q "^progress.md$"   || MISSING="$MISSING progress.md"
+        if [ -n "$MISSING" ]; then
+          echo ""
+          echo "  ⚠  Reminder: this commit does NOT touch:$MISSING"
+          echo "     PLAN.md §9 requires every commit to update both files."
+          echo "     If this is intentional (e.g. infra-only / docs-only), proceed."
+          echo ""
+        fi

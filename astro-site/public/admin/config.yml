@@ -1,0 +1,210 @@
+backend:
+  name: github
+  repo: cngohar/electrasimw
+  branch: main
+
+media_folder: public/images
+public_folder: /images
+
+site_url: https://electrasim.com
+display_url: https://electrasim.com
+logo_url: https://electrasim.com/favicon.svg
+
+collections:
+  - name: pages
+    label: Pages
+    label_singular: Page
+    files:
+      - name: landing
+        label: Landing Page
+        file: astro-site/src/content/pages/landing.json
+        fields:
+          - { label: SEO Title, name: seo_title, widget: string }
+          - { label: SEO Description, name: seo_description, widget: text }
+          - label: Hero Section
+            name: hero_badge
+            widget: string
+            hint: "Badge text above the heading e.g. ⚡ Free & No Sign-Up Required"
+          - { label: Hero Heading, name: hero_heading, widget: string }
+          - { label: Hero Heading Highlight (blue), name: hero_heading_highlight, widget: string }
+          - { label: Hero Description, name: hero_description, widget: text }
+          - { label: Hero Primary Button, name: hero_cta_primary, widget: string }
+          - { label: Hero Secondary Button, name: hero_cta_secondary, widget: string }
+          - label: Trust Badges
+            name: hero_trust_items
+            widget: list
+            field: { label: Item, name: item, widget: string }
+          - { label: Features Section Label, name: features_label, widget: string }
+          - { label: Features Heading, name: features_heading, widget: string }
+          - { label: Features Description, name: features_description, widget: text }
+          - label: Features
+            name: features
+            widget: list
+            fields:
+              - { label: Icon (emoji), name: icon, widget: string }
+              - { label: Title, name: title, widget: string }
+              - { label: Description, name: body, widget: text }
+          - { label: How It Works Label, name: how_label, widget: string }
+          - { label: How It Works Heading, name: how_heading, widget: string }
+          - { label: How It Works Description, name: how_description, widget: text }
+          - label: Steps
+            name: steps
+            widget: list
+            fields:
+              - { label: Title, name: title, widget: string }
+              - { label: Description, name: body, widget: text }
+          - { label: Use Cases Label, name: usecases_label, widget: string }
+          - { label: Use Cases Heading, name: usecases_heading, widget: string }
+          - { label: Use Cases Description, name: usecases_description, widget: text }
+          - label: Use Cases
+            name: use_cases
+            widget: list
+            fields:
+              - { label: Icon (emoji), name: icon, widget: string }
+              - { label: Title, name: title, widget: string }
+              - { label: Description, name: body, widget: text }
+          - { label: Blog Section Label, name: blog_label, widget: string }
+          - { label: Blog Section Heading, name: blog_heading, widget: string }
+          - { label: Blog Section Description, name: blog_description, widget: text }
+          - { label: CTA Heading, name: cta_heading, widget: string }
+          - { label: CTA Description, name: cta_description, widget: text }
+          - { label: CTA Button Text, name: cta_button, widget: string }
+
+      - name: blog-index
+        label: Blog Index Page
+        file: astro-site/src/content/pages/blog-index.json
+        fields:
+          - { label: SEO Title, name: seo_title, widget: string }
+          - { label: SEO Description, name: seo_description, widget: text }
+          - { label: Page Label, name: page_label, widget: string }
+          - { label: Page Heading, name: page_heading, widget: string }
+          - { label: Page Description, name: page_description, widget: text }
+
+      - name: about
+        label: About Page
+        file: astro-site/src/content/pages/about.json
+        fields:
+          - { label: SEO Title, name: seo_title, widget: string }
+          - { label: SEO Description, name: seo_description, widget: text }
+          - { label: Hero Heading, name: hero_heading, widget: string }
+          - { label: Hero Subheading, name: hero_sub, widget: text }
+          - { label: Mission Heading, name: mission_heading, widget: string }
+          - { label: Mission Body, name: mission_body, widget: markdown }
+          - label: Values
+            name: values
+            widget: list
+            fields:
+              - { label: Icon (emoji), name: icon, widget: string }
+              - { label: Title, name: title, widget: string }
+              - { label: Description, name: body, widget: text }
+          - { label: Tech Section Heading, name: tech_heading, widget: string }
+          - { label: Tech Section Body, name: tech_body, widget: markdown }
+          - { label: Contact Section Body, name: contact_body, widget: markdown }
+          - { label: CTA Heading, name: cta_heading, widget: string }
+          - { label: CTA Body, name: cta_body, widget: text }
+
+      - name: contact
+        label: Contact Page
+        file: astro-site/src/content/pages/contact.json
+        fields:
+          - { label: SEO Title, name: seo_title, widget: string }
+          - { label: SEO Description, name: seo_description, widget: text }
+          - { label: Hero Heading, name: hero_heading, widget: string }
+          - { label: Hero Sub, name: hero_sub, widget: text }
+          - { label: Facebook URL, name: facebook_url, widget: string }
+          - { label: Google Form URL, name: google_form_url, widget: string }
+          - label: FAQ Items
+            name: faqs
+            widget: list
+            fields:
+              - { label: Question, name: question, widget: string }
+              - { label: Answer, name: answer, widget: text }
+
+      - name: privacy
+        label: Privacy Policy
+        file: astro-site/src/content/pages/privacy.json
+        fields:
+          - { label: SEO Title, name: seo_title, widget: string }
+          - { label: SEO Description, name: seo_description, widget: text }
+          - { label: Last Updated, name: last_updated, widget: datetime, type: date, format: YYYY-MM-DD }
+          - { label: Page Content (Markdown), name: content, widget: markdown }
+
+      - name: terms
+        label: Terms of Use
+        file: astro-site/src/content/pages/terms.json
+        fields:
+          - { label: SEO Title, name: seo_title, widget: string }
+          - { label: SEO Description, name: seo_description, widget: text }
+          - { label: Last Updated, name: last_updated, widget: datetime, type: date, format: YYYY-MM-DD }
+          - { label: Page Content (Markdown), name: content, widget: markdown }
+
+      - name: guide
+        label: Circuit Guide Page
+        file: astro-site/src/content/pages/guide.json
+        fields:
+          - { label: SEO Title, name: seo_title, widget: string }
+          - { label: SEO Description, name: seo_description, widget: text }
+          - { label: Hero Heading, name: hero_heading, widget: string }
+          - { label: Hero Description, name: hero_description, widget: text }
+          - { label: Hero Primary Button, name: hero_cta_primary, widget: string }
+          - { label: Hero Secondary Button, name: hero_cta_secondary, widget: string }
+          - { label: CTA Heading, name: cta_heading, widget: string }
+          - { label: CTA Description, name: cta_description, widget: text }
+          - { label: CTA Primary Button, name: cta_primary, widget: string }
+          - { label: CTA Secondary Button, name: cta_secondary, widget: string }
+          - label: Circuits
+            name: circuits
+            widget: list
+            label_singular: Circuit
+            fields:
+              - { label: ID (slug, no spaces), name: id, widget: string, hint: "e.g. circuit-1" }
+              - { label: Step Number (2-digit), name: step, widget: string, hint: "e.g. 01" }
+              - { label: Title, name: title, widget: string }
+              - { label: Difficulty Level, name: level, widget: select, options: [Beginner, Intermediate, Advanced] }
+              - { label: Description, name: description, widget: text }
+              - label: Components Needed
+                name: components
+                widget: list
+                field: { label: Component, name: item, widget: string }
+              - { label: Circuit Diagram (ASCII), name: diagram, widget: text, hint: "Plain-text circuit diagram shown in code block" }
+              - label: Steps
+                name: steps
+                widget: list
+                field: { label: Step, name: step, widget: string }
+              - { label: Key Insight, name: insight, widget: text }
+
+  - name: blog
+    label: Blog Posts
+    label_singular: Blog Post
+    folder: astro-site/src/content/blog
+    create: true
+    delete: true
+    slug: "{{slug}}"
+    extension: md
+    format: frontmatter
+    summary: "{{title}} — {{pubDate}}"
+    sortable_fields: [pubDate, title, category]
+    fields:
+      - { label: Title, name: title, widget: string, hint: "Keep under 60 characters for best SEO display in search results." }
+      - { label: SEO Description, name: description, widget: text, hint: "150–160 characters. Shown in search results and social shares. Should contain the main keyword." }
+      - { label: Publish Date, name: pubDate, widget: datetime, date_format: YYYY-MM-DD, time_format: false }
+      - { label: "Last Updated (optional)", name: updatedDate, widget: datetime, date_format: YYYY-MM-DD, time_format: false, required: false, hint: "Set only when you significantly revise the post. Shown as 'Updated on' and used for Article schema dateModified." }
+      - { label: Author, name: author, widget: string, default: ElectraSim }
+      - label: Category
+        name: category
+        widget: select
+        options: [App Update, Beginner Guide, Wiring Guide, Component Guide, Regulations & Safety, Tutorial, Tips & Tricks, News, Case Study]
+        default: Beginner Guide
+        hint: "Used as the coloured badge on the post and blog index. Also sent to Google as articleSection."
+      - { label: Tags, name: tags, widget: list, default: [], hint: "Comma-separated keywords. Used for article:tag meta and the tag cloud at the bottom of the post." }
+      - label: "Featured Image (OG / Social)"
+        name: image
+        widget: image
+        required: false
+        hint: "1200×630px recommended. Used as the og:image and twitter:image for this post. Leave blank to use the default site OG image."
+        media_library:
+          config:
+            multiple: false
+      - { label: "Featured Post", name: featured, widget: boolean, default: false, hint: "Pin this post to the top of the blog index." }
+      - { label: Draft, name: draft, widget: boolean, default: false, hint: "Draft posts are built but not linked from the blog index or sitemap." }
+      - { label: Body, name: body, widget: markdown }

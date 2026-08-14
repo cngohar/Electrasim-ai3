@@ -1,0 +1,19 @@
+---
+interface Props {
+  heading: string;
+  description: string;
+  primary: string;
+  secondary: string;
+}
+
+const { heading, description, primary, secondary } = Astro.props;
+---
+
+<div class="guide-cta">
+  <h2>{heading}</h2>
+  <p>{description}</p>
+  <div class="guide-cta-btns">
+    <a href="/app/" class="btn-primary">{primary}</a>
+    <a href="/blog/" class="btn-secondary-w">{secondary}</a>
+  </div>
+</div>

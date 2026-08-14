@@ -1,0 +1,29 @@
+---
+import { pageRange } from '../../lib/blog';
+
+interface Props {
+  currentPage: number;
+  totalPages: number;
+}
+
+const { currentPage, totalPages } = Astro.props;
+const pageUrl = (page: number) => (page === 1 ? '/blog/' : `/blog/${page}/`);
+---
+
+{totalPages > 1 && (
+  <nav class="pagination" aria-label="Blog pages">
+    {currentPage > 1 && (
+      <a href={pageUrl(currentPage - 1)} rel="prev" aria-label="Previous page">&larr; Prev</a>
+    )}
+    {pageRange(currentPage, totalPages).map((page) =>
+      page === '...'
+        ? <span class="pg-dots" aria-hidden="true">&hellip;</span>
+        : page === currentPage
+          ? <span class="pg-current" aria-current="page">{page}</span>
+          : <a href={pageUrl(page)}>{page}</a>
+    )}
+    {currentPage < totalPages && (
+      <a href={pageUrl(currentPage + 1)} rel="next" aria-label="Next page">Next &rarr;</a>
+    )}
+  </nav>
+)}

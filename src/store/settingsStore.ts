@@ -1,0 +1,341 @@
+/**
+ * settingsStore — user preferences (Phase 6.1).
+ *
+ * Persisted to IndexedDB so settings survive reloads and offline use, the
+ * same way the circuit graph does. Until auth lands (Phase 9), this is the
+ * single source of truth for per-device user preferences.
+ *
+ * Keep this slice **small and additive**. Every flag here has to be:
+ *   - Boolean or a primitive enum (so the UI is a simple checkbox/select).
+ *   - Forward-compatible — new flags get a default; old saved blobs without
+ *     them just inherit the default on load.
+ *   - Independently testable.
+ *
+ * Storage:
+ *   key   = `electrasim:settings:v1`
+ *   value = { version: 1, settings: { ... } }
+ *
+ * Hydration is fire-and-forget at module load; reads of `useSettingsStore`
+ * before the IDB round-trip resolves return defaults — that's intentional
+ * (defaults are sane). The first user mutation flushes the merged state.
+ */
+
+import { get, set } from 'idb-keyval';
+import { create } from 'zustand';
+import { immer } from 'zustand/middleware/immer';
+
+const SCHEMA_VERSION = 1 as const;
+const STORAGE_KEY = `electrasim:settings:v${SCHEMA_VERSION}`;
+const DEBOUNCE_MS = 150;
+
+export type ColorScheme = 'light' | 'dark' | 'system';
+export type RoutingStyle = 'orthogonal' | 'bezier';
+export type WireColorStandard = 'uk_eu' | 'us';
+
+export interface UserSettings {
+  /** Show a confirmation dialog before deleting components or wires. */
+  confirmDelete: boolean;
+  /** Render tooltips on component hover. */
+  showTooltips: boolean;
+  /** Animate dashes along energised wires to suggest current direction. */
+  currentFlowAnimation: boolean;
+  /** Visually emphasise active loads (bulb glow, fan spin, motor pulse). */
+  activeLoadEffects: boolean;
+  /** Phase 6.8: Color scheme preference. */
+  colorScheme: ColorScheme;
+  /**
+   * Phase 6.2: default style for *new* wires. Existing wires keep their
+   * own `pathKind` (PLAN.md §8.2 SR1 — additive coexistence).
+   *   - `'orthogonal'` (default) — Manhattan path with obstacle avoidance.
+   *   - `'bezier'`                — legacy smooth curve.
+   */
+  routingStyle: RoutingStyle;
+  /**
+   * Phase 6.2.2: low-end / battery-saver mode. Suppresses the SVG-filter
+   * driven glow halos and the wire-flow stroke-dashoffset animation, both
+   * of which trigger per-frame software rasterisation of `feGaussianBlur`
+   * on Chromium and dominate CPU on weak hardware. The renderer also
+   * auto-enables this when component count exceeds the stress threshold,
+   * so users on dense circuits get the perf protection without flipping a
+   * setting. Color/opacity/width energised cues stay on regardless.
+   */
+  reducedEffects: boolean;
+  /**
+   * Phase 7: opt-in paint-style multi-step wire placement.
+   * When true, clicking a port starts a polyline; each subsequent canvas
+   * click adds a corner; clicking the destination port commits the whole
+   * path as one atomic undo entry. Default off.
+   */
+  customWiringMode: boolean;
+  /**
+   * Phase 6.3-slim: hide the dot grid on the canvas.
+   * Default true. Toggled in Settings → Display.
+   */
+  showGrid: boolean;
+  /**
+   * Snap components to the grid on placement and drag-commit.
+   * Default true. Toggled from the Snap/Grid cluster in the status bar.
+   */
+  snapToGrid: boolean;
+  /**
+   * Phase 6.3-slim: show the mini-map thumbnail overlay.
+   * Default true.
+   */
+  showMiniMap: boolean;
+  /**
+   * Application mode:
+   *   - 'basic' — Student Mode: simplified domestic circuit building with guidance.
+   *   - 'pro'   — Pro Electrician Mode: full household & commercial components, cable sizing, voltage drop, BS 7671 notes.
+   */
+  appMode: 'basic' | 'pro';
+  /**
+   * Phase 6.3-slim: high-contrast / colour-blind canvas preset.
+   *   - 'default'      — standard Lab Glass palette
+   *   - 'high-contrast' — black background, bold wires, larger port dots
+   *   - 'deuteranopia' — red/blue replaced by orange/purple (no green reliance)
+   */
+  canvasPreset: 'default' | 'high-contrast' | 'deuteranopia';
+  /**
+   * Regional wire color standard:
+   *   - 'uk_eu' — Live = Brown, Neutral = Blue, Earth = Green/Yellow (BS 7671 / IEC)
+   *   - 'us'    — Live = Black/Red, Neutral = White/Gray, Earth = Green/Bare (NEC)
+   */
+  wireColorStandard: WireColorStandard;
+  /**
+   * Show automatic component labels prefixed with type (e.g., 'Bulb 1', 'MCB1').
+   * Default true. Labels refresh when components are moved or deleted.
+   */
+  automaticComponentLabels: boolean;
+  /**
+   * Enable thermal overlay view in Analytics panel showing heat map based on power dissipation.
+   * Default false. Color-codes components from green (normal) to red (danger).
+   */
+  thermalOverlayEnabled: boolean;
+}
+
+const DEFAULTS: UserSettings = {
+  confirmDelete: true,
+  showTooltips: true,
+  currentFlowAnimation: true,
+  activeLoadEffects: true,
+  colorScheme: 'light',
+  routingStyle: 'orthogonal',
+  reducedEffects: false,
+  customWiringMode: false,
+  showGrid: true,
+  snapToGrid: true,
+  showMiniMap: true,
+  appMode: 'basic',
+  canvasPreset: 'default',
+  wireColorStandard: 'uk_eu',
+  automaticComponentLabels: true,
+  thermalOverlayEnabled: false,
+};
+
+interface SettingsState extends UserSettings {
+  /** True once the IDB hydrate round-trip has completed. */
+  hydrated: boolean;
+  setSetting: <K extends keyof UserSettings>(key: K, value: UserSettings[K]) => void;
+  resetSettings: () => void;
+}
+
+interface PersistedSettings {
+  version: typeof SCHEMA_VERSION;
+  settings: UserSettings;
+}
+
+const COLOR_SCHEMES = ['light', 'dark', 'system'] as const;
+const ROUTING_STYLES = ['orthogonal', 'bezier'] as const;
+const CANVAS_PRESETS = ['default', 'high-contrast', 'deuteranopia'] as const;
+const WIRE_COLOR_STANDARDS = ['uk_eu', 'us'] as const;
+
+const APP_MODES = ['basic', 'pro'] as const;
+
+function booleanOrDefault(value: unknown, fallback: boolean): boolean {
+  return typeof value === 'boolean' ? value : fallback;
+}
+
+function enumOrDefault<T extends string>(value: unknown, allowed: readonly T[], fallback: T): T {
+  return typeof value === 'string' && allowed.includes(value as T) ? (value as T) : fallback;
+}
+
+/** Rebuild untrusted IndexedDB data from the current whitelist and defaults. */
+function parsePersistedSettings(value: unknown): UserSettings | null {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+  const payload = value as Record<string, unknown>;
+  if (payload.version !== SCHEMA_VERSION) return null;
+  if (
+    !payload.settings ||
+    typeof payload.settings !== 'object' ||
+    Array.isArray(payload.settings)
+  ) {
+    return null;
+  }
+  const stored = payload.settings as Record<string, unknown>;
+
+  return {
+    confirmDelete: booleanOrDefault(stored.confirmDelete, DEFAULTS.confirmDelete),
+    showTooltips: booleanOrDefault(stored.showTooltips, DEFAULTS.showTooltips),
+    currentFlowAnimation: booleanOrDefault(
+      stored.currentFlowAnimation,
+      DEFAULTS.currentFlowAnimation,
+    ),
+    activeLoadEffects: booleanOrDefault(stored.activeLoadEffects, DEFAULTS.activeLoadEffects),
+    colorScheme: enumOrDefault(stored.colorScheme, COLOR_SCHEMES, DEFAULTS.colorScheme),
+    routingStyle: enumOrDefault(stored.routingStyle, ROUTING_STYLES, DEFAULTS.routingStyle),
+    reducedEffects: booleanOrDefault(stored.reducedEffects, DEFAULTS.reducedEffects),
+    customWiringMode: booleanOrDefault(stored.customWiringMode, DEFAULTS.customWiringMode),
+    showGrid: booleanOrDefault(stored.showGrid, DEFAULTS.showGrid),
+    snapToGrid: booleanOrDefault(stored.snapToGrid, DEFAULTS.snapToGrid),
+    showMiniMap: booleanOrDefault(stored.showMiniMap, DEFAULTS.showMiniMap),
+    appMode: enumOrDefault(stored.appMode, APP_MODES, DEFAULTS.appMode),
+    canvasPreset: enumOrDefault(stored.canvasPreset, CANVAS_PRESETS, DEFAULTS.canvasPreset),
+    wireColorStandard: enumOrDefault(
+      stored.wireColorStandard,
+      WIRE_COLOR_STANDARDS,
+      DEFAULTS.wireColorStandard,
+    ),
+    automaticComponentLabels: booleanOrDefault(
+      stored.automaticComponentLabels,
+      DEFAULTS.automaticComponentLabels,
+    ),
+    thermalOverlayEnabled: booleanOrDefault(
+      stored.thermalOverlayEnabled,
+      DEFAULTS.thermalOverlayEnabled,
+    ),
+  };
+}
+
+export const useSettingsStore = create<SettingsState>()(
+  immer<SettingsState>((set) => ({
+    ...DEFAULTS,
+    hydrated: false,
+
+    setSetting: (key, value) =>
+      set((s) => {
+        // immer-typed dynamic-key write; safe because K extends keyof UserSettings.
+        (s as unknown as UserSettings)[key] = value;
+      }),
+
+    resetSettings: () =>
+      set((s) => {
+        Object.assign(s, DEFAULTS);
+      }),
+  })),
+);
+
+// ─── Persistence ───────────────────────────────────────────────────────────
+
+let saveTimer: ReturnType<typeof setTimeout> | null = null;
+let lastSaveError = '';
+let pendingSnapshot: UserSettings | null = null;
+
+async function persistSettings(snapshot: UserSettings): Promise<void> {
+  const payload: PersistedSettings = { version: SCHEMA_VERSION, settings: snapshot };
+  try {
+    await set(STORAGE_KEY, payload);
+    lastSaveError = '';
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    if (message !== lastSaveError) {
+      console.warn('[settings] save failed:', message);
+      lastSaveError = message;
+    }
+  }
+}
+
+function flushPendingSettings() {
+  if (saveTimer) {
+    clearTimeout(saveTimer);
+    saveTimer = null;
+  }
+  if (!pendingSnapshot) return;
+  const value = pendingSnapshot;
+  pendingSnapshot = null;
+  void persistSettings(value);
+}
+
+function snapshot(state: SettingsState): UserSettings {
+  return {
+    confirmDelete: state.confirmDelete,
+    showTooltips: state.showTooltips,
+    currentFlowAnimation: state.currentFlowAnimation,
+    activeLoadEffects: state.activeLoadEffects,
+    colorScheme: state.colorScheme,
+    routingStyle: state.routingStyle,
+    reducedEffects: state.reducedEffects,
+    customWiringMode: state.customWiringMode,
+    showGrid: state.showGrid,
+    snapToGrid: state.snapToGrid,
+    showMiniMap: state.showMiniMap,
+    appMode: state.appMode,
+    canvasPreset: state.canvasPreset,
+    wireColorStandard: state.wireColorStandard,
+    automaticComponentLabels: state.automaticComponentLabels,
+    thermalOverlayEnabled: state.thermalOverlayEnabled,
+  };
+}
+
+/**
+ * Hydrate settings from IDB and start the autosave subscription.
+ * Idempotent — calling twice is a no-op for the second call.
+ */
+let started = false;
+export async function startSettingsPersistence(): Promise<void> {
+  if (started) return;
+  started = true;
+
+  try {
+    const raw = await get(STORAGE_KEY);
+    const stored = parsePersistedSettings(raw);
+    useSettingsStore.setState({ ...(stored ?? DEFAULTS), hydrated: true });
+  } catch (err) {
+    console.warn('[settings] hydrate failed, using defaults:', err);
+    useSettingsStore.setState({ ...DEFAULTS, hydrated: true });
+  }
+
+  useSettingsStore.subscribe((state, prev) => {
+    // Skip writes triggered purely by the hydrated flag flipping.
+    if (
+      state.confirmDelete === prev.confirmDelete &&
+      state.showTooltips === prev.showTooltips &&
+      state.currentFlowAnimation === prev.currentFlowAnimation &&
+      state.activeLoadEffects === prev.activeLoadEffects &&
+      state.colorScheme === prev.colorScheme &&
+      state.routingStyle === prev.routingStyle &&
+      state.reducedEffects === prev.reducedEffects &&
+      state.customWiringMode === prev.customWiringMode &&
+      state.showGrid === prev.showGrid &&
+      state.snapToGrid === prev.snapToGrid &&
+      state.showMiniMap === prev.showMiniMap &&
+      state.appMode === prev.appMode &&
+      state.canvasPreset === prev.canvasPreset &&
+      state.wireColorStandard === prev.wireColorStandard &&
+      state.automaticComponentLabels === prev.automaticComponentLabels &&
+      state.thermalOverlayEnabled === prev.thermalOverlayEnabled
+    ) {
+      return;
+    }
+    if (saveTimer) clearTimeout(saveTimer);
+    pendingSnapshot = snapshot(state);
+    saveTimer = setTimeout(flushPendingSettings, DEBOUNCE_MS);
+  });
+  window.addEventListener('pagehide', flushPendingSettings);
+}
+
+/** Clear the persisted settings (tests + a "Reset to defaults" affordance). */
+export async function clearPersistedSettings(): Promise<void> {
+  useSettingsStore.setState({ ...DEFAULTS, hydrated: true });
+  if (saveTimer) clearTimeout(saveTimer);
+  saveTimer = null;
+  pendingSnapshot = null;
+  try {
+    await set(STORAGE_KEY, undefined);
+  } catch (err) {
+    console.warn('[settings] clear failed:', err);
+  }
+}
+
+export const __SETTINGS_STORAGE_KEY = STORAGE_KEY;
+export const __SETTINGS_DEFAULTS = DEFAULTS;
+export const __parsePersistedSettings = parsePersistedSettings;

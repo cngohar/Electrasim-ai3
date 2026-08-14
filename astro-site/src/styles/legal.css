@@ -1,0 +1,89 @@
+.legal-hero {
+  position: relative;
+  z-index: 1;
+  padding: 4.5rem 0 3rem;
+  border-bottom: 1px solid var(--border);
+  text-align: center;
+}
+
+.legal-hero h1 {
+  margin-bottom: .75rem;
+  color: var(--text);
+  font-size: clamp(1.75rem, 4vw, 2.75rem);
+  font-weight: 900;
+  letter-spacing: -.025em;
+}
+
+.legal-hero p {
+  color: var(--text-mid);
+  font-size: .9375rem;
+}
+
+.legal-wrap {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 3.5rem 1.5rem 6rem;
+  position: relative;
+  z-index: 1;
+}
+
+.legal-wrap h2 {
+  margin: 2.5rem 0 .75rem;
+  padding-top: 2.5rem;
+  border-top: 1px solid var(--border);
+  color: var(--text);
+  font-size: 1.25rem;
+  font-weight: 800;
+  letter-spacing: -.015em;
+}
+
+.legal-wrap h2:first-child {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: none;
+}
+
+.legal-wrap p {
+  margin-bottom: 1rem;
+  color: var(--text-mid);
+  font-size: .9375rem;
+  line-height: 1.8;
+}
+
+.legal-wrap ul {
+  margin-bottom: 1rem;
+  padding-left: 1.5rem;
+}
+
+.legal-wrap li {
+  margin-bottom: .4rem;
+  color: var(--text-mid);
+  font-size: .9375rem;
+  line-height: 1.8;
+}
+
+.legal-wrap strong {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.legal-wrap a {
+  color: var(--blue);
+}
+
+.legal-wrap .highlight-box {
+  margin-bottom: 1.5rem;
+  padding: 1.25rem 1.5rem;
+  border: 1px solid var(--border-bright);
+  border-radius: var(--radius);
+  background: var(--blue-l);
+}
+
+.legal-wrap .highlight-box p {
+  margin: 0;
+  color: var(--body-copy);
+}
+
+.legal-wrap .highlight-box strong {
+  color: var(--blue);
+}

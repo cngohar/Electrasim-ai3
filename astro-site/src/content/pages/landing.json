@@ -1,0 +1,104 @@
+{
+  "seo_title": "Free Online Electrical Wiring Simulator | ElectraSim",
+  "seo_description": "Build house-wiring circuits with MCBs, RCDs, RCBOs, switches, sockets and faults. Free in your browser—no download or sign-up.",
+  "hero_badge": "⚡ Free & No Sign-Up Required",
+  "hero_heading": "Build and Simulate",
+  "hero_heading_highlight": "Real Electrical Wiring",
+  "hero_description": "ElectraSim is a free online electrical wiring simulator for building and testing realistic circuits directly in your browser.",
+  "hero_cta_primary": "⚡ Launch the Simulator",
+  "hero_cta_secondary": "See how it works ↓",
+  "hero_trust_items": [
+    "✅ Works offline",
+    "✅ No installation",
+    "✅ No sign-up",
+    "✅ Data stays local",
+    "✅ Installable PWA"
+  ],
+  "features_label": "Features",
+  "features_heading": "Everything you need to learn, build & simulate",
+  "features_description": "A complete electrical circuit toolkit — all running locally in your browser, no server, no cloud, no account needed.",
+  "features": [
+    {
+      "icon": "🔌",
+      "title": "Drag & Drop Components",
+      "body": "Place MCB breakers, switches, light bulbs, fans, motors and sockets from the palette. Components snap to a grid for clean, professional layouts."
+    },
+    {
+      "icon": "⚡",
+      "title": "Real-Time Simulation",
+      "body": "Hit Run and watch electricity flow instantly. Energised wires animate, bulbs light up, fans spin. Toggle switches and see changes propagate live."
+    },
+    {
+      "icon": "🔴",
+      "title": "Fault Detection",
+      "body": "Trace open and short circuits, then inject reverse-polarity and missing-earth faults for practice. Fault states highlight clearly for faster diagnosis."
+    },
+    {
+      "icon": "🔀",
+      "title": "Smart Wire Routing",
+      "body": "Click a port to start wiring — ElectraSim auto-routes orthogonal wires around components. Custom multi-step wiring also supported."
+    },
+    {
+      "icon": "📐",
+      "title": "Multi-Select & Align",
+      "body": "Shift-click or drag-select multiple components. Align left, center, right, top or bottom with one click for professional diagrams."
+    },
+    {
+      "icon": "💾",
+      "title": "Import, Export & Share",
+      "body": "Save your circuit as JSON, export as SVG or PNG, or generate a shareable URL. Your work is autosaved locally and survives page reloads."
+    }
+  ],
+  "how_label": "How it works",
+  "how_heading": "Up and running in 4 steps",
+  "how_description": "No account, no download, no setup. Open ElectraSim and start building immediately.",
+  "steps": [
+    {
+      "title": "Open the app",
+      "body": "Click \"Launch the Simulator\". It loads instantly — works offline after the first visit."
+    },
+    {
+      "title": "Place components",
+      "body": "Open the Components panel and click any component — MCB, switch, bulb, fan — to place it on the canvas."
+    },
+    {
+      "title": "Wire them up",
+      "body": "Click a port dot on one component, then a port on another. ElectraSim routes the wire automatically."
+    },
+    {
+      "title": "Run & learn",
+      "body": "Press Run to simulate. Toggle switches, add faults, and see exactly how your circuit behaves."
+    }
+  ],
+  "usecases_label": "Who is it for?",
+  "usecases_heading": "Students, teachers, electricians & curious minds",
+  "usecases_description": "ElectraSim is designed for anyone who wants to understand or teach how electrical circuits work.",
+  "use_cases": [
+    {
+      "icon": "🎓",
+      "title": "Students",
+      "body": "Use a beginner-friendly circuit simulator free of charge. Practice house wiring online without risk of shocks or blown fuses."
+    },
+    {
+      "icon": "📚",
+      "title": "Teachers",
+      "body": "Create live circuit demonstrations in the classroom. Share circuits via URL for homework assignments."
+    },
+    {
+      "icon": "🔧",
+      "title": "Electricians",
+      "body": "Use it as electrician training software to prototype layouts, demonstrate fault scenarios, and validate circuit logic before going on-site."
+    },
+    {
+      "icon": "🤓",
+      "title": "Hobbyists",
+      "body": "Experiment with circuit ideas, test different configurations, and learn by doing at your own pace."
+    }
+  ],
+  "blog_label": "From the Blog",
+  "blog_heading": "Learn electrical wiring the easy way",
+  "blog_description": "Step-by-step guides to help you learn electrical wiring online — from household circuits to fault detection. Written for beginners and professionals alike.",
+  "cta_heading": "Ready to build your first circuit?",
+  "cta_description": "The free virtual electrical lab used by students, teachers and electricians. Simulate circuits online — no download, no sign-up, no risk.",
+  "cta_button": "⚡ Launch ElectraSim Free"
+}

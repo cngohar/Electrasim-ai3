@@ -1,0 +1,303 @@
+---
+import CompareFaq from '../components/compare/CompareFaq.astro';
+import CompareHero from '../components/compare/CompareHero.astro';
+import ComparisonTable from '../components/compare/ComparisonTable.astro';
+import TaskFitList from '../components/compare/TaskFitList.astro';
+import ToolProfiles from '../components/compare/ToolProfiles.astro';
+import Base from '../layouts/Base.astro';
+import {
+  closeWiringAlternatives,
+  comparisonFaqs,
+  comparisonReviewedIso,
+  comparisonReviewedLabel,
+  comparisonTools,
+  taskFits,
+} from '../lib/compare';
+import '../styles/compare.css';
+
+const canonical = 'https://electrasim.com/compare/';
+const title = 'ElectraSim vs Online Circuit Simulators (2026 Comparison)';
+const description =
+  'Compare ElectraSim with CircuitLab, Tinkercad Circuits, EveryCircuit, Falstad and DCACLab by purpose, price, sign-up, sharing, offline use and teaching tools.';
+
+const pageSchema = {
+  '@context': 'https://schema.org',
+  '@graph': [
+    {
+      '@type': 'WebPage',
+      '@id': `${canonical}#webpage`,
+      url: canonical,
+      name: title,
+      description,
+      dateModified: comparisonReviewedIso,
+      inLanguage: 'en-GB',
+      isPartOf: {
+        '@type': 'WebSite',
+        '@id': 'https://electrasim.com/#website',
+        name: 'ElectraSim',
+        url: 'https://electrasim.com/',
+      },
+      publisher: {
+        '@type': 'Organization',
+        name: 'ElectraSim',
+        url: 'https://electrasim.com/',
+      },
+      primaryImageOfPage: {
+        '@type': 'ImageObject',
+        url: 'https://electrasim.com/images/electrasim-simulator-1200.webp',
+        width: 1200,
+        height: 750,
+      },
+      breadcrumb: { '@id': `${canonical}#breadcrumb` },
+      mainEntity: [{ '@id': `${canonical}#tools` }, { '@id': `${canonical}#faq` }],
+    },
+    {
+      '@type': 'BreadcrumbList',
+      '@id': `${canonical}#breadcrumb`,
+      itemListElement: [
+        {
+          '@type': 'ListItem',
+          position: 1,
+          name: 'Home',
+          item: 'https://electrasim.com/',
+        },
+        {
+          '@type': 'ListItem',
+          position: 2,
+          name: 'Compare circuit simulators',
+          item: canonical,
+        },
+      ],
+    },
+    {
+      '@type': 'ItemList',
+      '@id': `${canonical}#tools`,
+      name: 'Online circuit simulators compared with ElectraSim',
+      itemListOrder: 'https://schema.org/ItemListUnordered',
+      numberOfItems: comparisonTools.length,
+      itemListElement: comparisonTools.map((tool, index) => ({
+        '@type': 'ListItem',
+        position: index + 1,
+        item: {
+          '@type': 'SoftwareApplication',
+          name: tool.name,
+          url: tool.officialUrl,
+          applicationCategory: 'EducationalApplication',
+        },
+      })),
+    },
+    {
+      '@type': 'FAQPage',
+      '@id': `${canonical}#faq`,
+      mainEntity: comparisonFaqs.map((faq) => ({
+        '@type': 'Question',
+        name: faq.question,
+        acceptedAnswer: {
+          '@type': 'Answer',
+          text: faq.answer,
+        },
+      })),
+    },
+  ],
+};
+---
+
+<Base title={title} description={description} canonical={canonical}>
+  <Fragment slot="head">
+    <script type="application/ld+json" set:html={JSON.stringify(pageSchema)} />
+  </Fragment>
+
+  <CompareHero />
+
+  <main class="compare-main">
+    <section class="compare-section" id="quick-comparison" aria-labelledby="quick-comparison-h">
+      <div class="wrap">
+        <div class="compare-section-heading">
+          <p class="compare-overline">Quick comparison</p>
+          <h2 id="quick-comparison-h">The right tool depends on the circuit you want to understand</h2>
+          <p>
+            ElectraSim is the practical-wiring option in this group. The other tools bring real
+            strengths in engineering analysis, microcontrollers, animated electronics, circuit
+            theory or managed classroom work.
+          </p>
+        </div>
+
+        <aside class="compare-disclosure" aria-label="Comparison disclosure">
+          <strong>A transparent comparison</strong>
+          <p>
+            ElectraSim publishes this page. We therefore show its limitations as well as its
+            strengths, use official provider pages for competing products, and avoid treating an
+            undocumented feature as absent.
+          </p>
+        </aside>
+
+        <ComparisonTable tools={comparisonTools} />
+      </div>
+    </section>
+
+    <section class="compare-section compare-section-muted" aria-labelledby="difference-h">
+      <div class="wrap">
+        <div class="compare-section-heading compare-section-heading-left">
+          <p class="compare-overline">ElectraSim's focus</p>
+          <h2 id="difference-h">Practical wiring without setup friction</h2>
+          <p>
+            The product is deliberately narrower than a general electronics laboratory. That
+            narrower scope makes common electrical components, conductor roles and switching logic
+            easier to recognise from the start.
+          </p>
+        </div>
+
+        <div class="compare-difference-grid">
+          <article>
+            <h3>Installation-first components</h3>
+            <p>
+              Build with protection, switches, sockets and connected loads instead of translating
+              every exercise into generic electronic symbols.
+            </p>
+          </article>
+          <article>
+            <h3>Private by default</h3>
+            <p>
+              Circuits are stored locally. There is no account database, advertising profile or
+              cloud workspace to configure before learning.
+            </p>
+          </article>
+          <article>
+            <h3>Faults you can see</h3>
+            <p>
+              Energised paths animate and fault states are surfaced visually, helping learners move
+              from memorising a diagram to tracing its behaviour.
+            </p>
+          </article>
+        </div>
+
+        <p class="compare-inline-links">
+          See the <a href="/guide/">current simulator guide</a>, follow the
+          <a href="/blog/getting-started-with-electrasim/">five-minute getting-started lesson</a>,
+          or read how <a href="/blog/how-household-wiring-works/">household wiring works</a>.
+        </p>
+      </div>
+    </section>
+
+    <section class="compare-section" aria-labelledby="task-fit-h">
+      <div class="wrap">
+        <div class="compare-section-heading">
+          <p class="compare-overline">Choose by task</p>
+          <h2 id="task-fit-h">Which circuit simulator fits your goal?</h2>
+          <p>
+            These recommendations are based on each provider's stated product focus, not an overall
+            ranking.
+          </p>
+        </div>
+        <TaskFitList items={taskFits} />
+      </div>
+    </section>
+
+    <section class="compare-section compare-section-muted" aria-labelledby="profiles-h">
+      <div class="wrap">
+        <div class="compare-section-heading compare-section-heading-left">
+          <p class="compare-overline">Detailed comparisons</p>
+          <h2 id="profiles-h">Where each simulator is strongest</h2>
+          <p>
+            Each profile separates the product's documented strength from the boundary that matters
+            when choosing it for practical wiring education.
+          </p>
+        </div>
+        <ToolProfiles tools={comparisonTools} />
+      </div>
+    </section>
+
+    <section class="compare-section" aria-labelledby="wiring-options-h">
+      <div class="wrap">
+        <div class="compare-section-heading compare-section-heading-left">
+          <p class="compare-overline">Other wiring-focused options</p>
+          <h2 id="wiring-options-h">More direct electrical-training alternatives</h2>
+          <p>
+            Two additional products are closer to ElectraSim's practical-wiring subject area, but
+            they use different access models and are not direct replacements for a free browser PWA.
+          </p>
+        </div>
+        <ToolProfiles tools={closeWiringAlternatives} compact />
+      </div>
+    </section>
+
+    <section class="compare-section compare-section-method" aria-labelledby="method-h">
+      <div class="wrap compare-method-grid">
+        <div class="compare-section-heading compare-section-heading-left">
+          <p class="compare-overline">Methodology</p>
+          <h2 id="method-h">How this comparison was researched</h2>
+          <p>
+            Product access, prices and features can change. This page records what the providers
+            themselves published when the research was reviewed on
+            <time datetime={comparisonReviewedIso}>{comparisonReviewedLabel}</time>.
+          </p>
+        </div>
+        <ol class="compare-method-list">
+          <li>
+            <strong>Primary sources only.</strong> Product pages, documentation, help centres,
+            official pricing pages and first-party app-store listings.
+          </li>
+          <li>
+            <strong>Task-based criteria.</strong> Primary purpose, platform, price, account access,
+            practical-wiring relevance, saving, sharing, export and teaching workflows.
+          </li>
+          <li>
+            <strong>No invented negatives.</strong> When a provider does not publicly document a
+            capability, this page says it is not confirmed rather than claiming it does not exist.
+          </li>
+          <li>
+            <strong>No performance ranking.</strong> Simulation accuracy and speed are not compared
+            because equivalent public benchmarks were not available across all tools.
+          </li>
+        </ol>
+      </div>
+      <div class="wrap">
+        <aside class="compare-safety-note">
+          <strong>Educational scope</strong>
+          <p>
+            No simulator on this page should be treated as proof that a real installation is safe or
+            compliant. Use competent design, safe isolation, inspection, calibrated testing,
+            manufacturer instructions and the regulations that apply to the work.
+          </p>
+        </aside>
+      </div>
+    </section>
+
+    <section class="compare-section" aria-labelledby="faq-h">
+      <div class="wrap compare-faq-layout">
+        <div class="compare-section-heading compare-section-heading-left">
+          <p class="compare-overline">Questions</p>
+          <h2 id="faq-h">Circuit simulator comparison FAQ</h2>
+          <p>
+            Short answers to the questions that matter most when comparing a household wiring
+            simulator with a general electronics tool.
+          </p>
+        </div>
+        <CompareFaq faqs={comparisonFaqs} />
+      </div>
+    </section>
+
+    <section class="compare-cta" aria-labelledby="compare-cta-h">
+      <div class="wrap">
+        <p class="compare-overline">Start without an account</p>
+        <h2 id="compare-cta-h">Try the practical-wiring option for yourself</h2>
+        <p>
+          Open ElectraSim, load a guided circuit, change the wiring and watch the circuit respond.
+          Nothing needs to be installed or registered.
+        </p>
+        <div class="compare-hero-actions">
+          <a class="btn-primary" href="/app/">Launch ElectraSim free</a>
+          <a class="btn-outline" href="/blog/fault-simulation-mode-open-circuit-reverse-polarity-earth-fault/">
+            Learn about fault simulation
+          </a>
+        </div>
+        <p class="compare-trademark-note">
+          ElectraSim is not affiliated with the other providers listed. Product names and trademarks
+          belong to their respective owners. Confirm current prices and terms on each official site.
+          Learn more about <a href="/about/">ElectraSim</a> and its
+          <a href="/privacy/">local-data approach</a>.
+        </p>
+      </div>
+    </section>
+  </main>
+</Base>

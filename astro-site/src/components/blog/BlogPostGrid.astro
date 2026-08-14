@@ -1,0 +1,15 @@
+---
+import type { CollectionEntry } from 'astro:content';
+import BlogPostCard from './BlogPostCard.astro';
+
+interface Props {
+  posts: CollectionEntry<'blog'>[];
+  headingLevel?: 2 | 3;
+}
+
+const { posts, headingLevel = 2 } = Astro.props;
+---
+
+<div class="grid">
+  {posts.map((post) => <BlogPostCard post={post} headingLevel={headingLevel} />)}
+</div>

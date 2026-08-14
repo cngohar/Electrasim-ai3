@@ -1,0 +1,159 @@
+---
+import { getCollection, render } from 'astro:content';
+import Base from '../../layouts/Base.astro';
+import { getTagArchives, readingTime, slugifyTag, sortBlogPosts, wordCount } from '../../lib/blog';
+import '../../styles/blog/blog-article.css';
+
+export async function getStaticPaths() {
+  const allPosts = sortBlogPosts(await getCollection('blog', ({ data }) => !data.draft), false);
+  const generatedTagSlugs = new Set(getTagArchives(allPosts).map(({ slug }) => slug));
+  return allPosts.map((post, index) => ({
+    params: { slug: post.id },
+    props: {
+      post,
+      prevPost: allPosts[index + 1] ?? null,
+      nextPost: allPosts[index - 1] ?? null,
+      generatedTags: post.data.tags.filter((tag) => generatedTagSlugs.has(slugifyTag(tag))),
+    },
+  }));
+}
+
+const { post, prevPost, nextPost, generatedTags } = Astro.props;
+const { Content } = await render(post);
+
+const pubDateISO = post.data.pubDate.toISOString().split('T')[0];
+const pubDateDisplay = post.data.pubDate.toLocaleDateString('en-GB', {
+  year: 'numeric',
+  month: 'long',
+  day: 'numeric',
+});
+const updDateISO = post.data.updatedDate ? post.data.updatedDate.toISOString().split('T')[0] : null;
+const updDateDisplay = post.data.updatedDate
+  ? post.data.updatedDate.toLocaleDateString('en-GB', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    })
+  : null;
+const canonical = `https://electrasim.com/blog/${post.id}/`;
+const ogImage = post.data.image
+  ? post.data.image.startsWith('http')
+    ? post.data.image
+    : `https://electrasim.com${post.data.image}`
+  : 'https://electrasim.com/og-image.png';
+
+const readMins = readingTime(post.body ?? '');
+
+const articleSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'Article',
+  headline: post.data.title,
+  description: post.data.description,
+  image: ogImage,
+  datePublished: pubDateISO,
+  dateModified: (post.data.updatedDate ?? post.data.pubDate).toISOString().split('T')[0],
+  author: { '@type': 'Organization', name: 'ElectraSim', url: 'https://electrasim.com/' },
+  publisher: {
+    '@type': 'Organization',
+    name: 'ElectraSim',
+    url: 'https://electrasim.com/',
+    logo: { '@type': 'ImageObject', url: 'https://electrasim.com/pwa-192.svg' },
+  },
+  mainEntityOfPage: { '@type': 'WebPage', '@id': canonical },
+  url: canonical,
+  articleSection: post.data.category,
+  keywords: post.data.tags.join(', '),
+  wordCount: wordCount(post.body ?? ''),
+  timeRequired: `PT${readMins}M`,
+};
+
+const breadcrumbSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'BreadcrumbList',
+  itemListElement: [
+    { '@type': 'ListItem', position: 1, name: 'Home', item: 'https://electrasim.com/' },
+    { '@type': 'ListItem', position: 2, name: 'Blog', item: 'https://electrasim.com/blog/' },
+    { '@type': 'ListItem', position: 3, name: post.data.title, item: canonical },
+  ],
+};
+---
+
+<Base
+  title={`${post.data.title} | ElectraSim Blog`}
+  description={post.data.description}
+  canonical={canonical}
+  ogImage={ogImage}
+  ogImageWidth={post.data.image ? 1200 : 1736}
+  ogImageHeight={post.data.image ? 630 : 906}
+  ogType="article"
+  articleMeta={{
+    publishedTime: pubDateISO,
+    modifiedTime: (post.data.updatedDate ?? post.data.pubDate).toISOString().split('T')[0],
+    section: post.data.category,
+  }}
+>
+  <Fragment slot="head">
+    <script type="application/ld+json" set:html={JSON.stringify(articleSchema)} />
+    <script type="application/ld+json" set:html={JSON.stringify(breadcrumbSchema)} />
+    {post.data.tags.map((tag: string) => <meta property="article:tag" content={tag} />)}
+  </Fragment>
+
+  <div class="bc-wrap">
+    <div class="wrap">
+      <nav class="bc" aria-label="Breadcrumb">
+        <a href="/">Home</a>
+        <span class="bc-sep" aria-hidden="true">›</span>
+        <a href="/blog/">Blog</a>
+        <span class="bc-sep" aria-hidden="true">›</span>
+        <span aria-current="page">{post.data.title}</span>
+      </nav>
+    </div>
+  </div>
+
+  <div class="art-wrap">
+    <article class="art-inner">
+      <span class="art-tag">{post.data.category}</span>
+      <h1>{post.data.title}</h1>
+      <div class="art-meta">
+        <span>📅 <time datetime={pubDateISO}>{pubDateDisplay}</time>
+          {updDateDisplay && <span class="updated-badge">Updated {updDateDisplay}</span>}
+        </span>
+        <span>✍️ {post.data.author}</span>
+        <span>⏱ {readMins} min read</span>
+      </div>
+
+      <Content />
+
+      {generatedTags.length > 0 && (
+        <div class="art-tags" aria-label="Tags">
+          {generatedTags.map((tag: string) => (
+            <a href={`/blog/tags/${slugifyTag(tag)}/`} class="art-tag-item">#{tag}</a>
+          ))}
+        </div>
+      )}
+
+      <div class="art-cta">
+        <h2>See It All in Action</h2>
+        <p>Build and simulate the circuits from this article for free in your browser. No installation, no sign-up.</p>
+        <a href="/app/" class="btn-primary">⚡ Open ElectraSim Free</a>
+      </div>
+
+      {(prevPost || nextPost) && (
+        <nav class="post-nav" aria-label="Post navigation">
+          {prevPost && (
+            <a href={`/blog/${prevPost.id}/`} class="pn-prev">
+              <span class="nav-dir">← Previous</span>
+              <span class="nav-title">{prevPost.data.title}</span>
+            </a>
+          )}
+          {nextPost && (
+            <a href={`/blog/${nextPost.id}/`} class="pn-next">
+              <span class="nav-dir">Next →</span>
+              <span class="nav-title">{nextPost.data.title}</span>
+            </a>
+          )}
+        </nav>
+      )}
+    </article>
+  </div>
+</Base>

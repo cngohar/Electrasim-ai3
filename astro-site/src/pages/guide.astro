@@ -1,0 +1,58 @@
+---
+import GuideCircuitCard from '../components/guide/GuideCircuitCard.astro';
+import GuideCta from '../components/guide/GuideCta.astro';
+import GuideHero from '../components/guide/GuideHero.astro';
+import GuideOverview from '../components/guide/GuideOverview.astro';
+import data from '../content/pages/guide.json';
+import Base from '../layouts/Base.astro';
+import '../styles/guide.css';
+import type { GuideCircuit, GuideFeature, GuidedTemplate } from '../types/pages';
+
+const circuits = data.circuits as GuideCircuit[];
+const latestFeatures = data.latest_features as GuideFeature[];
+const guidedTemplates = data.guided_templates as GuidedTemplate[];
+---
+
+<Base
+  title={data.seo_title}
+  description={data.seo_description}
+  canonical="https://electrasim.com/guide/"
+>
+  <Fragment slot="head">
+    <script type="application/ld+json" set:html={JSON.stringify({
+      "@context": "https://schema.org",
+      "@type": "HowTo",
+      "name": "How to Build and Simulate Electrical Circuits in ElectraSim",
+      "description": "Current ElectraSim guide covering guided templates, fault simulation, smart and custom wiring, export tools, and step-by-step electrical circuit walkthroughs.",
+      "url": "https://electrasim.com/guide/",
+      "tool": { "@type": "HowToTool", "name": "ElectraSim", "url": "https://electrasim.com/app/" },
+      "step": circuits.map((circuit, index) => ({
+        "@type": "HowToStep",
+        "position": index + 1,
+        "name": circuit.title,
+        "text": circuit.description,
+      }))
+    })} />
+  </Fragment>
+
+  <GuideHero
+    heading={data.hero_heading}
+    description={data.hero_description}
+    primaryCta={data.hero_cta_primary}
+    secondaryCta={data.hero_cta_secondary}
+    circuits={circuits}
+  />
+
+  <main class="guide-main">
+    <div class="wrap">
+      <GuideOverview features={latestFeatures} templates={guidedTemplates} />
+      {circuits.map((circuit) => <GuideCircuitCard circuit={circuit} />)}
+      <GuideCta
+        heading={data.cta_heading}
+        description={data.cta_description}
+        primary={data.cta_primary}
+        secondary={data.cta_secondary}
+      />
+    </div>
+  </main>
+</Base>

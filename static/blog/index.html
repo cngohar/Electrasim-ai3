@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#2563eb" />
+  <title>ElectraSim Blog — Electrical Wiring Guides &amp; Circuit Tutorials</title>
+  <meta name="description" content="Practical guides on electrical wiring, circuit simulation, and electrical safety. Written for students, electricians, and curious learners. Free tutorials from the ElectraSim team." />
+  <meta name="author" content="ElectraSim" />
+  <meta name="keywords" content="electrical wiring guide, circuit tutorial, learn wiring, MCB explained, household wiring, electrical safety" />
+  <link rel="canonical" href="https://electrasim.com/blog/" />
+  <meta name="robots" content="index, follow" />
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="ElectraSim" />
+  <meta property="og:title" content="ElectraSim Blog — Electrical Wiring Guides &amp; Circuit Tutorials" />
+  <meta property="og:description" content="Practical guides on electrical wiring, circuit simulation, and electrical safety for students, electricians and hobbyists." />
+  <meta property="og:url" content="https://electrasim.com/blog/" />
+  <meta property="og:image" content="https://electrasim.com/og-image.png" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta property="og:locale" content="en_US" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="ElectraSim Blog — Electrical Wiring Guides" />
+  <meta name="twitter:description" content="Practical guides on electrical wiring and circuit simulation for everyone." />
+  <meta name="twitter:image" content="https://electrasim.com/og-image.png" />
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <link rel="apple-touch-icon" href="/pwa-192.svg" />
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"Blog","name":"ElectraSim Blog","description":"Electrical wiring guides and circuit simulation tutorials","url":"https://electrasim.com/blog/","publisher":{"@type":"Organization","name":"ElectraSim","url":"https://electrasim.com/"}}</script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--blue:#2563eb;--blue-d:#1d4ed8;--blue-l:#eff6ff;--slate:#0f172a;--mid:#475569;--light:#f8fafc;--border:#e2e8f0;--r:1rem;--font:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif}
+html{scroll-behavior:smooth}
+body{font-family:var(--font);color:var(--slate);background:#fff;line-height:1.6;-webkit-font-smoothing:antialiased}
+a{color:inherit;text-decoration:none}
+img{max-width:100%;height:auto;display:block}
+.wrap{max-width:1100px;margin:0 auto;padding:0 1.5rem}
+
+/* nav */
+.nav{position:sticky;top:0;z-index:100;background:rgba(255,255,255,.92);backdrop-filter:blur(12px);border-bottom:1px solid var(--border)}
+.nav-in{display:flex;align-items:center;justify-content:space-between;padding:.9rem 1.5rem;max-width:1100px;margin:0 auto}
+.logo{display:flex;align-items:center;gap:.5rem;font-size:1.1rem;font-weight:700}
+.logo-icon{width:2rem;height:2rem;background:var(--blue);border-radius:.5rem;display:flex;align-items:center;justify-content:center;color:#fff;font-size:1rem}
+.nav-links{display:flex;align-items:center;gap:1.5rem}
+.nav-links a{font-size:.875rem;color:var(--mid);font-weight:500;transition:color .15s}
+.nav-links a:hover{color:var(--blue)}
+.btn-nav{background:var(--blue);color:#fff!important;padding:.45rem 1.2rem;border-radius:999px;font-weight:600;transition:background .15s}
+.btn-nav:hover{background:var(--blue-d)}
+
+/* hero */
+.page-hero{background:linear-gradient(135deg,#eff6ff 0%,#f0f9ff 100%);padding:4rem 0 3rem;border-bottom:1px solid var(--border)}
+.label{font-size:.75rem;font-weight:700;color:var(--blue);text-transform:uppercase;letter-spacing:.08em;margin-bottom:.5rem;display:block}
+.page-hero h1{font-size:clamp(1.75rem,4vw,2.5rem);font-weight:800;letter-spacing:-.02em;margin-bottom:.75rem}
+.page-hero p{font-size:1rem;color:var(--mid);max-width:520px;line-height:1.7}
+
+/* blog grid */
+.blog-sec{padding:4rem 0}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:1.75rem}
+.card{border:1px solid var(--border);border-radius:var(--r);background:#fff;overflow:hidden;transition:box-shadow .2s,transform .2s;display:flex;flex-direction:column}
+.card:hover{box-shadow:0 8px 30px rgba(15,23,42,.09);transform:translateY(-3px)}
+.card-body{padding:1.5rem;flex:1;display:flex;flex-direction:column}
+.tag{display:inline-block;background:var(--blue-l);color:var(--blue);font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;border-radius:999px;padding:.2rem .65rem;margin-bottom:.75rem}
+.card h2{font-size:1.0625rem;font-weight:700;color:var(--slate);margin-bottom:.5rem;line-height:1.4}
+.card p{font-size:.875rem;color:var(--mid);line-height:1.65;flex:1;margin-bottom:1.25rem}
+.card-meta{display:flex;align-items:center;justify-content:space-between;font-size:.8rem;color:var(--mid)}
+.read-link{font-size:.8125rem;font-weight:600;color:var(--blue);transition:color .15s}
+.read-link:hover{color:var(--blue-d)}
+.coming{opacity:.55;pointer-events:none;cursor:default}
+
+/* footer */
+footer{background:#0f172a;color:#94a3b8;padding:2.5rem 0 1.75rem}
+.ft{max-width:1100px;margin:0 auto;padding:0 1.5rem}
+.ft-bot{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:1rem;font-size:.8rem}
+.ft-bot a{color:#94a3b8}
+.ft-bot a:hover{color:#fff}
+
+@media(max-width:640px){.hide-m{display:none}.page-hero{padding:3rem 0 2.5rem}}
+</style>
+</head>
+<body>
+
+<nav class="nav" role="navigation" aria-label="Main navigation">
+  <div class="nav-in">
+    <a href="/" class="logo"><span class="logo-icon" aria-hidden="true">⚡</span>ElectraSim</a>
+    <div class="nav-links">
+      <a href="/" class="hide-m">Home</a>
+      <a href="/blog/" style="color:var(--blue)" aria-current="page">Blog</a>
+      <a href="/app/" class="btn-nav">Open App →</a>
+    </div>
+  </div>
+</nav>
+
+<div class="page-hero">
+  <div class="wrap">
+    <span class="label">ElectraSim Blog</span>
+    <h1>Electrical Wiring Guides &amp; Circuit Tutorials</h1>
+    <p>Practical articles on electrical wiring, circuit design, and simulation — for students, electricians, teachers and curious learners.</p>
+  </div>
+</div>
+
+<main class="blog-sec">
+  <div class="wrap">
+    <div class="grid">
+
+      <a href="/blog/how-household-wiring-works/" class="card">
+        <div class="card-body">
+          <span class="tag">Beginner Guide</span>
+          <h2>How Household Wiring Works: A Complete Beginner's Guide</h2>
+          <p>From the main panel to your light switch — understand how electricity flows through a home, why each component matters, and what happens when something goes wrong.</p>
+          <div class="card-meta">
+            <span>May 2, 2026 · 7 min read</span>
+            <span class="read-link">Read →</span>
+          </div>
+        </div>
+      </a>
+
+      <div class="card coming">
+        <div class="card-body">
+          <span class="tag">Coming Soon</span>
+          <h2>Series vs Parallel Circuits: What's the Difference?</h2>
+          <p>A visual explanation of series and parallel wiring with interactive examples you can try directly in ElectraSim.</p>
+          <div class="card-meta"><span>Coming soon</span></div>
+        </div>
+      </div>
+
+      <div class="card coming">
+        <div class="card-body">
+          <span class="tag">Coming Soon</span>
+          <h2>What is an MCB Breaker and How Does It Protect Your Circuit?</h2>
+          <p>MCBs are the first line of defence against overloads and short circuits. Here's how they actually work — and how to simulate one in ElectraSim.</p>
+          <div class="card-meta"><span>Coming soon</span></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</main>
+
+<footer role="contentinfo">
+  <div class="ft">
+    <div class="ft-bot">
+      <span>© 2026 ElectraSim · <a href="/">Home</a> · <a href="/app/">App</a> · <a href="https://web.facebook.com/electrasimweb" target="_blank" rel="noopener noreferrer">Facebook</a></span>
+      <span>No tracking cookies · Data stays local</span>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>

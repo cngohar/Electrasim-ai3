@@ -1,0 +1,12 @@
+# ElectraSim — robots.txt
+
+User-agent: *
+Allow: /
+
+# Block CMS admin panel from indexing
+Disallow: /admin/
+
+# Don't index build artefacts
+Disallow: /stats.html
+
+Sitemap: https://electrasim.com/sitemap-index.xml

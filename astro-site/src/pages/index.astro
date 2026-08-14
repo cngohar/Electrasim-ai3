@@ -1,0 +1,62 @@
+---
+import { getCollection, getEntry } from 'astro:content';
+import LandingBlogHighlights from '../components/landing/LandingBlogHighlights.astro';
+import LandingCoreSections from '../components/landing/LandingCoreSections.astro';
+import LandingCta from '../components/landing/LandingCta.astro';
+import LandingHero from '../components/landing/LandingHero.astro';
+import Base from '../layouts/Base.astro';
+import { HOMEPAGE_ARTICLE_IDS, selectPostsById } from '../lib/blog';
+import '../styles/landing.css';
+import packageMetadata from '../../../package.json';
+import type { LandingPage } from '../types/pages';
+
+const entry = await getEntry('pages', 'landing');
+const d = entry!.data as LandingPage;
+const blogHighlights = selectPostsById(
+  await getCollection('blog', ({ data }) => !data.draft),
+  HOMEPAGE_ARTICLE_IDS,
+);
+---
+
+<Base
+  title={d.seo_title}
+  description={d.seo_description}
+  canonical="https://electrasim.com/"
+>
+  <Fragment slot="head">
+    <script type="application/ld+json" set:html={JSON.stringify({
+      "@context":"https://schema.org",
+      "@type":"SoftwareApplication",
+      "name":"ElectraSim",
+      "softwareVersion":packageMetadata.version,
+      "applicationCategory":"EducationalApplication",
+      "operatingSystem":"Web",
+      "description":"Build house-wiring circuits with MCBs, RCDs, RCBOs, switches, sockets and faults. Free in your browser—no download or sign-up.",
+      "url":"https://electrasim.com/",
+      "image":"https://electrasim.com/og-image.png",
+      "offers":{"@type":"Offer","price":"0","priceCurrency":"USD"}
+    })} />
+  </Fragment>
+
+  <LandingHero
+    badge={d.hero_badge}
+    heading={d.hero_heading}
+    highlight={d.hero_heading_highlight}
+    description={d.hero_description}
+    primaryCta={d.hero_cta_primary}
+    secondaryCta={d.hero_cta_secondary}
+    trustItems={d.hero_trust_items}
+  />
+  <LandingCoreSections content={d} />
+  <LandingBlogHighlights
+    label={d.blog_label}
+    heading={d.blog_heading}
+    description={d.blog_description}
+    posts={blogHighlights}
+  />
+  <LandingCta
+    heading={d.cta_heading}
+    description={d.cta_description}
+    button={d.cta_button}
+  />
+</Base>

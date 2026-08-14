@@ -1,0 +1,71 @@
+---
+import { getCollection, getEntry } from 'astro:content';
+import BlogIndexSections from '../../components/blog/BlogIndexSections.astro';
+import BlogPagination from '../../components/blog/BlogPagination.astro';
+import BlogTopicNav from '../../components/blog/BlogTopicNav.astro';
+import Base from '../../layouts/Base.astro';
+import { getTagArchives, paginatePosts, sortBlogPosts, totalPages } from '../../lib/blog';
+import '../../styles/blog/blog-index.css';
+
+type BlogIndexPage = {
+  seo_title: string;
+  seo_description: string;
+  page_label: string;
+  page_heading: string;
+};
+
+export async function getStaticPaths() {
+  const allPosts = sortBlogPosts(await getCollection('blog', ({ data }) => !data.draft));
+  const pageCount = totalPages(allPosts.length);
+  const topics = getTagArchives(allPosts);
+
+  return Array.from({ length: pageCount - 1 }, (_, i) => {
+    const pageNum = i + 2;
+    return {
+      params: { page: String(pageNum) },
+      props: {
+        pageNum,
+        pageCount,
+        posts: paginatePosts(allPosts, pageNum),
+        topics,
+      },
+    };
+  });
+}
+
+const { pageNum, pageCount, posts, topics } = Astro.props;
+const canonical = `https://electrasim.com/blog/${pageNum}/`;
+const prevUrl =
+  pageNum === 2 ? 'https://electrasim.com/blog/' : `https://electrasim.com/blog/${pageNum - 1}/`;
+const nextUrl = pageNum < pageCount ? `https://electrasim.com/blog/${pageNum + 1}/` : null;
+
+const pageEntry = await getEntry('pages', 'blog-index');
+const p = pageEntry!.data as BlogIndexPage;
+---
+
+<Base
+  title={`${p.seo_title} — Page ${pageNum}`}
+  description={`${p.seo_description} Page ${pageNum} of ${pageCount}.`}
+  canonical={canonical}
+>
+  <Fragment slot="head">
+    <link rel="prev" href={prevUrl} />
+    {nextUrl && <link rel="next" href={nextUrl} />}
+  </Fragment>
+
+  <div class="page-hero blog-index-hero">
+    <div class="wrap">
+      <span class="label">{p.page_label}</span>
+      <h1>{p.page_heading}</h1>
+      <p>Page {pageNum} of {pageCount}</p>
+    </div>
+  </div>
+
+  <main class="blog-sec">
+    <div class="wrap">
+      <BlogTopicNav topics={topics} />
+      <BlogIndexSections posts={posts} />
+      <BlogPagination currentPage={pageNum} totalPages={pageCount} />
+    </div>
+  </main>
+</Base>

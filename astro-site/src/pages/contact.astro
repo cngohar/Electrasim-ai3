@@ -1,0 +1,54 @@
+---
+import data from '../content/pages/contact.json';
+import Base from '../layouts/Base.astro';
+import '../styles/contact.css';
+
+const FACEBOOK_URL = data.facebook_url;
+const GOOGLE_FORM_URL = data.google_form_url;
+---
+
+<Base
+  title={data.seo_title}
+  description={data.seo_description}
+  canonical="https://electrasim.com/contact/"
+>
+  <div class="contact-hero">
+    <div class="wrap">
+      <span class="label">Contact</span>
+      <h1 set:html={data.hero_heading.replace('\n', '<br>')}></h1>
+      <p>{data.hero_sub}</p>
+    </div>
+  </div>
+
+  <main class="contact-wrap">
+
+    <div class="contact-grid">
+      <a href={FACEBOOK_URL} target="_blank" rel="noopener noreferrer" class="contact-card">
+        <span class="contact-icon">📘</span>
+        <h2>Facebook Page</h2>
+        <p>Follow us on Facebook for updates, tips, and to send us a message directly. We respond within 24 hours.</p>
+        <span class="contact-btn">Visit Facebook →</span>
+      </a>
+
+      <a href={GOOGLE_FORM_URL} target="_blank" rel="noopener noreferrer" class="contact-card">
+        <span class="contact-icon">📝</span>
+        <h2>Feedback Form</h2>
+        <p>Use our Google Form to report bugs, request features, or share any other feedback. Anonymous submissions welcome.</p>
+        <span class="contact-btn">Open Form →</span>
+      </a>
+    </div>
+
+    <section class="faq-sec" aria-labelledby="faq-h">
+      <h2 id="faq-h">Frequently Asked Questions</h2>
+      <div class="faq-list">
+        {data.faqs.map((faq: { question: string; answer: string }) => (
+          <div class="faq-item">
+            <h3>{faq.question}</h3>
+            <p>{faq.answer}</p>
+          </div>
+        ))}
+      </div>
+    </section>
+
+  </main>
+</Base>

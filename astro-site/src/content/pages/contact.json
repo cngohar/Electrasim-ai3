@@ -1,0 +1,30 @@
+{
+  "seo_title": "Contact ElectraSim — Get Help or Send Feedback",
+  "seo_description": "Have a question, bug report, or feature suggestion? Contact the ElectraSim team via Facebook or our feedback form.",
+  "hero_heading": "We'd Love to Hear From You",
+  "hero_sub": "Bug report? Feature idea? Just want to say hello? Pick your preferred way to reach us below.",
+  "facebook_url": "https://web.facebook.com/electrasimweb",
+  "google_form_url": "https://forms.gle/z1eED6sbmXmZrRKT8",
+  "faqs": [
+    {
+      "question": "Is ElectraSim really free?",
+      "answer": "Yes — 100% free, forever. No sign-up, no subscription, no ads. Just open the simulator and start building."
+    },
+    {
+      "question": "Does my circuit data get sent to a server?",
+      "answer": "Simulation runs in your browser and circuits are stored locally. If you explicitly create a share link, its circuit payload stays in the URL fragment, which browsers do not send to our servers."
+    },
+    {
+      "question": "Can I use ElectraSim offline?",
+      "answer": "Yes. After your first visit, ElectraSim installs as a PWA and works completely offline. No internet needed."
+    },
+    {
+      "question": "I found a bug — how do I report it?",
+      "answer": "Use the Feedback Form above or message us on Facebook. Please include your browser name and version if possible."
+    },
+    {
+      "question": "Can I request a new component or feature?",
+      "answer": "Absolutely — we'd love to hear what you need. Submit your idea via the feedback form and we'll consider it for a future release."
+    }
+  ]
+}

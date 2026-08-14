@@ -1,0 +1,28 @@
+---
+import type { CollectionEntry } from 'astro:content';
+import { type TagArchive, selectTopicArchives } from '../../lib/blog';
+
+interface Props {
+  topics: TagArchive<CollectionEntry<'blog'>>[];
+  activeSlug?: string;
+}
+
+const { topics, activeSlug } = Astro.props;
+const visibleTopics = selectTopicArchives(topics, activeSlug);
+---
+
+{visibleTopics.length > 0 && (
+  <nav class="topic-nav" aria-label="Browse blog topics">
+    <span class="topic-nav-label">Browse topics</span>
+    <div class="topic-links">
+      {visibleTopics.map((topic) => (
+        <a
+          href={`/blog/tags/${topic.slug}/`}
+          aria-current={topic.slug === activeSlug ? 'page' : undefined}
+        >
+          {topic.label} <span>{topic.posts.length}</span>
+        </a>
+      ))}
+    </div>
+  </nav>
+)}

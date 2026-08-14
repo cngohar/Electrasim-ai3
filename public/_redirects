@@ -1,0 +1,11 @@
+# Cloudflare Pages redirect rules
+
+# Host redirects belong in Cloudflare Redirect Rules. Pages _redirects only
+# accepts relative source paths, so a www-to-apex rule cannot live here.
+
+# index.html / index.php → canonical (301 permanent)
+/index.html  /  301
+/index.php   /  301
+# Handle nested paths at any depth, e.g. /blog/tags/rcd/index.html.
+/*/index.html  /:splat/  301
+/*/index.php   /:splat/  301

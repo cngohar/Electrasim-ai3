@@ -1,0 +1,40 @@
+---
+import type { CollectionEntry } from 'astro:content';
+import { partitionBlogPosts } from '../../lib/blog';
+import BlogPostGrid from './BlogPostGrid.astro';
+
+interface Props {
+  posts: CollectionEntry<'blog'>[];
+}
+
+const { posts } = Astro.props;
+const { appUpdates, articles } = partitionBlogPosts(posts);
+---
+
+<div class="blog-index-sections">
+  {appUpdates.length > 0 && (
+    <section class="post-section update-section" aria-labelledby="updates-heading">
+      <header class="blog-section-header">
+        <div>
+          <span class="blog-section-kicker">Product news</span>
+          <h2 id="updates-heading">ElectraSim App Updates</h2>
+        </div>
+        <p>Release notes and practical introductions to recently added tools.</p>
+      </header>
+      <BlogPostGrid posts={appUpdates} headingLevel={3} />
+    </section>
+  )}
+
+  {articles.length > 0 && (
+    <section class="post-section articles-section" aria-labelledby="articles-heading">
+      <header class="blog-section-header">
+        <div>
+          <span class="blog-section-kicker">Learning library</span>
+          <h2 id="articles-heading">Electrical Guides and Articles</h2>
+        </div>
+        <p>Clear explanations of wiring, components, regulations, and electrical safety.</p>
+      </header>
+      <BlogPostGrid posts={articles} headingLevel={3} />
+    </section>
+  )}
+</div>

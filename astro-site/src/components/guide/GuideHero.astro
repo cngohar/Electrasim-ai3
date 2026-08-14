@@ -1,0 +1,52 @@
+---
+import type { GuideCircuit } from '../../types/pages';
+
+interface Props {
+  heading: string;
+  description: string;
+  primaryCta: string;
+  secondaryCta: string;
+  circuits: GuideCircuit[];
+}
+
+const { heading, description, primaryCta, secondaryCta, circuits } = Astro.props;
+const headingLines = heading.split('\n');
+---
+
+<div class="bc-wrap">
+  <div class="wrap">
+    <nav class="bc" aria-label="Breadcrumb">
+      <a href="/">Home</a>
+      <span aria-hidden="true">›</span>
+      <span aria-current="page">Circuit Guide</span>
+    </nav>
+  </div>
+</div>
+
+<div class="guide-hero">
+  <div class="wrap">
+    <span class="label">Step-by-Step Guide</span>
+    <h1>{headingLines.map((line, index) => <>{index > 0 && <br />}{line}</>)}</h1>
+    <p>{description}</p>
+    <div class="cta-row">
+      <a href="/app/" class="btn-primary">{primaryCta}</a>
+      <a href="#latest-features" class="btn-outline">{secondaryCta}</a>
+    </div>
+  </div>
+</div>
+
+<div class="progress-strip">
+  <div class="wrap">
+    <div class="progress-inner">
+      {circuits.map((circuit, index) => (
+        <>
+          <a href={`#${circuit.id}`} class="prog-item" title={circuit.title}>
+            <div class="prog-num">{circuit.step}</div>
+            <span class="prog-label">{circuit.title.split(' ').slice(0, 2).join(' ')}</span>
+          </a>
+          {index < circuits.length - 1 && <div class="prog-sep" aria-hidden="true"></div>}
+        </>
+      ))}
+    </div>
+  </div>
+</div>
