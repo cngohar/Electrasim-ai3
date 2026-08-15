@@ -89,7 +89,7 @@ export function SubHeaderBar() {
   };
 
   return (
-    <div className="absolute left-1/2 top-16 z-10 flex -translate-x-1/2 items-center gap-2.5 rounded-full border border-white/80 bg-white/90 px-3.5 py-1 text-xs text-slate-700 shadow-lg ring-1 ring-slate-900/5 backdrop-blur-xl transition-all duration-200 dark:border-slate-700/80 dark:bg-slate-900/90 dark:text-slate-300 dark:ring-slate-700/50 max-w-[calc(100vw-2rem)]">
+    <div className="absolute left-1/2 top-16 z-10 flex -translate-x-1/2 items-center gap-2.5 rounded-full border border-white/80 bg-white/90 px-3.5 py-1 text-xs text-slate-700 shadow-lg ring-1 ring-slate-900/5 backdrop-blur-xl transition-all duration-200 dark:border-slate-700/80 dark:bg-slate-900/90 dark:text-slate-300 dark:ring-slate-700/50 max-w-[calc(100vw-2rem)] whitespace-nowrap overflow-x-auto">
       {/* Global Voltage Dropdown Picker */}
       <div className="relative" ref={pickerRef}>
         <button
