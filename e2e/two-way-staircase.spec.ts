@@ -27,7 +27,8 @@ test.describe('Two-Way Staircase guide', () => {
     const switchA = switchControl(page.locator(`[data-component-id="${templateId}-switch-a"]`));
     const switchB = switchControl(page.locator(`[data-component-id="${templateId}-switch-b"]`));
     const bulb = page.locator(`[data-component-id="${templateId}-bulb"]`);
-    const status = page.getByText(/6 components\s*•\s*6 wires\s*•\s*\d+ active/);
+    // StatusPill (current design): "6 comps • 6 wires • N energized".
+    const status = page.getByText(/6\s*comps\s*•\s*6\s*wires\s*•\s*\d+\s*energized/);
 
     await expect(guideHeading).toBeVisible();
     await expectSwitchPosition(switchA, 'L1');
@@ -41,6 +42,13 @@ test.describe('Two-Way Staircase guide', () => {
 
     await page.getByRole('button', { name: /^Run Simulation$/ }).click();
     await expect(page.getByRole('button', { name: /^Stop$/ })).toBeVisible();
+
+    if (isPhone) {
+      // On phones the guide sheet overlays the lower canvas (where the
+      // staircase switches sit); "Hide guide" is the intended way to free
+      // the canvas for component interaction.
+      await page.getByRole('button', { name: 'Hide guide' }).click();
+    }
 
     // L1/L1: both switches select the same traveller, so the lamp is energised.
     await expectLampState(status, bulb, true, isPhone);
@@ -106,8 +114,10 @@ async function expectLampState(
   // on larger screens; the bulb render is the cross-viewport functional check.
   if (!isPhone) {
     await expect(status).toHaveText(
-      new RegExp(`6 components\\s*•\\s*6 wires\\s*•\\s*${energised ? 1 : 0} active`),
+      new RegExp(`6\\s*comps\\s*•\\s*6\\s*wires\\s*•\\s*${energised ? 1 : 0}\\s*energized`),
     );
   }
-  await expect(bulb.locator('circle[fill="#facc15"]')).toHaveCount(energised ? 2 : 0);
+  // An energised bulb renders exactly one #facc15 outer glow halo (r=22) plus
+  // inner #fde047/white highlight circles per the current component design.
+  await expect(bulb.locator('circle[fill="#facc15"]')).toHaveCount(energised ? 1 : 0);
 }
