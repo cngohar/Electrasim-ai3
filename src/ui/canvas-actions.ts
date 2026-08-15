@@ -10,6 +10,7 @@
 import {
   COMPONENT_DEFS,
   type ComponentInstance,
+  type ConnectionValidationResult,
   type WireInstance,
   snapToGrid,
   validateConnection,
@@ -30,6 +31,17 @@ export interface PortLoc {
 }
 
 let wireSeq = 0;
+
+/** Surface any non-blocking connection warnings to the log panel. */
+function logConnectionWarnings(
+  validation: ConnectionValidationResult,
+  addLog: (message: string, type: 'warning') => void,
+): void {
+  if (!validation.warnings) return;
+  for (const warning of validation.warnings) {
+    addLog(`⚠️ Warning: ${warning.message}`, 'warning');
+  }
+}
 
 /** Validate a candidate wire and return an error string or null if OK. */
 export function validateWire(
@@ -89,11 +101,7 @@ export function handlePortClick(
     return false;
   }
 
-  if (validation.warnings && validation.warnings.length > 0) {
-    for (const w of validation.warnings) {
-      ui.addLog(`⚠️ Warning: ${w.message}`, 'warning');
-    }
-  }
+  logConnectionWarnings(validation, ui.addLog);
 
   // Duplicate guard: skip if this exact port→port connection already exists.
   const existingWires = useCircuitStore.getState().wires;
@@ -305,11 +313,7 @@ export function commitCustomPath(destCompId: string, destPortIndex: number): boo
     ui.cancelCustomPath();
     return false;
   }
-  if (validation.warnings && validation.warnings.length > 0) {
-    for (const w of validation.warnings) {
-      ui.addLog(`⚠️ Warning: ${w.message}`, 'warning');
-    }
-  }
+  logConnectionWarnings(validation, ui.addLog);
   const existingWiresC = useCircuitStore.getState().wires;
   const duplicateC = existingWiresC.find(
     (w) =>
@@ -551,11 +555,7 @@ export function applyReroute(wireId: string, end: 'from' | 'to', target: PortLoc
   const ok = cs.rerouteWire(wireId, end, target);
   if (ok) {
     ui.addLog(`Wire ${end === 'from' ? 'origin' : 'target'} rerouted.`, 'info');
-    if (validation.warnings && validation.warnings.length > 0) {
-      for (const w of validation.warnings) {
-        ui.addLog(`⚠️ Warning: ${w.message}`, 'warning');
-      }
-    }
+    logConnectionWarnings(validation, ui.addLog);
   } else {
     ui.addLog('Cannot reroute: invalid target port.', 'error');
   }

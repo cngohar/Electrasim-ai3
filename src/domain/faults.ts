@@ -22,6 +22,7 @@ import type {
   FaultType,
   InjectedFault,
   SimulationResult,
+  WireFaultType,
   WireInstance,
 } from './types';
 
@@ -356,6 +357,21 @@ export function getAvailableFaultsForTarget(
 }
 
 /**
+ * Type guard — true when a fault kind can be mirrored onto the legacy
+ * per-wire `fault` field (see `WireFaultType` in `types.ts`). The modern
+ * `InjectedFault` pipeline accepts any fault type; the legacy field only
+ * models the four conductor-level kinds.
+ */
+export function isWireFaultType(type: FaultType): type is WireFaultType {
+  return (
+    type === 'open-circuit' ||
+    type === 'open-neutral' ||
+    type === 'short-circuit' ||
+    type === 'live-to-earth'
+  );
+}
+
+/**
  * Validate coexistence between existing active faults and a newly proposed fault.
  */
 export function validateFaultCoexistence(
@@ -388,8 +404,11 @@ export function validateFaultCoexistence(
 
   // Same target mutually exclusive checks (e.g. open-circuit vs short-circuit on the exact same wire)
   if (newFault.target.type === 'wire') {
+    // Hoist the narrowed id — TypeScript does not preserve property-access
+    // narrowing inside the `filter` closure below.
+    const newWireId = newFault.target.id;
     const wireFaults = activeFaults.filter(
-      (f) => f.target.type === 'wire' && f.target.id === newFault.target.id,
+      (f) => f.target.type === 'wire' && f.target.id === newWireId,
     );
     const hasOpen = wireFaults.some(
       (f) => f.type === 'open-circuit' || f.type === 'open-live' || f.type === 'open-neutral',
@@ -493,16 +512,19 @@ export function isFaultResolved(
 ): boolean {
   if (!simResult) return false;
 
-  if (fault.target.type === 'component') {
-    const comp = circuit.components.find((c) => c.id === fault.target.id);
+  // Narrow once into a local — property-access narrowing on `fault.target`
+  // is not preserved inside the `.find`/`.some` closures below.
+  const target = fault.target;
+  if (target.type === 'component') {
+    const comp = circuit.components.find((c) => c.id === target.id);
     if (!comp) return true; // Target deleted -> resolved
     if (!comp.state.fault && !circuit.faults?.some((f) => f.id === fault.id)) return true;
-  } else if (fault.target.type === 'wire') {
-    const wire = circuit.wires.find((w) => w.id === fault.target.id);
+  } else if (target.type === 'wire') {
+    const wire = circuit.wires.find((w) => w.id === target.id);
     if (!wire) return true; // Target deleted -> resolved
     if (!wire.fault && !circuit.faults?.some((f) => f.id === fault.id)) return true;
-  } else if (fault.target.type === 'port') {
-    const comp = circuit.components.find((c) => c.id === fault.target.componentId);
+  } else if (target.type === 'port') {
+    const comp = circuit.components.find((c) => c.id === target.componentId);
     if (!comp) return true;
     if (!circuit.faults?.some((f) => f.id === fault.id)) return true;
   }

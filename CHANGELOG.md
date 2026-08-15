@@ -12,11 +12,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Component variant imagery** — generated studio-style product photos for the ten component variants referenced by `componentImages.ts` but never committed: RCBO, MCB Type C / Type D, industrial MCCB, SPD, USB / GFCI sockets, cooker switch, dimmer switch, and PIR sensor. The production build no longer fails on unresolved image imports.
+- **`ConnectionValidationResult.warnings`** — the connection validator now exposes non-blocking diagnostics as an optional array, matching what the canvas interaction layer expected when logging wire-creation warnings.
+- **`WireFaultType` + `isWireFaultType()`** — the legacy per-wire `fault` field now formally supports `open-neutral` and `live-to-earth` (both already handled by the injected-fault simulation pipeline), so Context Menu / Inspector wire-fault buttons typecheck and persist.
+
+### Fixed
+- **29 TypeScript errors from `140ed41`** — broken typecheck is green again: widened `WireInstance.fault` / `setWireFault` to the conductor-level fault kinds the UI already offered, restored the accidentally deleted `role="button"` on canvas port hit circles (keyboard / screen-reader reroute flow), switched the inspector sparkline to `state.customVoltage ?? 230` (the removed `def.defaultVoltage`), fixed `state.blown` → `state.isBlown`, and hoisted `FaultTarget` narrowing out of closures in `faults.ts` / `circuitStore.ts` (TS cannot preserve property narrowing across callback boundaries).
+- **Modal close semantics** — `Modal` now invokes the *latest* `onClose` synchronously on Escape / backdrop click; the previous animation-wrapped deferral both delayed the callback by 200 ms and could invoke a stale prop. Also fixed the exit-animation effect cancelling its own unmount timer (`isClosing` was a dependency), which left closed dialogs mounted in the DOM forever.
+- **Test suite green again** — `MobileSuitabilityModal` spec now awaits the intentional 200 ms exit animation instead of asserting synchronous unmount; validation test fixtures supply the required `controlPoints` field. 231/231 tests passing, `vite build` succeeds.
+
 - **Pro-mode refactor completed** — the Student / Pro toggle now reaches every surface: the Tripped Breaker reset card (gated until the simulation reports `faultsCleared`), full settings persistence for `appMode` and the new `snapToGrid` flag, and a working Snap/Grid status-bar toggle that gates grid snapping on placement and drag-commit.
 - **`SimulationResult.faultsCleared`** — the engine now reports whether the last pass produced no error-level findings, so breaker resets are only enabled once the underlying fault is cleared.
 - **Dimmer waveform fidelity** — the pro dashboard's phase-cut waveform now reads the dimmer's actual `speed` state instead of a non-existent `dimmerLevel` field.
 
 ### Changed
+- **Inspector module split** — the 3,166-line `src/ui/components/Inspector.tsx` monolith is now `src/ui/components/inspector/` with one module per view (properties router, wire view, component view, connections, simulation, analytics, logs), a dedicated selection-state hook module, and a variant-family data module. Bodies are verified byte-identical to the originals; `src/ui/components/Inspector.tsx` is now a thin re-export shim, so existing imports keep working.
 - **Student / Pro guidance** — the Inspector's "What Happened?" fault analysis and the Toolbar's mode switch carry the full basic/pro split (Student guidance card vs. BS 7671 Pro Customizer).
 - **Event-history state contract** — `eventHistoryOpen` is initialized and lint/formatted with the rest of the pro-mode surface (fault alerts, event history, tripped/blown/melt visual states).
 
@@ -24,6 +34,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **13 TypeScript errors** blocking `npm run typecheck` after the pro-mode work landed — dead `appMode === 'basic'` comparison inside the pro branch, stale `dimmerLevel`/`resistance` reset fields, missing `faultsCleared` on `SimulationResult`, missing `eventHistoryOpen` in the UI store initial state, `isDark` absent from `CanvasTheme`, `snapToGrid` referenced but never declared, `appMode` dropped from the settings snapshot, and a component-label lookup that read a non-existent `label` property.
 - **Restored `.gitignore`** — its rules had been overwritten with prose, leaving `node_modules/` and `dist/` untracked; standard build/test/editor ignores are back in place.
 - **Restored canvas keyboard / screen-reader roles** — the v0 roadmap merge had removed `role="button"` from component and wire hitboxes, breaking the accessibility contract locked in `CircuitCanvas.test.tsx` (3 failing tests); the roles are back and the suite is green again.
+
+### Added (refactor follow-ups)
+- **Context-menu item builder extraction** — the 507-line `buildItems` target-aware menu definition moved out of `ContextMenu.tsx` into `contextMenuItems.ts` (pure data builders; the dialog component now reads at ~150 lines).
+- **Validation report types module** — `circuitValidation.ts` types now live in `circuitValidationTypes.ts`, re-exported from the original path.
+
+### Fixed (refactor follow-ups)
+- **Latent lint failure on `role="button"` SVG hit-targets** — the pre-existing `useSemanticElements` error on port circles (unsupressible via comments in Biome 1.9.4 at that nesting) is now handled with a scoped override in `biome.json` for the canvas component-node files; the two stale (never-binding) inline suppression comments were removed. `biome lint` now exits clean with zero warnings for the first time.
 
 ## [1.6.1] — 2026-07-21
 

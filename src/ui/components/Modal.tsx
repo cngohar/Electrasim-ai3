@@ -12,7 +12,7 @@
  * portals, animations, or a richer focus trap.
  */
 
-import { type ReactNode, useEffect, useId, useRef, useState } from 'react';
+import { type ReactNode, useCallback, useEffect, useId, useRef, useState } from 'react';
 import { useDialogFocus } from '../hooks/useDialogFocus';
 
 export interface ModalProps {
@@ -46,29 +46,38 @@ export function Modal({
   const [mounted, setMounted] = useState(open);
   const [isClosing, setIsClosing] = useState(false);
 
+  // Mount immediately when opened.
   useEffect(() => {
     if (open) {
       setMounted(true);
       setIsClosing(false);
-    } else if (mounted && !isClosing) {
-      setIsClosing(true);
-      const timer = window.setTimeout(() => {
-        setMounted(false);
-        setIsClosing(false);
-      }, 200);
-      return () => window.clearTimeout(timer);
     }
-  }, [open, mounted, isClosing]);
+  }, [open]);
 
-  const handleRequestClose = () => {
-    if (isClosing) return;
+  // When closed while mounted, play the 200 ms exit transition, then unmount.
+  // `isClosing` is intentionally NOT a dependency: if it were, flipping it to
+  // true would run the cleanup and cancel the unmount timer, leaving the
+  // dialog stuck in the DOM forever.
+  useEffect(() => {
+    if (open || !mounted) return;
     setIsClosing(true);
-    window.setTimeout(() => {
-      onClose();
+    const timer = window.setTimeout(() => {
       setMounted(false);
       setIsClosing(false);
     }, 200);
-  };
+    return () => window.clearTimeout(timer);
+  }, [open, mounted]);
+
+  // Always invoke the LATEST onClose callback, synchronously. The previous
+  // implementation deferred the call by 200 ms inside a captured closure,
+  // which both delayed the state update and could call a stale callback.
+  // The exit animation still runs: the parent flips `open` to false and the
+  // effect above plays the 200 ms closing transition before unmounting.
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
+  const handleRequestClose = useCallback(() => {
+    onCloseRef.current();
+  }, []);
 
   useDialogFocus(mounted && !isClosing, handleRequestClose, panelRef);
 

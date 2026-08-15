@@ -1,0 +1,421 @@
+/**
+ * Inspector — right-hand floating panel showing selected component/wire
+ * properties, topology connections, simulation telemetry, waveforms, safety
+ * validation, and logs.
+ *
+ * Split out of the former 3,166-line monolith into `inspector/` modules.
+ * Every view body is byte-identical to the original — pure code move.
+ */
+
+import {
+  ChevronLeft,
+  ChevronRight,
+  Layers,
+  Route,
+  ShieldCheck,
+  Sliders,
+  Sparkles,
+  Terminal,
+  Zap,
+} from 'lucide-react';
+import {
+  COMPONENT_DEFS,
+  type ComponentInstance,
+  type SimulationResult,
+  type WireInstance,
+} from '../../../domain';
+import { useUiStore } from '../../../store';
+import { ValidationReportView } from '../ValidationReportView';
+import { InspectorAnalyticsView } from './InspectorAnalyticsView';
+import { InspectorConnectionsContent } from './InspectorConnectionsContent';
+import { InspectorLogsView } from './InspectorLogsView';
+import { InspectorPropertiesContent } from './InspectorPropertiesContent';
+import { InspectorSimulationContent } from './InspectorSimulationContent';
+import { useInspectorSelectionState } from './useInspectorSelectionState';
+
+interface Props {
+  selectedComp: ComponentInstance | null;
+  selectedWire?: WireInstance | null;
+  simResult: SimulationResult | null;
+  isPhone: boolean;
+  dashboardOpen?: boolean;
+}
+
+/* =========================================================================
+   INSPECTOR MAIN COMPONENT (Vertical Tab Sidebar Drawer)
+   ========================================================================= */
+
+export function Inspector({
+  selectedComp: initialSelectedComp,
+  selectedWire: initialSelectedWire,
+  simResult,
+  isPhone,
+}: Props) {
+  const selectionState = useInspectorSelectionState({
+    selectedComp: initialSelectedComp,
+    selectedWire: initialSelectedWire,
+  });
+
+  const activeInspectorTab = useUiStore((s) => s.activeInspectorTab);
+  const setActiveInspectorTab = useUiStore((s) => s.setActiveInspectorTab);
+
+  const validationReport = useUiStore((s) => s.validationReport);
+  const runCircuitValidation = useUiStore((s) => s.runCircuitValidation);
+
+  const isCollapsed = useUiStore((s) => s.inspectorCollapsed);
+  const setIsCollapsed = (c: boolean) => useUiStore.getState().setInspectorCollapsed(c);
+
+  if (isPhone) return null;
+
+  // Collapsed State View
+  if (isCollapsed) {
+    return (
+      <aside
+        className="fixed right-0 top-0 bottom-0 z-20 flex h-screen w-12 flex-col items-center justify-between border-l border-slate-200/80 bg-white/90 p-2 shadow-xl backdrop-blur-xl dark:border-slate-800 dark:bg-slate-900/90 select-none"
+        title="Inspector (Collapsed)"
+      >
+        <div className="flex flex-col items-center gap-3 pt-3">
+          <button
+            type="button"
+            onClick={() => setIsCollapsed(false)}
+            className="flex size-8 items-center justify-center rounded-xl bg-blue-50 text-blue-600 shadow-xs hover:bg-blue-100 dark:bg-blue-950/80 dark:text-blue-400 dark:hover:bg-blue-900 transition"
+            title="Expand Inspector Panel"
+            aria-label="Expand Inspector Panel"
+          >
+            <ChevronLeft className="size-4" />
+          </button>
+
+          <div className="flex flex-col items-center gap-2.5 pt-3">
+            <button
+              type="button"
+              onClick={() => {
+                setIsCollapsed(false);
+                setActiveInspectorTab('properties');
+              }}
+              className={`p-2 rounded-xl transition ${
+                activeInspectorTab === 'properties'
+                  ? 'bg-blue-600 text-white shadow-xs'
+                  : 'text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
+              }`}
+              title="Properties & Settings"
+            >
+              <Sliders className="size-4" />
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setIsCollapsed(false);
+                setActiveInspectorTab('connections');
+              }}
+              className={`p-2 rounded-xl transition ${
+                activeInspectorTab === 'connections'
+                  ? 'bg-blue-600 text-white shadow-xs'
+                  : 'text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
+              }`}
+              title="Connections & Topology"
+            >
+              <Route className="size-4" />
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setIsCollapsed(false);
+                setActiveInspectorTab('simulation');
+              }}
+              className={`p-2 rounded-xl transition ${
+                activeInspectorTab === 'simulation'
+                  ? 'bg-amber-500 text-white shadow-xs'
+                  : 'text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
+              }`}
+              title="Simulation Telemetry & Faults"
+            >
+              <Zap className="size-4" />
+            </button>
+
+            <div className="my-1 h-px w-6 bg-slate-200 dark:bg-slate-800" />
+
+            <button
+              type="button"
+              onClick={() => {
+                setIsCollapsed(false);
+                setActiveInspectorTab('analytics');
+              }}
+              className={`p-2 rounded-xl transition ${
+                activeInspectorTab === 'analytics'
+                  ? 'bg-purple-600 text-white shadow-xs'
+                  : 'text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
+              }`}
+              title="Waveform Scope"
+            >
+              <Sparkles className="size-4" />
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setIsCollapsed(false);
+                setActiveInspectorTab('validation');
+              }}
+              className={`p-2 rounded-xl transition relative ${
+                activeInspectorTab === 'validation'
+                  ? 'bg-emerald-600 text-white shadow-xs'
+                  : 'text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
+              }`}
+              title="Circuit Safety & Validation"
+            >
+              <ShieldCheck className="size-4" />
+              {(validationReport?.summary.errorsCount ?? 0) > 0 && (
+                <span className="absolute -top-1 -right-1 flex size-3.5 items-center justify-center rounded-full bg-red-500 text-[8px] font-bold text-white">
+                  {validationReport?.summary.errorsCount}
+                </span>
+              )}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setIsCollapsed(false);
+                setActiveInspectorTab('logs');
+              }}
+              className={`p-2 rounded-xl transition ${
+                activeInspectorTab === 'logs'
+                  ? 'bg-blue-600 text-white shadow-xs'
+                  : 'text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
+              }`}
+              title="Console Logs & CLI"
+            >
+              <Terminal className="size-4" />
+            </button>
+          </div>
+        </div>
+      </aside>
+    );
+  }
+
+  // Expanded Inspector Layout with Vertical Navigation Tab Bar on Right
+  return (
+    <aside className="fixed right-0 top-0 bottom-0 z-20 flex h-screen shadow-2xl border-l border-slate-200/80 bg-white/95 backdrop-blur-xl dark:border-slate-800 dark:bg-slate-900/95">
+      {/* Main Drawer Body Area */}
+      <div className="flex-1 flex flex-col h-full overflow-hidden w-64 md:w-72 lg:w-80">
+        {/* Header Bar */}
+        <div className="flex items-center justify-between border-b border-slate-200/80 bg-slate-50/80 px-3.5 py-2.5 select-none dark:border-slate-800 dark:bg-slate-950/80 flex-shrink-0">
+          <div className="flex items-center gap-2 min-w-0">
+            {selectionState.kind === 'wire' ? (
+              <Route className="size-4 flex-shrink-0 text-blue-600 dark:text-blue-400" />
+            ) : selectionState.kind === 'component' ? (
+              <Sliders className="size-4 flex-shrink-0 text-purple-600 dark:text-purple-400" />
+            ) : (
+              <Layers className="size-4 flex-shrink-0 text-slate-500 dark:text-slate-400" />
+            )}
+            <div className="min-w-0">
+              <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                {activeInspectorTab.toUpperCase()} PANEL
+              </div>
+              <div className="text-xs font-bold text-slate-900 dark:text-slate-100 truncate">
+                {selectionState.kind === 'wire'
+                  ? `Wire #${selectionState.wire.id.slice(0, 8)}`
+                  : selectionState.kind === 'component'
+                    ? (COMPONENT_DEFS[selectionState.component.type]?.label ??
+                      selectionState.component.type)
+                    : selectionState.kind === 'multi-component'
+                      ? `${selectionState.count} Items Selected`
+                      : 'Circuit Canvas'}
+              </div>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setIsCollapsed(true)}
+            className="rounded p-1 text-slate-400 hover:bg-slate-200/60 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-200"
+            title="Collapse Inspector"
+          >
+            <ChevronRight className="size-4" />
+          </button>
+        </div>
+
+        {/* Dynamic Tab Body View */}
+        <div className="flex-1 overflow-y-auto">
+          {activeInspectorTab === 'properties' && (
+            <InspectorPropertiesContent
+              selectionState={selectionState}
+              simResult={simResult}
+              setIsCollapsed={setIsCollapsed}
+              runCircuitValidation={runCircuitValidation}
+            />
+          )}
+
+          {activeInspectorTab === 'connections' && (
+            <InspectorConnectionsContent selectionState={selectionState} />
+          )}
+
+          {activeInspectorTab === 'simulation' && (
+            <InspectorSimulationContent selectionState={selectionState} simResult={simResult} />
+          )}
+
+          {activeInspectorTab === 'analytics' && <InspectorAnalyticsView simResult={simResult} />}
+
+          {activeInspectorTab === 'validation' && (
+            <div className="h-full overflow-y-auto">
+              {validationReport ? (
+                <ValidationReportView
+                  report={validationReport}
+                  onRunValidation={runCircuitValidation}
+                />
+              ) : (
+                <div className="p-5 text-center flex flex-col items-center justify-center h-full">
+                  <ShieldCheck className="size-10 text-emerald-500 mb-2" />
+                  <div className="font-bold text-slate-900 dark:text-slate-100 text-sm mb-1">
+                    Circuit Safety Check
+                  </div>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">
+                    Run automated safety and code compliance checks.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={runCircuitValidation}
+                    className="rounded-xl bg-emerald-600 px-4 py-2 text-xs font-semibold text-white hover:bg-emerald-500 transition shadow-xs"
+                  >
+                    Run Validation Check
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+
+          {activeInspectorTab === 'logs' && <InspectorLogsView />}
+        </div>
+      </div>
+
+      {/* Vertical Navigation Tab Bar (Right side edge) */}
+      <div className="w-12 border-l border-slate-200/80 bg-slate-50/90 py-3 flex flex-col items-center justify-between dark:border-slate-800 dark:bg-slate-950/80 flex-shrink-0 select-none">
+        <div className="flex flex-col items-center gap-2">
+          {/* Properties Tab */}
+          <button
+            type="button"
+            onClick={() => setActiveInspectorTab('properties')}
+            className={`p-2 rounded-xl transition relative ${
+              activeInspectorTab === 'properties'
+                ? 'bg-blue-600 text-white shadow-md'
+                : 'text-slate-500 hover:bg-slate-200/60 hover:text-slate-800 dark:text-slate-400 dark:hover:bg-slate-800'
+            }`}
+            title="Properties & Specs"
+          >
+            <Sliders className="size-4" />
+            {activeInspectorTab === 'properties' && (
+              <span className="absolute -left-1 top-1/2 -translate-y-1/2 w-1 h-3 bg-blue-600 rounded-r" />
+            )}
+          </button>
+
+          {/* Connections Tab */}
+          <button
+            type="button"
+            onClick={() => setActiveInspectorTab('connections')}
+            className={`p-2 rounded-xl transition relative ${
+              activeInspectorTab === 'connections'
+                ? 'bg-blue-600 text-white shadow-md'
+                : 'text-slate-500 hover:bg-slate-200/60 hover:text-slate-800 dark:text-slate-400 dark:hover:bg-slate-800'
+            }`}
+            title="Connections & Topology"
+          >
+            <Route className="size-4" />
+            {activeInspectorTab === 'connections' && (
+              <span className="absolute -left-1 top-1/2 -translate-y-1/2 w-1 h-3 bg-blue-600 rounded-r" />
+            )}
+          </button>
+
+          {/* Simulation Tab */}
+          <button
+            type="button"
+            onClick={() => setActiveInspectorTab('simulation')}
+            className={`p-2 rounded-xl transition relative ${
+              activeInspectorTab === 'simulation'
+                ? 'bg-amber-500 text-white shadow-md'
+                : 'text-slate-500 hover:bg-slate-200/60 hover:text-slate-800 dark:text-slate-400 dark:hover:bg-slate-800'
+            }`}
+            title="Simulation Telemetry & Faults"
+          >
+            <Zap className="size-4" />
+            {activeInspectorTab === 'simulation' && (
+              <span className="absolute -left-1 top-1/2 -translate-y-1/2 w-1 h-3 bg-amber-500 rounded-r" />
+            )}
+          </button>
+
+          <div className="my-1.5 h-px w-6 bg-slate-200 dark:bg-slate-800" />
+
+          {/* Scope Tab */}
+          <button
+            type="button"
+            onClick={() => setActiveInspectorTab('analytics')}
+            className={`p-2 rounded-xl transition relative ${
+              activeInspectorTab === 'analytics'
+                ? 'bg-purple-600 text-white shadow-md'
+                : 'text-slate-500 hover:bg-slate-200/60 hover:text-slate-800 dark:text-slate-400 dark:hover:bg-slate-800'
+            }`}
+            title="Waveform Oscilloscope"
+          >
+            <Sparkles className="size-4" />
+            {activeInspectorTab === 'analytics' && (
+              <span className="absolute -left-1 top-1/2 -translate-y-1/2 w-1 h-3 bg-purple-600 rounded-r" />
+            )}
+          </button>
+
+          {/* Validation Tab */}
+          <button
+            type="button"
+            onClick={() => setActiveInspectorTab('validation')}
+            className={`p-2 rounded-xl transition relative ${
+              activeInspectorTab === 'validation'
+                ? 'bg-emerald-600 text-white shadow-md'
+                : 'text-slate-500 hover:bg-slate-200/60 hover:text-slate-800 dark:text-slate-400 dark:hover:bg-slate-800'
+            }`}
+            title="Circuit Safety & Compliance"
+          >
+            <ShieldCheck className="size-4" />
+            {activeInspectorTab === 'validation' && (
+              <span className="absolute -left-1 top-1/2 -translate-y-1/2 w-1 h-3 bg-emerald-600 rounded-r" />
+            )}
+            {(validationReport?.summary.errorsCount ?? 0) > 0 && (
+              <span className="absolute -top-1 -right-1 flex size-3.5 items-center justify-center rounded-full bg-red-500 text-[8px] font-bold text-white">
+                {validationReport?.summary.errorsCount}
+              </span>
+            )}
+          </button>
+
+          {/* Console Tab */}
+          <button
+            type="button"
+            onClick={() => setActiveInspectorTab('logs')}
+            className={`p-2 rounded-xl transition relative ${
+              activeInspectorTab === 'logs'
+                ? 'bg-blue-600 text-white shadow-md'
+                : 'text-slate-500 hover:bg-slate-200/60 hover:text-slate-800 dark:text-slate-400 dark:hover:bg-slate-800'
+            }`}
+            title="Console Logs & CLI"
+          >
+            <Terminal className="size-4" />
+            {activeInspectorTab === 'logs' && (
+              <span className="absolute -left-1 top-1/2 -translate-y-1/2 w-1 h-3 bg-blue-600 rounded-r" />
+            )}
+          </button>
+        </div>
+
+        {/* Collapse Button */}
+        <button
+          type="button"
+          onClick={() => setIsCollapsed(true)}
+          className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-200/70 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-200 transition"
+          title="Collapse Inspector"
+        >
+          <ChevronRight className="size-4" />
+        </button>
+      </div>
+    </aside>
+  );
+}
+
+/* =========================================================================
+   PROPERTIES TAB CONTENT
+   ========================================================================= */

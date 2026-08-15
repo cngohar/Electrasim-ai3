@@ -290,6 +290,7 @@ describe('ElectraSim v2 — Electrical Rules & Conditional Wiring System', () =>
             fromPortIndex: 1,
             toComponentId: 'b1',
             toPortIndex: 0,
+            controlPoints: [],
           },
         ],
       };
@@ -374,6 +375,7 @@ describe('ElectraSim v2 — Electrical Rules & Conditional Wiring System', () =>
             fromPortIndex: 1,
             toComponentId: 'b1',
             toPortIndex: 0,
+            controlPoints: [],
           },
         ],
       };
