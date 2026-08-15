@@ -2447,3 +2447,17 @@ Formula: 2 spinning icons × 13 steps/sec × 16 filter regions = ~416 filter rep
 **Gates:** typecheck + biome + 260/260 vitest; 27/27 e2e ×3 viewports (existing chip assertions in `two-way-staircase.spec.ts` still hold against the collapsed-state chip).
 
 **Next:** encode the verified flow as `e2e/faults-and-editing.spec.ts` (+ delete/undo, copy/paste, export JSON); phone guide dead-end (re-show affordance); then the six-item feature roadmap.
+
+---
+
+## Session 2026-08-15 (part 6) — e2e faults-and-editing spec, ghost-fault undo fix, non-destructive Hide guide
+
+**Encoded the verified flows as `e2e/faults-and-editing.spec.ts`** (6 tests, desktop+tablet; phone skipped — fault injection is context-menu only). While building it, three more real defects surfaced and were fixed first:
+
+1. **Ghost faults after Ctrl+Z.** Theory: undo tracked `components`/`wires`/`globalVoltage` but not the `faults` array. `circuitStore.test.ts` now pins semantics (inject → undo → `faults` empty). **Mutation-proven deterministically**: new unit test fails pre-fix (1 of 17), passes post-fix; browser-level proof via a static pre-fix build (`vite build --base=/` + `vite preview :3001`) — the lamp never relights after undo+run (`#facc15` never appears) while the post-fix build runs clean. The partialize comment now explains why `faults` must be tracked.
+2. **"Hide guide" was a one-way dead-end** (the standing phone-guide task item, but it affected every viewport): X set `activeGuideId=null`, losing the challenge and its progress. Now `uiStore.guideHidden` toggles non-destructively; a floating **"Guide steps" pill** (Trophy + N/M counter) re-opens it; `setActiveGuideId` always un-hides. Tablet-safari test-1 failure (panel hides the staircase bulb at 834px) was the live proof of the occlusion class.
+3. **Spec timing trap found while mutation-checking**: the first version of the undo test asserted "alert hidden" immediately after Run — a transient that passes even when the bug exists (trip lands ~200–800 ms later). Gate on the lamp's `#facc15` halo instead; the Playwright retry makes the distinction deterministic.
+
+**Suite now:** 39 passed / 12 skipped (6 intentional + 6 new phone-skips) / 0 failed ×3 viewports; `npm run check` (typecheck+biome+261 vitest) green; prod build OK.
+
+**Remaining roadmap:** six product features (installation-method selector, wire-length Vd, RCD types, AFDD, mini-EIC, Zs checker) → then final gates, docs, bundle, push.

@@ -25,6 +25,8 @@ export function GuidedCircuitPanel({ isPhone }: Props) {
   const simRunning = useUiStore((s) => s.simRunning);
   const simResult = useUiStore((s) => s.simResult);
   const inspectorCollapsed = useUiStore((s) => s.inspectorCollapsed);
+  const guideHidden = useUiStore((s) => s.guideHidden);
+  const setGuideHidden = useUiStore((s) => s.setGuideHidden);
   // Keep clear of the Inspector's collapsed icon rail (48px at right-0) —
   // same offset as MiniMap/ToolDock/StatusPill use in the collapsed state.
   // (When the drawer is expanded the chip is suppressed entirely and the
@@ -49,6 +51,35 @@ export function GuidedCircuitPanel({ isPhone }: Props) {
   }, [template, progress?.completed]);
 
   if (!template || !progress) return null;
+
+  // Hidden guide: the panel/sheet always has a Hide affordance because it can
+  // overlay canvas components (phone bottom-sheet always, tablet/desktop panel
+  // on narrower viewports). Hiding must NOT end the challenge — progress keeps
+  // tracking and this floating pill is the way back.
+  if (guideHidden) {
+    return (
+      <button
+        type="button"
+        onClick={() => setGuideHidden(false)}
+        aria-label="Show guide steps"
+        title={`${template.title} — show guide steps`}
+        className={[
+          'absolute z-20 flex items-center gap-2 rounded-full border border-white/80 bg-white/95 px-3 py-2 shadow-xl shadow-slate-900/10 ring-1 ring-slate-900/5 backdrop-blur-xl transition hover:bg-blue-50 dark:border-slate-700/80 dark:bg-slate-900/95 dark:ring-slate-700/50 dark:hover:bg-slate-800',
+          isPhone ? 'bottom-20 right-3' : 'right-14 top-24',
+        ].join(' ')}
+      >
+        <span className="grid size-6 place-items-center rounded-lg bg-blue-600 text-white shadow-sm shadow-blue-600/30">
+          <Trophy className="size-3.5" />
+        </span>
+        <span className="text-[11px] font-semibold text-slate-700 dark:text-slate-200">
+          Guide steps
+        </span>
+        <span className="rounded-full bg-blue-100 px-1.5 py-0.5 text-[10px] font-bold text-blue-700 dark:bg-blue-950 dark:text-blue-300">
+          {progress.completedIds.length}/{progress.objectives.length}
+        </span>
+      </button>
+    );
+  }
 
   // Guided hand-off (desktop/tablet): selecting a component hides the step
   // checklist so the Inspector can take over. Offer an explicit, discoverable
@@ -133,7 +164,7 @@ export function GuidedCircuitPanel({ isPhone }: Props) {
             </div>
             <button
               type="button"
-              onClick={() => useUiStore.getState().setActiveGuideId(null)}
+              onClick={() => setGuideHidden(true)}
               className="rounded-full p-1 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
               aria-label="Hide guide"
             >

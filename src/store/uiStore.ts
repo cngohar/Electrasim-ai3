@@ -70,6 +70,7 @@ export const useUiStore = create<UiState>()(
     contactOpen: false,
     templatesOpen: false,
     activeGuideId: null,
+    guideHidden: false,
     welcomeOpen: !hasWelcomed() && !mobileSuitabilityInitiallyOpen,
     mobileSuitabilityOpen: mobileSuitabilityInitiallyOpen,
     contextMenu: null,
@@ -530,6 +531,12 @@ export const useUiStore = create<UiState>()(
     setActiveGuideId: (id) =>
       set((s) => {
         s.activeGuideId = id;
+        // Switching or loading a guide always reveals its checklist.
+        s.guideHidden = false;
+      }),
+    setGuideHidden: (hidden) =>
+      set((s) => {
+        s.guideHidden = hidden;
       }),
     setWelcomeOpen: (open) =>
       set((s) => {
