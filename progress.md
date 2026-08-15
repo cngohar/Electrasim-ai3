@@ -2392,3 +2392,22 @@ Formula: 2 spinning icons × 13 steps/sec × 16 filter regions = ~416 filter rep
 **Verified accurate, no change required:** Amendment 4:2026 blog (dates, Orange Book, transition), AFDD 421.1.7 blog scope, EICR 5/10-year intervals, socket ≤32 A 30 mA RCD requirement, GFCI/UL 943 refs, immersion 3 kW ≈ 13 A, EV 7.36 kW @ 32 A, LED efficacy figures, insulation-resistance ≥1 MΩ test minimum, twin-socket 20 A combined rating.
 
 **Follow-up ideas surfaced by the audit (product features):** installation-method/derating selector, wire-length voltage-drop checks, Zs/disconnection checker, RCD type (AC/A/F/B) selection with DC-blinding fault scenario, AFDD component + arc-fault scenario, mini-EIC report export.
+
+---
+
+## Session 2026-08-15 (part 3) — Playwright verification & visual repair pass
+
+**Task (user request):** "have you actually tested that all features work as intended — use Playwright to test it visually and fix what doesn't work."
+
+**Method:** installed Playwright browsers + host deps in the sandbox, ran the full e2e suite (3 viewports: desktop chromium, mobile Pixel 7, iPad Pro), then drove the app headlessly with custom scripts — loading templates, running the sim, toggling switches, opening panels, right-clicking components — capturing screenshots + console/page errors at every step.
+
+**Baseline:** 15 passed / 12 failed (4 unique failures × 3 viewports). Browsers were never run against this code before (no CI; HEAD `140ed41` couldn't even boot).
+
+**Root causes found & fixed:**
+1. **Spec drift (app correct):** selection-click & touch specs used `.first()` on canvas nodes — but selection intentionally raises a component in SVG DOM order (z-order = document order), so the locator re-resolved to a *different* component. Pinned by `data-component-id`; transform now compared by position (no-op `rotate(0 …)` segment may be dropped). **Verified: no teleport bug exists.**
+2. **Spec drift (app correct):** two-way-staircase & RCBO guides asserted the old StatusPill text ("6 components • 6 wires • N active") and two `#facc15` glow circles — the redesigned pill reads "6 comps • 6 wires • N energized" and bulbs render one halo. Verified sim behaviour correct (L1/L1 on → off at L2/L1 → on at L2/L2 → off at L1/L2) before updating assertions.
+3. **Missing feature (app gap, now built):** the staircase spec asserted a "Close inspector and return to guide" affordance that never existed — selecting a component mid-challenge hid the guide with no discoverable way back. Implemented as an "Inspector / Guide paused" chip in `GuidedCircuitPanel` (desktop/tablet only; clears selection + collapses inspector). 
+4. **Phone-specific flow:** guide bottom-sheet overlays the lower canvas and intercepts component taps — intended remedy is the existing "Hide guide" button; specs now use it (flagged below as a future UX improvement).
+5. **Real layout bugs (fixed):** expanded Inspector (`fixed right-0 top-0` full height) covered the centered Toolbar's right end making **Menu unreachable**; minimap/tooldock/status-bar offsets ignored the 48 px icon rail so the panel overlapped them; the sub-header pill text **wrapped vertically** at tablet widths; the mini-map occluded ~40 % of phone canvases; status-bar Grid/Snap toggles sat **under** the collapsed icon rail. All repaired; dev preview hosts (`.e2b.app`) allowed in Vite config.
+
+**Result:** `27/27` e2e assertions pass on all three viewports (6 intentional skips: perf-gated + production specs), `256/256` unit tests, biome clean (261 files), production build OK, zero console/page errors across a 12-stop visual sweep (desktop/mobile/tablet). New tool: `scripts/visual-sweep.mjs`.
