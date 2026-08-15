@@ -323,6 +323,29 @@ test.describe('faults & editing', () => {
     await expect(statusPill).toBeVisible();
   });
 
+  test('mini EIC downloads a printable BS 7671 Appendix-6-style certificate', async ({ page }) => {
+    await loadGuide(page, RCBO_TEMPLATE, 'RCBO-Protected Socket');
+
+    await page.keyboard.press('Control+e');
+    const modal = page.getByRole('dialog');
+    await modal.getByRole('button', { name: /Mini EIC/ }).click();
+    await expect(modal.getByText('Save Circuit As')).toBeVisible();
+
+    const downloadPromise = page.waitForEvent('download');
+    await modal.getByRole('button', { name: /Download/ }).click();
+    const download = await downloadPromise;
+    expect(download.suggestedFilename()).toMatch(/\.eic\.html$/);
+
+    const { readFileSync } = await import('node:fs');
+    const html = readFileSync((await download.path()) as string, 'utf8');
+    expect(html).toContain('MINI ELECTRICAL INSTALLATION CERTIFICATE');
+    expect(html).toContain('BS 7671 Appendix 6');
+    expect(html).toContain('RCBO (32A 30mA)');
+    expect(html).toContain('Max Zs Ω');
+    expect(html).toContain('window.print()');
+    await expect(modal.getByText(/Mini EIC exported as/)).toBeVisible();
+  });
+
   test('JSON export downloads the circuit through the filename prompt', async ({ page }) => {
     await loadGuide(page, STAIRCASE, 'Two-Way Staircase Light');
 

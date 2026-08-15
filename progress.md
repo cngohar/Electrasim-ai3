@@ -2531,3 +2531,18 @@ Formula: 2 spinning icons × 13 steps/sec × 16 filter regions = ~416 filter rep
 **Gates:** `npm run check` (tsc + biome + 312 unit) ✓, full Playwright 45 passed + 15 phone-skips ✓, `vite build` ✓.
 
 **Remaining:** FINAL wrap — full gates on the tip, docs sweep, regenerate the git bundle (the saved one is stale since part 7), then push (user holds the token step until everything is done — that is now).
+
+
+---
+
+## Session 2026-08-15 (part 11) — Feature 5: mini-EIC report export (print-HTML)
+
+**Scope:** second-to-last audit item, delivered after Feature 6 since the certificate's Schedule of Circuit Results is the zsCheck engine's output. No new dependencies — `renderEicHtml` builds a self-contained print-stylesheet document; export rides the existing `downloadText` + filename-prompt flow in the Import/Export modal.
+
+**Contents:** Part 1 supply details (TN-C-S Ze 0.35 Ω default arrangement line), Part 2 schedule populated per protective device (B/C/D curve+rating, residual `30 mA Type X`, cable pair, run length with `~` estimated marker, R1+R2, Ze, Zs, max Zs, PFC, ≤0.4 s, three-tier verdict incl. the PASS* table-pass-but-not-80% tier), Part 3 signature blanks, educational-output banner + GN3-method note. All interpolated labels escaped (marked test: `<script>` autoLabel renders inert).
+
+**Tests:** +5 unit (numbers, FAIL propagation, estimated flag, structure, escaping) — +1 e2e (modal → download → artifact content). One test-side bug along the way: components/wires built from separate fixture calls (ids mismatched) — fixed to share one circuit.
+
+**Gates:** 317 unit ✓, e2e per-file + full suite pending final run, `vite build` ✓.
+
+**Remaining:** FINAL wrap — full gates on the tip, regenerate the git bundle, push (token step with the user).

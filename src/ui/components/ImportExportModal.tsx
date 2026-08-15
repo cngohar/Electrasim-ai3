@@ -6,6 +6,7 @@ import {
   Download,
   FileImage,
   FileJson,
+  FileText,
   FileType,
   Link,
   Printer,
@@ -14,6 +15,7 @@ import {
 } from 'lucide-react';
 import { useCallback, useRef, useState } from 'react';
 import type { Circuit } from '../../domain';
+import { buildEicReportData, renderEicHtml } from '../../lib/export/eicReport';
 import {
   downloadBlob,
   downloadText,
@@ -126,6 +128,17 @@ export function ImportExportModal({ open, onClose, svgRef }: Props) {
       }
     });
   }, [clearMessages, promptFilename, svgRef]);
+
+  const handleExportEic = useCallback(() => {
+    clearMessages();
+    promptFilename('mini-eic', '.eic.html', (filename) => {
+      const { components, wires } = useCircuitStore.getState();
+      const html = renderEicHtml(buildEicReportData({ components, wires } as Circuit));
+      downloadText(html, filename, 'text/html');
+      setSuccess(`Mini EIC exported as "${filename}" — open it, then Print / Save as PDF.`);
+      useUiStore.getState().addLog(`Mini EIC report exported: ${filename}`, 'success');
+    });
+  }, [clearMessages, promptFilename]);
 
   const handleExportPDF = useCallback(() => {
     clearMessages();
@@ -362,6 +375,13 @@ export function ImportExportModal({ open, onClose, svgRef }: Props) {
                   label="PDF / Print"
                   desc="Browser print dialog"
                   onClick={handleExportPDF}
+                  disabled={busy}
+                />
+                <ExportButton
+                  icon={FileText}
+                  label="Mini EIC"
+                  desc="BS 7671 App 6 style"
+                  onClick={handleExportEic}
                   disabled={busy}
                 />
                 <ExportButton

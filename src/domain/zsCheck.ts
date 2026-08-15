@@ -108,6 +108,8 @@ export interface ZsCheckResult {
   passCold: boolean;
   disconnectionSeconds: number;
   furthestComponentLabel: string | null;
+  /** Residual type when the device is residual-current operated. */
+  rcdType?: 'AC' | 'A' | 'F' | 'B';
 }
 
 const DEFAULT_RUN_METERS = 10;
@@ -232,6 +234,10 @@ export function checkDeviceDisconnection(
     passCold: zs <= maxZs * ZS_COLD_RULE,
     disconnectionSeconds: 0.4,
     furthestComponentLabel: furthestLabel,
+    rcdType:
+      device.type.includes('rcd') || device.type.includes('rcbo') || device.type.includes('afdd')
+        ? (device.state.rcdType ?? 'A')
+        : undefined,
   };
 }
 

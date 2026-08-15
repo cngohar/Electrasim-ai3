@@ -11,6 +11,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — Session 2026-08-15 (part 11): Mini EIC report export
+- **Mini Electrical Installation Certificate export** (Import/Export modal → "Mini EIC", or Ctrl+E): a self-contained printable HTML document styled on the BS 7671 Appendix 6 model form — Part 1 installation/supply details (earthing arrangement + Ze), Part 2 a Schedule of Circuit Results populated from the Zs checker (device & rating, RCD type, cable pair, run length, R1+R2, Ze, Zs, max Zs, prospective fault current, ≤0.4 s disconnection, PASS / PASS* / FAIL verdict with the GN3 80 % rule explained), Part 3 signature/test-instrument blanks — plus the on-face "EDUCATIONAL SIMULATION OUTPUT — NOT A CERTIFICATE" banner and an estimated-lengths warning when wires lack lengths. Print/Save-as-PDF via the in-document button.
+- `src/lib/export/eicReport.ts` is dependency-free string rendering over `runZsChecks`; all user-influenced labels are HTML-escaped.
+- **Unit:** `eicReport.test.ts` (+5) — row values vs zsCheck, FAIL verdict propagation, estimated-length flagging, certificate structure, and markup-injection escaping. **e2e:** download-through-filename-prompt flow asserting the artifact content (+1).
+
+
 ### Added — Session 2026-08-15 (part 10): Zs / disconnection checker
 - **Earth-fault loop impedance checker** (Inspector → *Circuit Safety & Validation* tab header): every protective device with an overcurrent curve (MCB/RCBO/AFDD, Types B/C/D) gets a live verdict row — `Zs = Ze + (R1+R2)` against the Cmin-corrected table maximum, with a three-way verdict badge (**PASS (cold ≤80%)** / **PASS (table)** / **FAIL**), prospective fault current, and the furthest-point reference.
 - **Standards data (web-verified 2026-08):** BS 7671:2018+A4:2026 Tables 41.2–41.4 are applied as `Zs_max = 230 V × 0.95 (Cmin) ÷ (band × In)` (B 5×, C 10×, D 20×In → B32 = 1.37 Ω, C32 = 0.68 Ω); R1+R2 uses OSG Table I1 20 °C T&E figures (2.5/1.5 mm² = 19.51 mΩ/m etc.); TN-C-S / TN-S Ze selector (0.35 / 0.80 Ω); GN3 80 % cold-measurement rule drives the stricter badge tier. Plain RCDs are noted as relying on upstream overcurrent disconnection; TT/RCD disconnection is documented out of scope.
