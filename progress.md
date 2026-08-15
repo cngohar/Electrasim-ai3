@@ -2516,3 +2516,18 @@ Formula: 2 spinning icons × 13 steps/sec × 16 filter regions = ~416 filter rep
 **Gates:** 290 unit ✓, full e2e 43 passed + 14 phone-skips ✓ (incl. new arc-modal test), `vite build` ✓.
 
 **Remaining roadmap:** mini-EIC report export (print-HTML, no new dep), Zs/disconnection checker (Zs_max = 230×0.95/(band_upper×In), R1+R2 from T&E mΩ/m — web-verify first); then final gates, fresh bundle, push (user holds push until all done).
+
+
+---
+
+## Session 2026-08-15 (part 10) — Feature 6: Zs / disconnection-time checker (Reg 411.3)
+
+**Scope:** last audit roadmap item. **Web-verified (2 searches, 6 sources):** BS 7671:2018+A4:2026 moved Tables 41.2–41.4 to Cmin-corrected values — one formula reproduces the whole table: `Zs_max = (230 × 0.95)/(band_upper × In)` (B6 7.28 / B32 1.37 / C32 0.68 / D32 0.34 all matched). OSG Table I1 R1+R2 20 °C T&E pairs verified independently (30.20 / 19.51 / 16.71 / 10.49 / 6.44 / 4.23 mΩ/m + GN3 ring table). GN3 0.8 cold-rule, TN-C-S 0.35 Ω / TN-S 0.8 Ω Ze defaults, TT exclusion (Table 41.5 @ 1667 Ω — documented as RCD-reliant).
+
+**Changes:** new `src/domain/zsCheck.ts` (formula + tables + weighted-Dijkstra furthest-point run over the device's connected network, with explicit `runLengthEstimated` when wires lack `lengthMeters`; conservative smallest-cable-in-run sizing that ignores endpoint `recommendedCableMm2` — that flag exists for device *tails* and would have dragged every run to 1.0 mm² through terminals). UI `ZsCheckPanel` mounted atop the *Circuit Safety & Validation* tab with Ze selector, per-device verdict badge rows (PASS cold ≤80% / PASS table / FAIL), Psvc, and simplification disclaimers. 22 unit tests + 1 e2e (panel on the RCBO template: `Max Zs (Type B 32A) = 1.37 Ω`, Ze reactivity).
+
+**First-draft failures and fixes (expected-then-proven):** my test fixtures/impl disagreements were resolved on the numbers — 2.73125 (not 2.7306), explicit-0 m wires treated as missing-length, and the recommendedCableMm2 pollution described above. Three biome `useNumberNamespace` fixes.
+
+**Gates:** `npm run check` (tsc + biome + 312 unit) ✓, full Playwright 45 passed + 15 phone-skips ✓, `vite build` ✓.
+
+**Remaining:** FINAL wrap — full gates on the tip, docs sweep, regenerate the git bundle (the saved one is stale since part 7), then push (user holds the token step until everything is done — that is now).

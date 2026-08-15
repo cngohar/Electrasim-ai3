@@ -31,6 +31,7 @@ import { InspectorConnectionsContent } from './InspectorConnectionsContent';
 import { InspectorLogsView } from './InspectorLogsView';
 import { InspectorPropertiesContent } from './InspectorPropertiesContent';
 import { InspectorSimulationContent } from './InspectorSimulationContent';
+import { ZsCheckPanel } from './ZsCheckPanel';
 import { useInspectorSelectionState } from './useInspectorSelectionState';
 
 interface Props {
@@ -288,6 +289,9 @@ export function Inspector({
 
           {activeInspectorTab === 'validation' && (
             <div className="h-full overflow-y-auto">
+              <div className="border-b border-slate-200/70 p-3 dark:border-slate-800/70">
+                <ZsCheckPanel />
+              </div>
               {validationReport ? (
                 <ValidationReportView
                   report={validationReport}
