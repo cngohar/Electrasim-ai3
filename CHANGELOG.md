@@ -11,6 +11,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Return-to-guide chip** — selecting a component mid-challenge now shows an "Inspector / Guide paused" card with a *Close inspector and return to guide* button (implements the behaviour the two-way-staircase e2e always asserted but the app never shipped).
+- **`scripts/visual-sweep.mjs`** — 12-stop Playwright screenshot/console-error sweep across desktop, phone and tablet for visual regression hunting.
+
+### Fixed
+- **e2e suite: 12 → 0 failures (27/27 on desktop/mobile/tablet).** Root causes: two pointer-gesture smoke specs re-resolved `.first()` after selection-induced SVG z-order raise (pinned by id; position-only transform compare); guided-circuit specs asserted the pre-redesign StatusPill text ("N active") and a two-circle bulb glow (now one halo); phone flows now hide the guide sheet before tapping canvas components, matching the intended mobile interaction.
+- **Expanded Inspector covered the header Toolbar's right end** — `Menu` (and theme toggle) were unclickable while inspecting. Panel now insets below the toolbar (`top-16`).
+- **Floating-control collisions** — minimap/ToolDock/StatusPill offsets ignored the 48 px inspector icon rail; StatusPill's Snap/Grid toggles also sat *under* the collapsed rail. Offsets now computed from the true drawer+rail widths per breakpoint.
+- **Sub-header pill text wrapped vertically** at tablet widths (nowrap + internal scroll now).
+- **Mini-map occluded ~40 % of phone canvases** — hidden below the phone breakpoint.
+- Dev-server accepts `.e2b.app` sandbox preview hosts.
+
 ### Fixed
 - **Standards audit — trip-curve & ampacity data corrected against published references (web-verified 2026-08):**
   - `getCableAmpacity` claimed "BS 7671 Table 4D5" but mixed installation methods: 1.0 mm² and 1.5 mm² returned derated Method-A-ish values (11 A / 16 A) while the rest of the table was Method C. Now consistently Reference Method C (clipped direct): 1.0 → 16 A, 1.5 → 20 A, 2.5 → 27 A, 4 → 37 A, 6 → 47 A, 10 → 64 A, 16 → 85 A, with a header note that Methods A/B and grouping/ambient factors derate further.
