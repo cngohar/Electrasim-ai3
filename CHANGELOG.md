@@ -26,6 +26,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Dimmer waveform fidelity** — the pro dashboard's phase-cut waveform now reads the dimmer's actual `speed` state instead of a non-existent `dimmerLevel` field.
 
 ### Changed
+- **Inspector module split** — the 3,166-line `src/ui/components/Inspector.tsx` monolith is now `src/ui/components/inspector/` with one module per view (properties router, wire view, component view, connections, simulation, analytics, logs), a dedicated selection-state hook module, and a variant-family data module. Bodies are verified byte-identical to the originals; `src/ui/components/Inspector.tsx` is now a thin re-export shim, so existing imports keep working.
 - **Student / Pro guidance** — the Inspector's "What Happened?" fault analysis and the Toolbar's mode switch carry the full basic/pro split (Student guidance card vs. BS 7671 Pro Customizer).
 - **Event-history state contract** — `eventHistoryOpen` is initialized and lint/formatted with the rest of the pro-mode surface (fault alerts, event history, tripped/blown/melt visual states).
 
