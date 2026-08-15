@@ -2411,3 +2411,22 @@ Formula: 2 spinning icons × 13 steps/sec × 16 filter regions = ~416 filter rep
 5. **Real layout bugs (fixed):** expanded Inspector (`fixed right-0 top-0` full height) covered the centered Toolbar's right end making **Menu unreachable**; minimap/tooldock/status-bar offsets ignored the 48 px icon rail so the panel overlapped them; the sub-header pill text **wrapped vertically** at tablet widths; the mini-map occluded ~40 % of phone canvases; status-bar Grid/Snap toggles sat **under** the collapsed icon rail. All repaired; dev preview hosts (`.e2b.app`) allowed in Vite config.
 
 **Result:** `27/27` e2e assertions pass on all three viewports (6 intentional skips: perf-gated + production specs), `256/256` unit tests, biome clean (261 files), production build OK, zero console/page errors across a 12-stop visual sweep (desktop/mobile/tablet). New tool: `scripts/visual-sweep.mjs`.
+
+---
+
+## Session 2026-08-15 (part 4) — Short-circuit faults now operate the guarding protection
+
+**Task (standing user instruction: "do all step by step as fix this as you progress"):** extend e2e coverage over unverified flows; first job from the Part 3 handover — probe4 showed a bolted short circuit never trips anything.
+
+**Findings (engine audit):**
+- `calculateMCBTrip` / `calculateRCDTrip` were exported but **never called internally** — short-circuit faults (both the topology-overlap L∩N pass and injected `short-circuit` faults) only pushed an error string; no `trippedComponents` entry was produced, so the circuit "ran" with a bolted fault and the MCB stayed closed.
+- Earth-leakage faults tripped **every** RCD/RCBO *on the whole canvas*, even devices on isolated networks sharing no wires with the fault.
+
+**Fix:**
+- New pure module `src/domain/simulation/faultPropagation.ts`: undirected BFS over the wire adjacency (`connectedNetworkComponents`) + `findProtectionDevicesInNetwork` filter on `isProtection` defs. Teaching simplification documented in the header: all in-network devices operate; nearest-upstream selectivity (BS 7671 §536) deferred to the Zs-checker roadmap item.
+- `simulate.ts` gained a `tripProtectionForFault(faultedId, kind, extraFilter?)` closure fed from a `trippedIds` set; hooked into the topology overlap loop, the injected short-circuit branch (via a new `faultAnchorId` resolving component/wire/port targets), and the earth-leakage branch (now network-scoped + RCD/RCBO-only filter). Bolted-fault diagnostic assumes a ≤0.5 Ω fault loop → 460 A prospective at 230 V, "<0.1 s per IEC 60898-1" — matching probe console output `⚡ MCB Type B (16A) TRIPPED: … prospective 460 A …`.
+- Tripped devices flow through the existing pipeline (`trippedComponents` → `isTripped` state → "⚡ CIRCUIT PROTECTION TRIPPED!" alert → Run blocked until reset).
+
+**Verification:** 4 new regression tests in `simulation.test.ts` (35/35 in that file, 260/260 overall); probe4 re-run shows the MCB trips and the sim stops. Full gates green: typecheck + biome lint + vitest + `vite build` + 27/27 e2e (6 intentional skips).
+
+**Known remaining gaps (next):** injected faults bypass Ctrl+Z history (faultActions make no history commits); post-trip UI flow (isTripped render, reset-breaker card) to be locked into a new `e2e/faults-and-editing.spec.ts`.

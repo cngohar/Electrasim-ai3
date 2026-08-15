@@ -503,3 +503,94 @@ describe('simulate — invariants', () => {
     expect(elapsed).toBeLessThan(50);
   });
 });
+
+// ─── Fault → protection device operation ─────────────────────────────────────
+
+describe('simulate — faults operate upstream protection', () => {
+  it('trips the inline MCB on a topology-level bolted Live–Neutral short', () => {
+    const l = C('live-terminal');
+    const n = C('neutral-terminal');
+    const mcb = C('mcb', { on: true });
+    // Live → MCB in, MCB out → Neutral output port ⇒ both rails meet at n:0
+    const w1 = W({ c: l, p: 0 }, { c: mcb, p: 0 });
+    const w2 = W({ c: mcb, p: 1 }, { c: n, p: 0 });
+
+    const result = simulate(circuit([l, n, mcb], [w1, w2]));
+
+    const trips = result.trippedComponents ?? [];
+    expect(trips.map((t) => t.id)).toContain(mcb.id);
+    expect(trips.find((t) => t.id === mcb.id)?.reason).toBe('short-circuit');
+    expect(result.errors.some((e) => e.includes('TRIPPED'))).toBe(true);
+  });
+
+  it('trips the MCB guarding a component with an injected short-circuit fault', () => {
+    const l = C('live-terminal');
+    const n = C('neutral-terminal');
+    const mcb = C('mcb', { on: true });
+    const bulb = C('bulb', { fault: 'short-circuit' });
+    const w1 = W({ c: l, p: 0 }, { c: mcb, p: 0 });
+    const w2 = W({ c: mcb, p: 1 }, { c: bulb, p: 0 });
+    const w3 = W({ c: n, p: 0 }, { c: bulb, p: 1 });
+
+    const result = simulate(circuit([l, n, mcb, bulb], [w1, w2, w3]));
+
+    const trips = result.trippedComponents ?? [];
+    expect(trips.map((t) => t.id)).toContain(mcb.id);
+  });
+
+  it('does not trip protective devices on an isolated, separate network', () => {
+    // Network A: live, mcbA, shorted bulb, neutral.
+    const la = C('live-terminal');
+    const na = C('neutral-terminal');
+    const mcbA = C('mcb');
+    const bulbA = C('bulb', { fault: 'short-circuit' });
+    // Network B: completely separate healthy circuit with its own MCB + RCD.
+    const lb = C('live-terminal');
+    const nb = C('neutral-terminal');
+    const mcbB = C('mcb');
+    const rcdB = C('rcd');
+    const bulbB = C('bulb');
+    const wires = [
+      W({ c: la, p: 0 }, { c: mcbA, p: 0 }),
+      W({ c: mcbA, p: 1 }, { c: bulbA, p: 0 }),
+      W({ c: na, p: 0 }, { c: bulbA, p: 1 }),
+      W({ c: lb, p: 0 }, { c: mcbB, p: 0 }),
+      W({ c: mcbB, p: 1 }, { c: bulbB, p: 0 }),
+      W({ c: nb, p: 0 }, { c: rcdB, p: 1 }),
+      W({ c: rcdB, p: 3 }, { c: bulbB, p: 1 }),
+    ];
+
+    const result = simulate(circuit([la, na, mcbA, bulbA, lb, nb, mcbB, rcdB, bulbB], wires));
+
+    const tripIds = (result.trippedComponents ?? []).map((t) => t.id);
+    expect(tripIds).toContain(mcbA.id);
+    expect(tripIds).not.toContain(mcbB.id);
+    expect(tripIds).not.toContain(rcdB.id);
+  });
+
+  it('earth leakage trips only the RCD/RCBO in the same network', () => {
+    const la = C('live-terminal');
+    const na = C('neutral-terminal');
+    const rcd = C('rcd');
+    const bulbA = C('bulb', { fault: 'live-to-earth' });
+    const lb = C('live-terminal');
+    const nb = C('neutral-terminal');
+    const rcdIsolated = C('rcd');
+    const bulbB = C('bulb');
+    const wires = [
+      W({ c: la, p: 0 }, { c: rcd, p: 0 }),
+      W({ c: na, p: 0 }, { c: rcd, p: 1 }),
+      W({ c: rcd, p: 2 }, { c: bulbA, p: 0 }),
+      W({ c: rcd, p: 3 }, { c: bulbA, p: 1 }),
+      W({ c: lb, p: 0 }, { c: bulbB, p: 0 }),
+      W({ c: nb, p: 0 }, { c: rcdIsolated, p: 1 }),
+      W({ c: rcdIsolated, p: 3 }, { c: bulbB, p: 1 }),
+    ];
+
+    const result = simulate(circuit([la, na, rcd, bulbA, lb, nb, rcdIsolated, bulbB], wires));
+
+    const tripIds = (result.trippedComponents ?? []).map((t) => t.id);
+    expect(tripIds).toContain(rcd.id);
+    expect(tripIds).not.toContain(rcdIsolated.id);
+  });
+});

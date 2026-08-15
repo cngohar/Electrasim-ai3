@@ -11,6 +11,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **Short-circuit faults operated no protection** — a bolted L–N short (topology overlap or injected fault) only logged an error while the sim kept "running" the defective circuit; `calculateMCBTrip`/`calculateRCDTrip` were exported but never called by the engine, so no device ever tripped on a fault. Now every short circuit trips the protective devices (MCB/RCBO/fuse/MCCB) guarding the faulted network, with a prospective-current diagnostic (`230 V / 0.5 Ω ≈ 460 A ≫ magnetic zone, cleared <0.1 s per IEC 60898-1`) and the standard tripped-breaker reset flow.
+- **Earth-leakage faults tripped every RCD/RCBO on the canvas** — including devices on completely isolated, unconnected networks. Trips are now scoped to the RCD/RCBO devices guarding the faulted network.
+
+### Added
+- **`src/domain/simulation/faultPropagation.ts`** — pure wire-graph BFS (`connectedNetworkComponents`, `findProtectionDevicesInNetwork`) mapping a fault to the protective devices sharing its connected network. Header documents the teaching simplification (all in-network devices operate rather than only the nearest upstream device — real selectivity, BS 7671 §536, is flagged for the Zs-checker roadmap item).
+- **Fault-propagation regression tests** (+4, 260 total) in `simulation.test.ts`: topology short trips the guarding MCB, injected short trips the guarding MCB, isolated-network devices stay closed, earth leakage trips only the same-network RCD.
+
 ### Added
 - **Return-to-guide chip** — selecting a component mid-challenge now shows an "Inspector / Guide paused" card with a *Close inspector and return to guide* button (implements the behaviour the two-way-staircase e2e always asserted but the app never shipped).
 - **`scripts/visual-sweep.mjs`** — 12-stop Playwright screenshot/console-error sweep across desktop, phone and tablet for visual regression hunting.
