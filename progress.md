@@ -2480,3 +2480,24 @@ Formula: 2 spinning icons × 13 steps/sec × 16 filter regions = ~416 filter rep
 **Verified at runtime (scripts/probe6-wire-method.mjs):** force-click wire (SVG zero-bbox workaround documented in the script) → Method picker renders; C→27 A base, B1→24 A, effective readout correct; zero console errors. Note: wires are NOT clickable by Playwright's normal actionability because a straight SVG path's bbox has no area — `.click({ force: true })` centres on the line.
 
 **Remaining roadmap:** RCD type (AC/A/F/B) + DC-blinding fault, AFDD + arc-fault, mini-EIC report, Zs/disconnection checker; then full gates, docs, bundle/push (user holds push until all done).
+
+---
+
+## Session 2026-08-15 (part 8) — Feature 3: RCD types (AC/A/F/B) + smooth DC blinding fault
+
+**Scope:** audit roadmap item 3 — RCD residual-current type selection and the EV/PV/VFD "DC blinding" teaching scenario.
+
+**Web-verified data (BS EN 62423 / BS 7671 Reg 531.3.3):** Type AC = sine AC only (legacy); Type A adds pulsating DC, tolerates ≤6 mA superimposed *smooth* DC but does not detect it; Type F adds mixed frequency, ≤10 mA smooth DC; only Type B detects smooth DC residual current. Modern baseline for new installs is Type A.
+
+**Changes:**
+- `types.ts`: `RCDType = 'AC'|'A'|'F'|'B'`; `ComponentState.rcdType?` (read-time default `'A'`); `FaultType += 'smooth-dc-residual'`.
+- `faults.ts`: registry entry (earth category, critical severity, standards text + RDC-DD/IEC 62955 repair guidance).
+- `simulate.ts`: `tripProtectionForFault` filter gains the device itself (`(type, device)`); new `smooth-dc-residual` branch trips only Type B residual devices in the faulted network (reuses the faultPropagation network BFS), records 🚫 `Type X DID NOT TRIP` errors with per-type tolerance for blinded AC/A/F devices, and warns when no residual device guards the network at all.
+- `useSimulation.ts`: manual-fault modal switch gains a smooth-DC case — "🌊 SMOOTH DC RESIDUAL — RCD BLINDED!" with the saturation explanation and Type-B-first resolution steps (Type B trips take the normal trip-modal path because `trippedComponents` is checked first).
+- UI: `ComponentPropertiesView` 4-button picker with `Type X` badge + teaching note (RCD/RCBO only); `contextMenuItems` "Inject Smooth DC Residual (EV/PV fault)"; `ComponentNode` violet `#8b5cf6` fault frame; `protection.ts`/`templates.ts` descriptions updated (leakage IS modelled since part 6's engine — three stale legend-text test assertions were proven runtime-stale by the e2e suite and updated, not deleted).
+- **Bug found mid-feature:** ContextMenu only flipped right/bottom — the now-taller fault menu clipped off the TOP on mid-screen right-clicks (Playwright: "element outside of the viewport"). Fixed with flip + 8 px hard-clamp both axes + internal scroll (`max-h-[calc(100dvh-16px)] overflow-y-auto`). This same bug had been flaking the pre-existing earth-leakage e2e on chromium — that test is green again as mutation-proof.
+- Tests: 5 unit (AC/A/F blind + Type B trips + default-A fallback) — 284 unit total.
+
+**Gates:** `npm run check` (typecheck + biome + 284 unit) ✓, full Playwright suite 41 passed + 13 skipped (3 projects) ✓, `npx vite build` ✓.
+
+**Remaining roadmap:** AFDD + arc-fault (Feature 4 — web-verify BS EN 62606 / Reg 421.1.7 first), mini-EIC report (Feature 5, print-HTML no new dep), Zs/disconnection checker (Feature 6, Zs_max = 230×0.95/(band_upper×In)); then final gates, fresh bundle, push (user holds push until all done).
