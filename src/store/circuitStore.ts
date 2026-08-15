@@ -17,9 +17,6 @@ import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
 import {
   COMPONENT_DEFS,
-  createInjectedFault,
-  isWireFaultType,
-  validateFaultCoexistence,
   type Circuit,
   type ComponentGroup,
   type ComponentInstance,
@@ -28,174 +25,14 @@ import {
   type InjectedFault,
   type WireFaultType,
   type WireInstance,
+  createInjectedFault,
+  isWireFaultType,
+  validateFaultCoexistence,
 } from '../domain';
+import { componentsForHistory } from './circuitStore.history';
+import type { CircuitState } from './circuitStore.types';
 import { buildSeedCircuit } from './seed';
 import { useUiStore } from './uiStore';
-
-type EditableWireProperties = Pick<
-  WireInstance,
-  | 'controlPoints'
-  | 'pathKind'
-  | 'lengthMeters'
-  | 'deratingFactor'
-  | 'customCableMm2'
-  | 'material'
-  | 'gauge'
->;
-
-interface GraphChanges {
-  addComponents?: ComponentInstance[];
-  addWires?: WireInstance[];
-  removeWireIds?: string[];
-}
-
-interface CircuitState {
-  components: ComponentInstance[];
-  wires: WireInstance[];
-  globalVoltage: number;
-  /** Active user-injected faults */
-  faults: InjectedFault[];
-
-  selectedComponentId: string | null;
-  selectedWireIds: string[];
-  /** Phase 6.2.3 multi-select: all selected component IDs (includes `selectedComponentId`). */
-  selectedComponentIds: string[];
-  /** Component groups for complex circuit management. */
-  componentGroups: ComponentGroup[];
-
-  // Mutators ──────────────────────────────────────────────────────────────
-  setCircuit: (circuit: Circuit) => void;
-  setGlobalSupplyVoltage: (voltage: number) => void;
-  addComponent: (comp: ComponentInstance) => void;
-  removeComponent: (id: string) => void;
-  moveComponent: (id: string, x: number, y: number) => void;
-  toggleSwitch: (id: string) => void;
-  setSwitchState: (id: string, on: boolean) => void;
-
-  addWire: (wire: WireInstance) => void;
-  /** Apply related component/wire additions and removals as one undoable graph edit. */
-  applyGraphChanges: (changes: GraphChanges) => void;
-  removeWire: (id: string) => void;
-  /** Phase 6.9: remove every wire, keep components. Single undo step. */
-  clearAllWires: () => void;
-  /** Phase 6.9: remove every component AND every wire. Single undo step. */
-  clearAllComponents: () => void;
-  /**
-   * Reroute one end of an existing wire to a different component+port.
-   * `end` selects which side. Returns true if the reroute was applied.
-   */
-  rerouteWire: (
-    id: string,
-    end: 'from' | 'to',
-    target: { componentId: string; portIndex: number },
-  ) => boolean;
-
-  /** Phase 6.2.3: move multiple components by the same delta (no snap — snap on drag-end). */
-  moveComponents: (ids: string[], dx: number, dy: number) => void;
-  /** Phase 6.3-slim: set absolute positions for multiple components in one undo entry (alignment). */
-  setComponentPositions: (updates: { id: string; x: number; y: number }[]) => void;
-  /** Remove the specified components and their connected wires in one undo step. */
-  removeComponents: (ids: string[]) => void;
-  /** Phase 6.2.3: remove all currently selected components + their wires in one undo step. */
-  removeSelectedComponents: () => void;
-  /**
-   * Phase 6.2.4: paste an array of clipboard components onto the canvas.
-   * Fresh IDs are generated for each pasted component; the pasted group
-   * becomes the new selection. `offset` is applied to every position so
-   * repeated pastes stack visually instead of landing on top.
-   */
-  pasteComponents: (items: ComponentInstance[], offset: { x: number; y: number }) => void;
-
-  /** Rotate a component by delta degrees (defaults to 90 degrees). */
-  rotateComponent: (id: string, deltaDegrees?: number) => void;
-  /** Rotate all currently selected components by delta degrees (defaults to 90 degrees). */
-  rotateSelected: (deltaDegrees?: number) => void;
-  /** Remove all currently selected components and wires in one single transaction. */
-  removeSelected: () => void;
-  /** Auto-assign standard engineering labels (e.g. S1, L1, CB1, etc.) to components. */
-  autoLabelAllComponents: () => void;
-  /** Fault simulation: inject a structured fault into the circuit. */
-  injectFault: (
-    faultOrParams:
-      | import('../domain').InjectedFault
-      | { type: FaultType; target: import('../domain').FaultTarget; parameters?: Record<string, unknown> },
-  ) => string;
-  /** Fault simulation: remove a specific injected fault by ID. */
-  removeFault: (faultId: string) => void;
-  /** Fault simulation: toggle a specific fault type on a target. */
-  toggleFault: (type: FaultType, target: import('../domain').FaultTarget) => void;
-  /** Fault simulation: inject or clear a fault on one wire. */
-  setWireFault: (id: string, fault: WireFaultType | undefined) => void;
-  /** Fault simulation: inject or clear a fault on one component. */
-  setComponentFault: (id: string, fault: FaultType | undefined) => void;
-  /** Fault simulation: remove all faults from every component, wire, and port. */
-  clearAllFaults: () => void;
-
-  /** Pro Mode Customizations: update custom voltage, power, cable size or threshold parameters. */
-  updateComponentState: (id: string, updates: Partial<import('../domain').ComponentState>) => void;
-  /** Change component variant type and reset/sync relevant component parameters. */
-  updateComponentType: (id: string, newType: string) => void;
-  /** Repair a blown component after overvoltage/overcurrent overload. */
-  repairBlownComponent: (id: string) => void;
-  /** Repair all blown components across the circuit. */
-  repairAllBlownComponents: () => void;
-  /** Repair all blown components and melted/busted wires across the circuit. */
-  repairAllFaults: () => void;
-  /** Mark a wire as melted/busted or restored. */
-  setWireBusted: (id: string, isBusted: boolean, reason?: string) => void;
-  /** Update editable wire metadata without exposing identity or endpoint mutation. */
-  updateWireProperties: (id: string, updates: Partial<EditableWireProperties>) => void;
-  /** Swap origin and destination terminals of a wire. */
-  swapWireEndpoints: (id: string) => void;
-  /** Reset a tripped breaker/fuse after fault is cleared. */
-  resetTrippedComponent: (id: string) => void;
-  /** Reset all tripped protection devices across the circuit. */
-  resetAllTrippedComponents: () => void;
-
-  // Selection (transient — excluded from undo history) ────────────────────
-  selectComponent: (id: string | null) => void;
-  selectWire: (id: string | null) => void;
-  toggleWireSelection: (id: string) => void;
-  clearSelection: () => void;
-  /** Phase 6.2.3: Shift-click — toggle a single component in/out of multi-selection. */
-  toggleComponentSelection: (id: string) => void;
-  /** Phase 6.2.3: set exact multi-selection (used by drag-rect commit). */
-  setMultiSelection: (ids: string[]) => void;
-
-  // Component Grouping ──────────────────────────────────────────────────────
-  /** Create a group from selected components. */
-  createGroup: (name: string, componentIds: string[]) => void;
-  /** Ungroup a specific group, releasing its components. */
-  ungroup: (groupId: string) => void;
-  /** Move all components in a group by delta. */
-  moveGroup: (groupId: string, dx: number, dy: number) => void;
-  /** Delete a group and optionally its components. */
-  deleteGroup: (groupId: string, deleteComponents: boolean) => void;
-}
-
-const historyComponentCache = new WeakMap<ComponentInstance[], ComponentInstance[]>();
-
-/** Undo snapshots must never turn a transient held contact into saved circuit state. */
-function componentsForHistory(components: ComponentInstance[]): ComponentInstance[] {
-  const cached = historyComponentCache.get(components);
-  if (cached) return cached;
-  if (
-    !components.some(
-      (component) =>
-        component.state.on === true && COMPONENT_DEFS[component.type]?.isMomentary === true,
-    )
-  ) {
-    return components;
-  }
-
-  const sanitized = components.map((component) =>
-    component.state.on && COMPONENT_DEFS[component.type]?.isMomentary
-      ? { ...component, state: { ...component.state, on: false } }
-      : component,
-  );
-  historyComponentCache.set(components, sanitized);
-  return sanitized;
-}
 
 const seed = buildSeedCircuit();
 
@@ -457,7 +294,11 @@ export const useCircuitStore = create<CircuitState>()(
           s.components = s.components.filter((c) => !compIds.has(c.id));
           const removedWireIds = new Set<string>(wireIds);
           s.wires = s.wires.filter((w) => {
-            if (wireIds.has(w.id) || compIds.has(w.fromComponentId) || compIds.has(w.toComponentId)) {
+            if (
+              wireIds.has(w.id) ||
+              compIds.has(w.fromComponentId) ||
+              compIds.has(w.toComponentId)
+            ) {
               removedWireIds.add(w.id);
               return false;
             }
@@ -701,9 +542,7 @@ export const useCircuitStore = create<CircuitState>()(
               ((f.target.type === 'component' &&
                 target.type === 'component' &&
                 f.target.id === target.id) ||
-                (f.target.type === 'wire' &&
-                  target.type === 'wire' &&
-                  f.target.id === target.id) ||
+                (f.target.type === 'wire' && target.type === 'wire' && f.target.id === target.id) ||
                 (f.target.type === 'port' &&
                   target.type === 'port' &&
                   f.target.componentId === target.componentId &&
@@ -1033,70 +872,12 @@ export const useCircuitStore = create<CircuitState>()(
 );
 
 // ── Imperative undo/redo helpers (wired to toolbar buttons) ────────────────
-function reconcileSelection(): void {
-  const state = useCircuitStore.getState();
-  const componentIds = new Set(state.components.map((component) => component.id));
-  const wireIds = new Set(state.wires.map((wire) => wire.id));
-  const selectedComponentIds = state.selectedComponentIds.filter((id) => componentIds.has(id));
-  const selectedComponentId =
-    state.selectedComponentId && componentIds.has(state.selectedComponentId)
-      ? state.selectedComponentId
-      : (selectedComponentIds[0] ?? null);
-  const selectedWireIds = state.selectedWireIds.filter((id) => wireIds.has(id));
-
-  if (
-    selectedComponentId !== state.selectedComponentId ||
-    selectedComponentIds.length !== state.selectedComponentIds.length ||
-    selectedWireIds.length !== state.selectedWireIds.length
-  ) {
-    useCircuitStore.setState({ selectedComponentId, selectedComponentIds, selectedWireIds });
-  }
-}
-
-export const undo = () => {
-  useCircuitStore.temporal.getState().undo();
-  reconcileSelection();
-};
-export const redo = () => {
-  useCircuitStore.temporal.getState().redo();
-  reconcileSelection();
-};
-export const clearHistory = () => useCircuitStore.temporal.getState().clear();
-
-/**
- * Momentary contacts are live interaction state, not an edit to the circuit.
- * Keep press/release out of undo history while still publishing the component
- * update to the renderer and simulation worker.
- */
-export function setMomentarySwitchState(id: string, on: boolean): boolean {
-  const component = useCircuitStore.getState().components.find((item) => item.id === id);
-  if (!component || !COMPONENT_DEFS[component.type]?.isMomentary) return false;
-  if (component.state.on === on) return true;
-
-  const temporal = useCircuitStore.temporal.getState();
-  const shouldResume = temporal.isTracking;
-  if (shouldResume) temporal.pause();
-  try {
-    useCircuitStore.getState().setSwitchState(id, on);
-  } finally {
-    if (shouldResume) temporal.resume();
-  }
-  return true;
-}
-
-/** Release any contacts left down by an interrupted pointer or keyboard gesture. */
-export function releaseMomentarySwitches(): void {
-  for (const component of useCircuitStore.getState().components) {
-    if (component.state.on && COMPONENT_DEFS[component.type]?.isMomentary) {
-      setMomentarySwitchState(component.id, false);
-    }
-  }
-}
-
-// ── Convenient derived selector: the full Circuit shape ───────────────────
-export const selectCircuit = (s: CircuitState): Circuit => ({
-  components: s.components,
-  wires: s.wires,
-  globalVoltage: s.globalVoltage,
-  faults: s.faults,
-});
+// ─── Standalone helpers (moved to ./circuitActions, re-exported for API parity) ──
+export {
+  clearHistory,
+  redo,
+  releaseMomentarySwitches,
+  selectCircuit,
+  setMomentarySwitchState,
+  undo,
+} from './circuitActions';
