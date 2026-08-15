@@ -2350,3 +2350,26 @@ Formula: 2 spinning icons × 13 steps/sec × 16 filter regions = ~416 filter rep
 **Verification:**
 - `npm run check` green: typecheck (app + e2e configs), Biome lint, and Vitest **32 files / 194 tests passed**.
 - Dev server (`npm run dev`) serving HTTP 200 on `localhost:3000`.
+
+---
+
+## Session: broken-HEAD repair + monolith refactors (2026-08-15, external contributor)
+
+### Fixed (all verified: typecheck 0 errors · biome lint exit 0 · 231/231 tests · vite build OK)
+- Commit `140ed41` had broken the build: 10 component-variant image imports referenced files that were never committed — all 10 generated in the existing studio-photo style and committed.
+- 29 TypeScript errors closed: `WireInstance.fault` widened via new `WireFaultType` + `isWireFaultType()` guard; `ConnectionValidationResult.warnings` added; `FaultTarget` narrowing hoisted out of closures (faults.ts, circuitStore.ts); `state.blown`→`isBlown`; inspector sparkline voltage source fixed; validation test fixtures given required `controlPoints`.
+- Modal: Escape/backdrop now invoke the latest `onClose` synchronously; the exit animation had also been cancelling its own unmount timer (dialogs stuck in DOM).
+- Restored `role="button"` on canvas port hit circles (a11y regression removed by `140ed41`).
+- Latent biome failure since `31af42a` resolved via scoped `useSemanticElements` override for canvas SVG files; repo lint was red with zero CI to notice.
+- CI: a GitHub Actions check workflow was drafted during this session, then deliberately dropped before pushing — owner decision: deployment runs locally with no live sites, so GitHub CI adds no value. Local gates (`npm run check` + `npx vite build`) remain the quality bar.
+
+### Refactored (pure code-moves; bodies verified byte-identical; shims keep import paths)
+- `Inspector.tsx` 3166 → `src/ui/components/inspector/` (9 modules + data + hook).
+- `components.ts` 1405 → `src/domain/components/` (10 zone modules; registry order/values verified identical).
+- `simulation.ts` 1025 → `src/domain/simulation/` (indexing / traversal / tripCurves / simulate; still worker-pure).
+- `componentHelp.ts` 919 → `src/domain/componentHelp/` (5 zone modules).
+- `uiStore.ts` 906 → 579 + `uiStore.types.ts` + `uiStore.helpers.ts`.
+- `circuitStore.ts` 1092 → 739 + types/history/actions/faultActions modules.
+- `ComponentLayer.tsx` 889 → 97 + `ComponentNode.tsx` + `ComponentTooltip.tsx`.
+- `ContextMenu.tsx` 728 → ~150 + `contextMenuItems.ts`.
+- `circuitValidation.ts` 889 → 835 + `circuitValidationTypes.ts` (the remainder is one cohesive `validateCircuit()` pass; intentionally left unsplit).
