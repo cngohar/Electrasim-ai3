@@ -145,6 +145,16 @@ export type FaultType =
   | 'protection-forced-open'
   | 'protection-bypass';
 
+/**
+ * Fault kinds that can be mirrored onto the legacy per-wire `fault` field.
+ * The modern `InjectedFault` pipeline accepts any `FaultType`, but only
+ * these conductor-level kinds are meaningful on a physical conductor run.
+ */
+export type WireFaultType = Extract<
+  FaultType,
+  'open-circuit' | 'open-neutral' | 'short-circuit' | 'live-to-earth'
+>;
+
 export type FaultTargetType = 'component' | 'wire' | 'port';
 
 export type FaultTarget =
@@ -285,9 +295,11 @@ export interface WireInstance {
   /**
    * Fault injected by the user in Fault Simulation Mode.
    * `'open-circuit'` = wire break; the BFS skips this wire entirely.
+   * `'open-neutral'` = broken neutral return on this run.
    * `'short-circuit'` = wire short circuit.
+   * `'live-to-earth'` = insulation breakdown leaking live to earth.
    */
-  fault?: 'open-circuit' | 'short-circuit';
+  fault?: WireFaultType;
   /** Optional one-way cable run length used for voltage-drop calculations. */
   lengthMeters?: number;
   /** Optional installation derating factor, from 0.1 to 1. */

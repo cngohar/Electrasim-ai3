@@ -596,7 +596,7 @@ function ComponentNode({
 
               if (isLightingBulb) {
                 const bulbImg = getComponentImage(component.type, definition.category);
-                const isLit = energized && !component.state.blown && fault !== 'open-circuit';
+                const isLit = energized && !component.state.isBlown && fault !== 'open-circuit';
                 return (
                   <g transform={`translate(${COMP_W / 2 - 13} 13)`}>
                     <image
@@ -809,6 +809,7 @@ function ComponentNode({
               stroke={portStroke}
               strokeWidth={portStrokeWidth}
               tabIndex={0}
+              role="button"
               aria-label={`${port.label ?? port.type} port on ${definition.label} ${component.id}${compat?.message ? ` (${compat.message})` : ''}`}
               style={{ cursor: 'crosshair' }}
               onPointerDown={(event) => {

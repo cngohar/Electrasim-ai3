@@ -1565,7 +1565,7 @@ function ComponentPropertiesView({
         liveVoltage={liveVoltage}
         isEnergized={isEnergized}
         simRunning={simRunning}
-        nominalVoltage={def.defaultVoltage ?? 230}
+        nominalVoltage={selectedComp.state.customVoltage ?? 230}
       />
 
       {/* Manual Fault Simulation Panel */}

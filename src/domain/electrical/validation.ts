@@ -29,6 +29,11 @@ export interface ConnectionValidationResult {
   explanation?: string;
   suggestedFix?: string;
   canOverride?: boolean;
+  /**
+   * Non-blocking diagnostics that callers may surface to the user when the
+   * connection was allowed. Populated whenever `severity === 'warning'`.
+   */
+  warnings?: ElectricalDiagnostic[];
 }
 
 /**
@@ -151,6 +156,7 @@ export function validateConnection(options: ValidateConnectionOptions): Connecti
               suggestedFix: diagnostic.suggestedFix,
               diagnostic,
               canOverride: true,
+              warnings: [diagnostic],
             };
           }
 
@@ -176,6 +182,7 @@ export function validateConnection(options: ValidateConnectionOptions): Connecti
             suggestedFix: diagnostic.suggestedFix,
             diagnostic,
             canOverride: true,
+            warnings: [diagnostic],
           };
         }
       }

@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { MOBILE_SUITABILITY_STORAGE_KEY, useUiStore } from '../../store/uiStore';
 import { MobileSuitabilityModal } from './MobileSuitabilityModal';
@@ -20,7 +20,7 @@ afterEach(() => {
 });
 
 describe('MobileSuitabilityModal', () => {
-  it('explains the phone limitation and continues into first-visit Welcome', () => {
+  it('explains the phone limitation and continues into first-visit Welcome', async () => {
     useUiStore.setState({ mobileSuitabilityOpen: true });
     render(<MobileSuitabilityModal />);
 
@@ -31,7 +31,8 @@ describe('MobileSuitabilityModal', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
 
-    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    // The modal plays a 200 ms exit animation before unmounting.
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
     expect(useUiStore.getState().welcomeOpen).toBe(true);
     expect(window.localStorage.getItem(MOBILE_SUITABILITY_STORAGE_KEY)).toBe('1');
   });

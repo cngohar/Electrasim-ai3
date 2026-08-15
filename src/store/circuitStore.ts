@@ -18,6 +18,7 @@ import { immer } from 'zustand/middleware/immer';
 import {
   COMPONENT_DEFS,
   createInjectedFault,
+  isWireFaultType,
   validateFaultCoexistence,
   type Circuit,
   type ComponentGroup,
@@ -25,6 +26,7 @@ import {
   type FaultTarget,
   type FaultType,
   type InjectedFault,
+  type WireFaultType,
   type WireInstance,
 } from '../domain';
 import { buildSeedCircuit } from './seed';
@@ -123,7 +125,7 @@ interface CircuitState {
   /** Fault simulation: toggle a specific fault type on a target. */
   toggleFault: (type: FaultType, target: import('../domain').FaultTarget) => void;
   /** Fault simulation: inject or clear a fault on one wire. */
-  setWireFault: (id: string, fault: 'open-circuit' | 'short-circuit' | undefined) => void;
+  setWireFault: (id: string, fault: WireFaultType | undefined) => void;
   /** Fault simulation: inject or clear a fault on one component. */
   setComponentFault: (id: string, fault: FaultType | undefined) => void;
   /** Fault simulation: remove all faults from every component, wire, and port. */
@@ -649,17 +651,17 @@ export const useCircuitStore = create<CircuitState>()(
           s.faults.push(fault);
           faultId = fault.id;
 
-          // Sync legacy properties for backwards compatibility
+          // Sync legacy properties for backwards compatibility.
+          // NOTE: TypeScript does not preserve property-access narrowing
+          // inside `.find` closures — hoist the narrowed id into a local.
           if (fault.target.type === 'component') {
-            const c = s.components.find((comp) => comp.id === fault.target.id);
+            const targetId = fault.target.id;
+            const c = s.components.find((comp) => comp.id === targetId);
             if (c && !c.state.fault) c.state.fault = fault.type;
           } else if (fault.target.type === 'wire') {
-            const w = s.wires.find((wire) => wire.id === fault.target.id);
-            if (
-              w &&
-              !w.fault &&
-              (fault.type === 'open-circuit' || fault.type === 'short-circuit')
-            ) {
+            const targetId = fault.target.id;
+            const w = s.wires.find((wire) => wire.id === targetId);
+            if (w && !w.fault && isWireFaultType(fault.type)) {
               w.fault = fault.type;
             }
           }
@@ -673,13 +675,16 @@ export const useCircuitStore = create<CircuitState>()(
           const faultToRemove = s.faults.find((f) => f.id === faultId);
           s.faults = s.faults.filter((f) => f.id !== faultId);
           if (faultToRemove) {
-            if (faultToRemove.target.type === 'component') {
-              const c = s.components.find((comp) => comp.id === faultToRemove.target.id);
+            const target = faultToRemove.target;
+            if (target.type === 'component') {
+              const targetId = target.id;
+              const c = s.components.find((comp) => comp.id === targetId);
               if (c && c.state.fault === faultToRemove.type) {
                 c.state.fault = undefined;
               }
-            } else if (faultToRemove.target.type === 'wire') {
-              const w = s.wires.find((wire) => wire.id === faultToRemove.target.id);
+            } else if (target.type === 'wire') {
+              const targetId = target.id;
+              const w = s.wires.find((wire) => wire.id === targetId);
               if (w && w.fault === faultToRemove.type) {
                 w.fault = undefined;
               }
@@ -708,11 +713,14 @@ export const useCircuitStore = create<CircuitState>()(
           if (existingIndex >= 0) {
             const removed = s.faults[existingIndex];
             s.faults.splice(existingIndex, 1);
-            if (removed.target.type === 'component') {
-              const c = s.components.find((comp) => comp.id === removed.target.id);
+            const removedTarget = removed.target;
+            if (removedTarget.type === 'component') {
+              const targetId = removedTarget.id;
+              const c = s.components.find((comp) => comp.id === targetId);
               if (c && c.state.fault === removed.type) c.state.fault = undefined;
-            } else if (removed.target.type === 'wire') {
-              const w = s.wires.find((wire) => wire.id === removed.target.id);
+            } else if (removedTarget.type === 'wire') {
+              const targetId = removedTarget.id;
+              const w = s.wires.find((wire) => wire.id === targetId);
               if (w && w.fault === removed.type) w.fault = undefined;
             }
           } else {
@@ -721,11 +729,13 @@ export const useCircuitStore = create<CircuitState>()(
             if (validation.valid) {
               s.faults.push(fault);
               if (target.type === 'component') {
-                const c = s.components.find((comp) => comp.id === target.id);
+                const targetId = target.id;
+                const c = s.components.find((comp) => comp.id === targetId);
                 if (c) c.state.fault = type;
               } else if (target.type === 'wire') {
-                const w = s.wires.find((wire) => wire.id === target.id);
-                if (w && (type === 'open-circuit' || type === 'short-circuit')) {
+                const targetId = target.id;
+                const w = s.wires.find((wire) => wire.id === targetId);
+                if (w && isWireFaultType(type)) {
                   w.fault = type;
                 }
               }

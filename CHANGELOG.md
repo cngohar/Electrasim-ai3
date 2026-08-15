@@ -12,6 +12,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Component variant imagery** — generated studio-style product photos for the ten component variants referenced by `componentImages.ts` but never committed: RCBO, MCB Type C / Type D, industrial MCCB, SPD, USB / GFCI sockets, cooker switch, dimmer switch, and PIR sensor. The production build no longer fails on unresolved image imports.
+- **`ConnectionValidationResult.warnings`** — the connection validator now exposes non-blocking diagnostics as an optional array, matching what the canvas interaction layer expected when logging wire-creation warnings.
+- **`WireFaultType` + `isWireFaultType()`** — the legacy per-wire `fault` field now formally supports `open-neutral` and `live-to-earth` (both already handled by the injected-fault simulation pipeline), so Context Menu / Inspector wire-fault buttons typecheck and persist.
+
+### Fixed
+- **29 TypeScript errors from `140ed41`** — broken typecheck is green again: widened `WireInstance.fault` / `setWireFault` to the conductor-level fault kinds the UI already offered, restored the accidentally deleted `role="button"` on canvas port hit circles (keyboard / screen-reader reroute flow), switched the inspector sparkline to `state.customVoltage ?? 230` (the removed `def.defaultVoltage`), fixed `state.blown` → `state.isBlown`, and hoisted `FaultTarget` narrowing out of closures in `faults.ts` / `circuitStore.ts` (TS cannot preserve property narrowing across callback boundaries).
+- **Modal close semantics** — `Modal` now invokes the *latest* `onClose` synchronously on Escape / backdrop click; the previous animation-wrapped deferral both delayed the callback by 200 ms and could invoke a stale prop. Also fixed the exit-animation effect cancelling its own unmount timer (`isClosing` was a dependency), which left closed dialogs mounted in the DOM forever.
+- **Test suite green again** — `MobileSuitabilityModal` spec now awaits the intentional 200 ms exit animation instead of asserting synchronous unmount; validation test fixtures supply the required `controlPoints` field. 231/231 tests passing, `vite build` succeeds.
+
 - **Pro-mode refactor completed** — the Student / Pro toggle now reaches every surface: the Tripped Breaker reset card (gated until the simulation reports `faultsCleared`), full settings persistence for `appMode` and the new `snapToGrid` flag, and a working Snap/Grid status-bar toggle that gates grid snapping on placement and drag-commit.
 - **`SimulationResult.faultsCleared`** — the engine now reports whether the last pass produced no error-level findings, so breaker resets are only enabled once the underlying fault is cleared.
 - **Dimmer waveform fidelity** — the pro dashboard's phase-cut waveform now reads the dimmer's actual `speed` state instead of a non-existent `dimmerLevel` field.
