@@ -72,6 +72,7 @@ export function ComponentNode({
   if (!definition) return null;
 
   const isOn = component.state.on === true;
+  const isTripped = component.state.isTripped === true;
   const active = energized || (definition.isSwitch && (Boolean(definition.changeover) || isOn));
   const fault = component.state.fault;
   const faultColor =
@@ -208,7 +209,7 @@ export function ComponentNode({
                 ? `, position ${changeoverPosition}`
                 : `, ${isOn ? 'on' : 'off'}`
             : ''
-        }`}
+        }${isTripped ? ', tripped' : ''}`}
         aria-pressed={definition.isSwitch && !definition.isMomentary ? isOn : undefined}
         style={{ cursor: wireMode ? 'crosshair' : 'grab' }}
         onPointerDown={(event) => onPointerDown(component, event)}
@@ -311,13 +312,55 @@ export function ComponentNode({
             </text>
           </>
         )}
+        {isTripped && !fault && (
+          <>
+            <rect
+              width={COMP_W}
+              height={COMP_H}
+              rx={theme.component.rounded}
+              ry={theme.component.rounded}
+              fill="none"
+              stroke="#f59e0b"
+              strokeWidth={2.5}
+              strokeOpacity={0.7}
+              strokeDasharray="4 3"
+              pointerEvents="none"
+            />
+            <rect
+              x={COMP_W - 20}
+              y={-1}
+              width={20}
+              height={13}
+              rx={4}
+              fill="#f59e0b"
+              pointerEvents="none"
+            />
+            <text
+              x={COMP_W - 10}
+              y={9}
+              textAnchor="middle"
+              fontSize="7"
+              fontWeight="bold"
+              fill="#fff"
+              style={{ userSelect: 'none', pointerEvents: 'none' }}
+            >
+              !
+            </text>
+          </>
+        )}
         {definition.isSwitch && !error && (
           <circle
             cx={COMP_W - 8}
             cy={COMP_H - 8}
             r={3.5}
             fill={
-              definition.changeover ? (isOn ? '#3b82f6' : '#f59e0b') : isOn ? '#22c55e' : '#ef4444'
+              isTripped
+                ? '#f59e0b'
+                : definition.changeover
+                  ? (isOn ? '#3b82f6' : '#f59e0b')
+                  : isOn
+                    ? '#22c55e'
+                    : '#ef4444'
             }
             stroke="#fff"
             strokeWidth={0.8}

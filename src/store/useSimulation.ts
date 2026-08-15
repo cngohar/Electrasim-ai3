@@ -127,7 +127,9 @@ export function useSimulation() {
               currentAmps: trip.currentAmps,
               limitAmps: trip.ratingAmps,
               resolutionHint:
-                'Lower load power/current in the Inspector panel or upgrade breaker rating before resuming simulation.',
+                trip.reason === 'overload'
+                  ? 'Lower load power/current in the Inspector panel or upgrade breaker rating before resuming simulation.'
+                  : 'Clear the injected fault (right-click the faulted component or wire → Clear fault), then reset the tripped breaker in the Inspector before resuming simulation.',
               timestamp: Date.now(),
             };
             ui.setFaultAlert(faultAlert);

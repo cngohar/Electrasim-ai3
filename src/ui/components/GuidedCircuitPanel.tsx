@@ -24,6 +24,12 @@ export function GuidedCircuitPanel({ isPhone }: Props) {
   const activeGuideId = useUiStore((s) => s.activeGuideId);
   const simRunning = useUiStore((s) => s.simRunning);
   const simResult = useUiStore((s) => s.simResult);
+  const inspectorCollapsed = useUiStore((s) => s.inspectorCollapsed);
+  // Keep clear of the Inspector's collapsed icon rail (48px at right-0) —
+  // same offset as MiniMap/ToolDock/StatusPill use in the collapsed state.
+  // (When the drawer is expanded the chip is suppressed entirely and the
+  // return-to-guide action lives inline in the drawer header instead.)
+  const rightClass = 'right-14';
   const components = useCircuitStore((s) => s.components);
   const wires = useCircuitStore((s) => s.wires);
   const selectedComponentId = useCircuitStore((s) => s.selectedComponentId);
@@ -48,11 +54,13 @@ export function GuidedCircuitPanel({ isPhone }: Props) {
   // checklist so the Inspector can take over. Offer an explicit, discoverable
   // way back — previously the only return path was clicking empty canvas to
   // deselect, which stranded users mid-challenge.
-  if (!isPhone && inspectorVisible) {
+  if (!isPhone && inspectorVisible && inspectorCollapsed) {
     const selected = components.find((c) => c.id === selectedComponentId);
     const selectedLabel = selected ? (COMPONENT_DEFS[selected.type]?.label ?? null) : null;
     return (
-      <aside className="absolute right-4 top-28 z-20 w-56 overflow-hidden rounded-2xl border border-white/80 bg-white/95 shadow-xl shadow-slate-900/10 ring-1 ring-slate-900/5 backdrop-blur-xl lg:w-[340px] dark:border-slate-700/80 dark:bg-slate-900/95 dark:ring-slate-700/50">
+      <aside
+        className={`absolute ${rightClass} top-28 z-20 w-56 overflow-hidden rounded-2xl border border-white/80 bg-white/95 shadow-xl shadow-slate-900/10 ring-1 ring-slate-900/5 backdrop-blur-xl lg:w-[340px] dark:border-slate-700/80 dark:bg-slate-900/95 dark:ring-slate-700/50`}
+      >
         <div className="flex items-start gap-3 border-b border-slate-100 px-4 py-3 dark:border-slate-700/60">
           <div className="mt-0.5 grid size-8 flex-shrink-0 place-items-center rounded-xl bg-indigo-600 text-white shadow-sm shadow-indigo-600/30">
             <MousePointerClick className="size-4" />
@@ -88,6 +96,10 @@ export function GuidedCircuitPanel({ isPhone }: Props) {
     );
   }
 
+  // Expanded drawer + active selection: the guide panel yields entirely —
+  // the Inspector drawer carries an inline "return to guide" strip.
+  if (!isPhone && inspectorVisible && !inspectorCollapsed) return null;
+
   const restart = () => {
     useCircuitStore.getState().setCircuit(cloneTemplateCircuit(template));
     const ui = useUiStore.getState();
@@ -102,7 +114,7 @@ export function GuidedCircuitPanel({ isPhone }: Props) {
         'absolute z-20 overflow-hidden rounded-2xl border border-white/80 bg-white/95 shadow-xl shadow-slate-900/10 ring-1 ring-slate-900/5 backdrop-blur-xl dark:border-slate-700/80 dark:bg-slate-900/95 dark:ring-slate-700/50',
         isPhone
           ? 'bottom-20 left-3 right-3 max-h-[52vh]'
-          : 'right-4 top-24 w-56 max-h-[calc(100vh-8rem)] lg:w-[340px]',
+          : `${rightClass} top-24 w-56 max-h-[calc(100vh-8rem)] lg:w-[340px]`,
       ].join(' ')}
     >
       <div className="flex items-start gap-3 border-b border-slate-100 px-4 py-3 dark:border-slate-700/60">

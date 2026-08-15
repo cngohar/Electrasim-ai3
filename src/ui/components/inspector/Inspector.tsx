@@ -24,7 +24,7 @@ import {
   type SimulationResult,
   type WireInstance,
 } from '../../../domain';
-import { useUiStore } from '../../../store';
+import { useCircuitStore, useUiStore } from '../../../store';
 import { ValidationReportView } from '../ValidationReportView';
 import { InspectorAnalyticsView } from './InspectorAnalyticsView';
 import { InspectorConnectionsContent } from './InspectorConnectionsContent';
@@ -58,6 +58,7 @@ export function Inspector({
 
   const activeInspectorTab = useUiStore((s) => s.activeInspectorTab);
   const setActiveInspectorTab = useUiStore((s) => s.setActiveInspectorTab);
+  const activeGuideId = useUiStore((s) => s.activeGuideId);
 
   const validationReport = useUiStore((s) => s.validationReport);
   const runCircuitValidation = useUiStore((s) => s.runCircuitValidation);
@@ -237,6 +238,32 @@ export function Inspector({
             <ChevronRight className="size-4" />
           </button>
         </div>
+
+        {/* Return-to-guide strip: while a Guided Circuit is active, selecting a
+            component pauses its steps — surface the way back inside the drawer
+            (the floating chip only covers the collapsed-rail state). */}
+        {activeGuideId && selectionState.kind === 'component' && (
+          <div className="flex items-center justify-between gap-2 border-b border-indigo-100 bg-indigo-50/80 px-3.5 py-2 flex-shrink-0 dark:border-indigo-900/60 dark:bg-indigo-950/40">
+            <div className="min-w-0">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-300">
+                Guide paused
+              </p>
+              <p className="truncate text-[11px] text-indigo-800 dark:text-indigo-200">
+                Challenge steps hidden while inspecting
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                useCircuitStore.getState().clearSelection();
+                useUiStore.getState().setInspectorCollapsed(true);
+              }}
+              className="flex-shrink-0 rounded-lg bg-blue-600 px-2.5 py-1.5 text-[11px] font-semibold text-white transition hover:bg-blue-700"
+            >
+              Close inspector and return to guide
+            </button>
+          </div>
+        )}
 
         {/* Dynamic Tab Body View */}
         <div className="flex-1 overflow-y-auto">

@@ -2430,3 +2430,20 @@ Formula: 2 spinning icons × 13 steps/sec × 16 filter regions = ~416 filter rep
 **Verification:** 4 new regression tests in `simulation.test.ts` (35/35 in that file, 260/260 overall); probe4 re-run shows the MCB trips and the sim stops. Full gates green: typecheck + biome lint + vitest + `vite build` + 27/27 e2e (6 intentional skips).
 
 **Known remaining gaps (next):** injected faults bypass Ctrl+Z history (faultActions make no history commits); post-trip UI flow (isTripped render, reset-breaker card) to be locked into a new `e2e/faults-and-editing.spec.ts`.
+
+---
+
+## Session 2026-08-15 (part 5) — Post-trip UI verification & guided-panel/inspector collision fixes
+
+**Method:** drove the full fault→trip→reset→recover loop headlessly (`scripts/probe5-post-trip.mjs`) against the dev server — inject short on the staircase bulb, run, dismiss alert, inspect MCB, reset, re-run into the fault, clear fault, reset, clean run. Zero console errors; every intermediate state screenshotted.
+
+**Bugs found at runtime & fixed (none visible from code reading alone):**
+1. **Tripped device had no canvas affordance.** Engine set `isTripped` and traversal respected it, but the canvas kept aria `", on"` + green status dot. Now: amber dashed frame + "!" badge (fault-marker grammar), amber switch dot, aria gains `", tripped"` — probe asserts all three.
+2. **Return-to-guide chip physically blocked the Inspector rail** (Playwright "subtree intercepts pointer events"). Root cause: chip pinned at `right-4 top-28 z-20` over the 48px collapsed rail; after expanding the drawer it followed the drawer offsets into mid-canvas and ate right-clicks on the bulb beneath it. Fix: chip only renders for the **collapsed** state, offset `right-14` (matching MiniMap/ToolDock); the expanded drawer now hosts an inline **Guide paused → Close inspector and return to guide** strip (`Inspector.tsx`), and `GuidedCircuitPanel` returns null for the expanded+selected state (which also removes a pre-existing overlap where the full panel rendered over the drawer's tab strip).
+3. **Resolve hint copy wrong for fault trips** — "lower load / upgrade rating" is overload advice; short-circuit/earth-leakage trips now get "clear the injected fault, then reset the breaker" (`useSimulation.ts`, reason-aware).
+
+**Verified flow (probe output):** trip → aria `…, on, tripped` + amber marker + "⚡ CIRCUIT PROTECTION TRIPPED!" modal → dismiss → inspector Manual Breaker Control RESET enabled → reset clears marker → re-running **into** the still-injected fault re-trips (correct realism — reclosing onto a bolted fault) → clear fault + reset → sim runs clean. Note: the Toolbar "blocked while tripped" path never binds because `simResult` nullls when the sim stops; re-running while faulted simply re-trips, which is the intended teaching behaviour.
+
+**Gates:** typecheck + biome + 260/260 vitest; 27/27 e2e ×3 viewports (existing chip assertions in `two-way-staircase.spec.ts` still hold against the collapsed-state chip).
+
+**Next:** encode the verified flow as `e2e/faults-and-editing.spec.ts` (+ delete/undo, copy/paste, export JSON); phone guide dead-end (re-show affordance); then the six-item feature roadmap.
