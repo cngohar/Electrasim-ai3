@@ -594,3 +594,58 @@ describe('simulate — faults operate upstream protection', () => {
     expect(tripIds).not.toContain(rcdIsolated.id);
   });
 });
+
+describe('simulate — smooth DC residual blinding (RCD type selection)', () => {
+  /** live → rcbo → bulb(+fault) with neutral → rcbo → bulb. */
+  const dcCircuit = (rcdType: 'AC' | 'A' | 'F' | 'B') => {
+    const l = C('live-terminal');
+    const n = C('neutral-terminal');
+    const rcbo = C('rcbo', { on: true, rcdType });
+    const bulb = C('bulb', { fault: 'smooth-dc-residual' });
+    const wires = [
+      W({ c: l, p: 0 }, { c: rcbo, p: 0 }),
+      W({ c: n, p: 0 }, { c: rcbo, p: 1 }),
+      W({ c: rcbo, p: 2 }, { c: bulb, p: 0 }),
+      W({ c: rcbo, p: 3 }, { c: bulb, p: 1 }),
+    ];
+    return { rcbo, result: simulate(circuit([l, n, rcbo, bulb], wires)) };
+  };
+
+  it.each(['AC', 'A', 'F'] as const)('Type %s stays closed on smooth DC — with a blinded warning', (rcdType) => {
+    const { rcbo, result } = dcCircuit(rcdType);
+
+    expect((result.trippedComponents ?? []).map((t) => t.id)).not.toContain(rcbo.id);
+    expect(
+      result.errors.some(
+        (e) => e.includes(`Type ${rcdType}`) && e.includes('DID NOT TRIP'),
+      ),
+    ).toBe(true);
+  });
+
+  it('Type B detects the smooth DC residual and trips (BS EN 62423)', () => {
+    const { rcbo, result } = dcCircuit('B');
+
+    const trips = result.trippedComponents ?? [];
+    expect(trips.map((t) => t.id)).toContain(rcbo.id);
+    expect(trips.find((t) => t.id === rcbo.id)?.reason).toBe('ground-fault');
+    expect(result.errors.some((e) => e.includes('DID NOT TRIP'))).toBe(false);
+  });
+
+  it('smooth DC residual defaults to Type A when rcdType is unset', () => {
+    const l = C('live-terminal');
+    const n = C('neutral-terminal');
+    const rcbo = C('rcbo', { on: true }); // no rcdType → legacy state
+    const bulb = C('bulb', { fault: 'smooth-dc-residual' });
+    const wires = [
+      W({ c: l, p: 0 }, { c: rcbo, p: 0 }),
+      W({ c: n, p: 0 }, { c: rcbo, p: 1 }),
+      W({ c: rcbo, p: 2 }, { c: bulb, p: 0 }),
+      W({ c: rcbo, p: 3 }, { c: bulb, p: 1 }),
+    ];
+
+    const result = simulate(circuit([l, n, rcbo, bulb], wires));
+
+    expect((result.trippedComponents ?? []).map((t) => t.id)).not.toContain(rcbo.id);
+    expect(result.errors.some((e) => e.includes('Type A') && e.includes('DID NOT TRIP'))).toBe(true);
+  });
+});

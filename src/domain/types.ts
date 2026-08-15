@@ -142,8 +142,19 @@ export type FaultType =
   | 'terminal-disconnect'
   | 'switched-neutral'
   | 'live-to-earth'
+  | 'smooth-dc-residual'
   | 'protection-forced-open'
   | 'protection-bypass';
+
+/**
+ * Residual-current device classification (BS 7671 Reg 531.3.3 selects by
+ * the fault-current waveforms the load may produce):
+ * - `'AC'` sinusoidal AC residual only (legacy — not for new installs)
+ * - `'A'`  AC + pulsating DC; tolerates ≤6 mA smooth DC, does not detect it
+ * - `'F'`  Type A + mixed/high frequency; tolerates ≤10 mA smooth DC
+ * - `'B'`  all-current-sensitive — also detects smooth DC (BS EN 62423)
+ */
+export type RCDType = 'AC' | 'A' | 'F' | 'B';
 
 /**
  * Fault kinds that can be mirrored onto the legacy per-wire `fault` field.
@@ -239,6 +250,13 @@ export interface ComponentState {
   /** Protection device tripped status (for breakers/fuses). */
   isTripped?: boolean;
   tripReason?: 'overload' | 'short-circuit' | 'ground-fault' | 'manual-fault';
+
+  /**
+   * Residual-current classification on RCD/RCBO devices (default `'A'`).
+   * Only `'B'` trips on `smooth-dc-residual` faults; AC/A/F are blind to the
+   * DC component (BS EN 62423 tolerance 6 mA for A, 10 mA for F).
+   */
+  rcdType?: RCDType;
 
   /** Battery chemistry affecting internal resistance and discharge curve. */
   batteryChemistry?: 'alkaline' | 'li-ion' | 'lead-acid';

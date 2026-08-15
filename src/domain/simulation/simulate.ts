@@ -68,10 +68,10 @@ export function simulate(circuit: Circuit, options: SimulateOptions = {}): Simul
   const tripProtectionForFault = (
     faultedId: string,
     kind: 'short-circuit' | 'ground-fault',
-    extraFilter?: (type: string) => boolean,
+    extraFilter?: (type: string, device: (typeof circuit.components)[number]) => boolean,
   ) => {
     const devices = findProtectionDevicesInNetwork(faultedId, circuit, defs).filter(
-      (d) => !extraFilter || extraFilter(d.type),
+      (d) => !extraFilter || extraFilter(d.type, d),
     );
     for (const dev of devices) {
       if (trippedIds.has(dev.id)) continue;
@@ -464,7 +464,42 @@ export function simulate(circuit: Circuit, options: SimulateOptions = {}): Simul
       // Trip only the RCD/RCBO devices guarding the faulted network
       // (previously tripped every RCD/RCBO on the canvas, even on isolated networks)
       if (faultAnchorId) {
-        tripProtectionForFault(faultAnchorId, 'ground-fault', (t) => t.includes('rcd') || t.includes('rcbo'));
+        tripProtectionForFault(
+          faultAnchorId,
+          'ground-fault',
+          (t) => t.includes('rcd') || t.includes('rcbo'),
+        );
+      }
+    } else if (fault.type === 'smooth-dc-residual') {
+      errors.push(
+        `🌊 SMOOTH DC RESIDUAL: Power-electronic earth leakage on ${def.label} — only Type B residual devices can detect a smooth DC component (BS EN 62423, BS 7671 Reg 531.3.3).`,
+      );
+      if (faultAnchorId) {
+        const isResidual = (t: string) => t.includes('rcd') || t.includes('rcbo');
+        const residualDevices = findProtectionDevicesInNetwork(faultAnchorId, circuit, defs).filter(
+          (d) => isResidual(d.type),
+        );
+        // Type B trips (all-current-sensitive); AC/A/F are blind at this magnitude.
+        tripProtectionForFault(
+          faultAnchorId,
+          'ground-fault',
+          (t, dev) => isResidual(t) && (dev.state.rcdType ?? 'A') === 'B',
+        );
+        for (const dev of residualDevices) {
+          const rcdType = dev.state.rcdType ?? 'A';
+          if (rcdType === 'B') continue;
+          const devLabel = defs[dev.type]?.label ?? dev.type;
+          const tolerance = rcdType === 'F' ? '≤10 mA' : rcdType === 'A' ? '≤6 mA' : 'none';
+          errors.push(
+            `🚫 ${devLabel} (Type ${rcdType}) DID NOT TRIP: smooth DC residual current is outside Type ${rcdType} detection (superimposed-DC tolerance ${tolerance}) — this load needs a Type B device or 6 mA RDC-DD protection.`,
+          );
+          errorComponents.add(dev.id);
+        }
+        if (residualDevices.length === 0) {
+          warnings.push(
+            'No residual-current device guards this network — no RCD present to evaluate for DC blinding.',
+          );
+        }
       }
     } else if (fault.type === 'protection-bypass') {
       warnings.push(`⚡ PROTECTION BYPASS: Overcurrent protection bypassed on ${def.label}!`);

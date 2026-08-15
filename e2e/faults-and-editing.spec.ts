@@ -163,6 +163,62 @@ test.describe('faults & editing', () => {
     await expect(faultAlertDialog(page)).toBeHidden();
   });
 
+  test('smooth DC residual leakage blinds a Type A RCBO but trips it once set to Type B', async ({
+    page,
+  }) => {
+    const rcboId = `${RCBO_TEMPLATE}-rcbo`;
+    const socketId = `${RCBO_TEMPLATE}-socket`;
+    const manualFaultDialog = (p: Page) =>
+      p.getByRole('dialog').filter({ has: p.getByText('SMOOTH DC RESIDUAL') });
+
+    await loadGuide(page, RCBO_TEMPLATE, 'RCBO-Protected Socket');
+    await runSim(page);
+
+    // Template default is Type A (modern baseline). A smooth DC residual
+    // fault must NOT trip it — the app stops the sim and explains the
+    // blinding instead (BS EN 62423 / BS 7671 Reg 531.3.3).
+    await hitbox(page, socketId).click({ button: 'right' });
+    await page.getByRole('button', { name: 'Inject Smooth DC Residual (EV/PV fault)' }).click();
+
+    await page.getByRole('button', { name: /^Run Simulation$/ }).click();
+    await expect(manualFaultDialog(page)).toBeVisible();
+    await expect(manualFaultDialog(page)).toContainText('RCD BLINDED');
+    await expect(faultAlertDialog(page)).toHaveCount(0);
+
+    const rcboAria = hitboxIn(page.locator(`[data-component-id="${rcboId}"]`));
+    await expect(rcboAria).not.toHaveAttribute('aria-label', /, tripped/);
+    await expect(page.getByRole('button', { name: /^Stop$/ })).toBeHidden();
+    await manualFaultDialog(page)
+      .getByRole('button', { name: 'Close modal' })
+      .click();
+    await expect(manualFaultDialog(page)).toBeHidden();
+
+    // Re-spec the device as Type B in the Inspector — the deliberate fix a
+    // BS 7671-compliant install specifies for EV/PV/VFD loads.
+    await hitbox(page, rcboId).click();
+    await page.getByRole('button', { name: 'Properties & Settings' }).click();
+    await page.getByRole('button', { name: /SMOOTH DC/ }).click();
+    await expect(page.getByText('Type B', { exact: true })).toBeVisible();
+
+    // Same fault, same run — now the Type B device trips like an earth fault.
+    await page.getByRole('button', { name: /^Run Simulation$/ }).click();
+    await expect(faultAlertDialog(page)).toBeVisible();
+    await expect(faultAlertDialog(page)).toContainText('RCBO (32A 30mA)');
+    await expect(rcboAria).toHaveAttribute('aria-label', /, tripped/);
+    await dismissFaultAlert(page);
+
+    // Full recovery: clear the fault, reset the RCBO, clean run.
+    await page.getByRole('button', { name: 'Collapse Inspector' }).first().click();
+    await hitbox(page, socketId).click({ button: 'right' });
+    await page.getByRole('button', { name: 'Clear Injected Fault' }).click();
+    await resetBreakerViaInspector(page, rcboId);
+    await page.getByRole('button', { name: /^Run Simulation$/ }).click();
+    await expect(page.getByRole('button', { name: /^Stop$/ })).toBeVisible();
+    await expect(faultAlertDialog(page)).toBeHidden();
+    await expect(manualFaultDialog(page)).toHaveCount(0);
+    await expect(rcboAria).not.toHaveAttribute('aria-label', /, tripped/);
+  });
+
   test('deleting a component asks for confirmation and Ctrl+Z restores it', async ({ page }) => {
     const bulbId = `${STAIRCASE}-bulb`;
     await loadGuide(page, STAIRCASE, 'Two-Way Staircase Light');

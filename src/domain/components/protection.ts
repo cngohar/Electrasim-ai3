@@ -87,7 +87,7 @@ export const PROTECTION_DEFS: Record<string, ComponentDef> = {
   rcd: {
     label: 'RCD / RCCB (80A 30mA)',
     description:
-      'Residual Current Device represented as a two-pole manual control. The simulator does not calculate leakage current, mA trip thresholds, or trip timing.',
+      'Residual Current Device (two-pole). Trips on >30 mA earth leakage and on smooth DC residual faults only when set to Type B; select the residual type in the Inspector.',
     category: 'protection',
     isSwitch: true,
     isPassThrough: true,
@@ -107,7 +107,7 @@ export const PROTECTION_DEFS: Record<string, ComponentDef> = {
   rcbo: {
     label: 'RCBO (32A 30mA)',
     description:
-      'Combined overcurrent and residual-current device. Pro mode provides an educational overload estimate, but does not calculate leakage or standards-compliant trip thresholds and timing.',
+      'Combined overcurrent and residual-current device (Type B MCB curve, 32 A). Trips on bolted short and 30 mA+ earth leakage; RCD type AC/A/F/B selectable — only Type B sees smooth DC.',
     category: 'protection',
     isSwitch: true,
     isPassThrough: true,

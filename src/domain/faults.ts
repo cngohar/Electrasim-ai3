@@ -194,6 +194,24 @@ export const FAULT_REGISTRY: Record<FaultType, FaultDefinition> = {
       'Replace moisture-damaged, degraded, or pinched cable run.',
   },
 
+  'smooth-dc-residual': {
+    id: 'smooth-dc-residual',
+    label: 'Smooth DC Residual Leakage (EV/PV/VFD)',
+    category: 'earth',
+    targetType: 'component',
+    severity: 'critical',
+    standardReference: 'BS EN 62423 & BS 7671 Reg 531.3.3 (RCD type selection)',
+    icon: 'Waves',
+    description:
+      'Power-electronic loads (EV chargers, PV inverters, variable-speed drives) can leak smooth DC residual current that the toroidal core of Type AC/A/F RCDs cannot detect — the device stays closed on a live earth fault.',
+    simulationEffect:
+      'Injects >10 mA of smooth DC residual current. Only a Type B device in the same network trips; Type AC/A/F tolerate at most 6/10 mA exposed DC before their core saturates and never detect this magnitude.',
+    detectionBehavior:
+      'Type B RCD/RCBO trips instantly. Type AC/A/F devices show no response — a standard handheld RCD ramp test uses AC and would still PASS, which is why selection by load type matters.',
+    repairBehavior:
+      'Fit a Type B RCD/RCBO on circuits feeding EV charge points, PV inverters or VFDs, or use EVSE with built-in 6 mA DC detection (RDC-DD, IEC 62955) upstream of a Type A device.',
+  },
+
   // ── 4. Protection Faults ──────────────────────────────────────────────────
   'protection-forced-open': {
     id: 'protection-forced-open',

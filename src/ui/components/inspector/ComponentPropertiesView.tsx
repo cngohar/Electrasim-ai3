@@ -99,6 +99,68 @@ export function ComponentPropertiesView({
         </div>
       </div>
 
+      {/* RCD residual-current type selector (RCD / RCBO only) */}
+      {(selectedComp.type.includes('rcd') || selectedComp.type.includes('rcbo')) &&
+        (() => {
+          const currentType = selectedComp.state.rcdType ?? 'A';
+          const options = [
+            {
+              type: 'AC' as const,
+              hint: 'AC sine only',
+              note: 'Legacy — not for new installs',
+            },
+            { type: 'A' as const, hint: '+ pulsating DC', note: 'Modern baseline (≤6 mA DC ok)' },
+            { type: 'F' as const, hint: '+ mixed frequency', note: 'VSD loads (≤10 mA DC ok)' },
+            { type: 'B' as const, hint: '+ SMOOTH DC', note: 'EV/PV (BS EN 62423)' },
+          ];
+          return (
+            <div className="rounded-xl border border-slate-200 bg-slate-50/80 p-3 dark:border-slate-800 dark:bg-slate-950/60 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="font-bold text-slate-800 dark:text-slate-200">
+                  Residual Current Type
+                </span>
+                <span className="rounded-full bg-sky-100 px-2 py-0.5 font-mono text-[10px] font-bold text-sky-700 dark:bg-sky-950 dark:text-sky-300">
+                  Type {currentType}
+                </span>
+              </div>
+              <div className="grid grid-cols-4 gap-1">
+                {options.map((option) => (
+                  <button
+                    key={option.type}
+                    type="button"
+                    title={option.note}
+                    onClick={() =>
+                      useCircuitStore
+                        .getState()
+                        .updateComponentState(selectedComp.id, { rcdType: option.type })
+                    }
+                    className={`rounded-lg border p-1 text-center transition ${
+                      currentType === option.type
+                        ? 'border-sky-500 bg-sky-600 text-white dark:bg-sky-600'
+                        : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-100 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300'
+                    }`}
+                  >
+                    <span className="block text-[10px] font-bold">{option.type}</span>
+                    <span
+                      className={`block text-[8px] leading-tight ${
+                        currentType === option.type
+                          ? 'text-sky-100'
+                          : 'text-slate-400 dark:text-slate-500'
+                      }`}
+                    >
+                      {option.hint}
+                    </span>
+                  </button>
+                ))}
+              </div>
+              <p className="text-[10px] text-slate-500 dark:text-slate-400">
+                Smooth DC residual faults (EV/PV/VFD leakage) are invisible to Types AC/A/F — only
+                Type B trips (BS 7671 Reg 531.3.3).
+              </p>
+            </div>
+          );
+        })()}
+
       {/* Variants Selection Gallery (Moved to top above Fault Simulation & Telemetry) */}
       {variantEntries.length > 1 && (
         <div className="space-y-1.5">

@@ -213,6 +213,11 @@ export function useSimulation() {
                 faultReason = `A manual earth leakage / missing ground fault was injected on ${compLabel}.`;
                 resolution =
                   'Fault Clearing Instructions:\n1. Click "Clear Fault" in the Inspector panel.\n2. Ensure continuous CPC protective bonding.';
+              } else if (fType === 'smooth-dc-residual') {
+                faultTitle = '🌊 SMOOTH DC RESIDUAL — RCD BLINDED!';
+                faultReason = `A smooth DC residual fault (EV/PV/VFD earth leakage) was injected on ${compLabel}. Type AC/A/F residual devices cannot detect smooth DC — the sensing toroid saturates and the device stays closed on a live earth fault (BS EN 62423, BS 7671 Reg 531.3.3). Only a Type B device trips on it.`;
+                resolution =
+                  'Fault Clearing Instructions:\n1. Select the guarding RCD/RCBO and set its Residual Current Type to B in the Inspector (EV/PV/VFD circuits need Type B or 6 mA RDC-DD protection).\n2. Click "Clear Fault" on the faulted component.\n3. Restart simulation and confirm the Type B device trips.';
               }
 
               const faultAlert = {

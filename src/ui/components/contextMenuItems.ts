@@ -330,6 +330,22 @@ export function buildItems(target: ContextMenuState['target']): MenuEntry[] {
       },
     });
 
+    items.push({
+      icon: Unlink,
+      label: 'Inject Smooth DC Residual (EV/PV fault)',
+      disabled: comp?.state.fault === 'smooth-dc-residual',
+      action: () => {
+        useCircuitStore.getState().setComponentFault(target.id, 'smooth-dc-residual');
+        useUiStore
+          .getState()
+          .addLog(
+            `Injected Smooth DC Residual fault on ${def?.label ?? 'component'} — only Type B RCD/RCBOs detect it`,
+            'warning',
+          );
+        close();
+      },
+    });
+
     items.push({ separator: true });
 
     items.push({

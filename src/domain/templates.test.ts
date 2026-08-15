@@ -106,7 +106,8 @@ describe('guided circuit templates', () => {
       difficulty: 'Intermediate',
       topic: 'Combined circuit protection',
     });
-    expect(template.teaches).toContain('not current, leakage, trip thresholds, or trip timing');
+    expect(template.teaches).toContain('Earth-leakage and bolted-short faults trip it');
+    expect(template.teaches).toContain('residual type (AC/A/F/B)');
     expect(template.steps).toHaveLength(3);
     expect(template.faultPrompt).toContain('outgoing RCBO conductor');
     expect(template.circuit.components).toHaveLength(6);
