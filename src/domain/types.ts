@@ -273,6 +273,15 @@ export interface ComponentInstance {
  */
 export type WirePathKind = 'bezier' | 'orthogonal';
 
+/**
+ * BS 7671 Appendix 4 installation Reference Methods supported by the sim:
+ * - `'C'`  clipped direct to a surface (best case, the default)
+ * - `'B1'` enclosed in conduit on a wall
+ * - `'A'`  enclosed in conduit inside thermal insulation (worst case)
+ * Lower methods carry less current for the same conductor size.
+ */
+export type InstallationMethod = 'C' | 'B1' | 'A';
+
 export interface WireInstance {
   id: string;
   fromComponentId: string;
@@ -306,6 +315,11 @@ export interface WireInstance {
   deratingFactor?: number;
   /** Optional custom cross-section gauge in mm² (e.g. 1.0, 1.5, 2.5, 4.0, 6.0, 10.0, 16.0). */
   customCableMm2?: number;
+  /**
+   * BS 7671 installation Reference Method for base ampacity (default `'C'`).
+   * Multiplied with {@link deratingFactor} (Cg grouping/ambient) by callers.
+   */
+  installationMethod?: InstallationMethod;
   /** True if wire was melted/busted due to severe current overload without protection. */
   isBusted?: boolean;
   bustedReason?: string;

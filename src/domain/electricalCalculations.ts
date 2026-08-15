@@ -7,6 +7,49 @@ export const ELECTRICAL_DEFAULTS = {
   deratingFactor: 1,
 } as const;
 
+import { getCableAmpacity } from './simulation/tripCurves';
+import type { InstallationMethod } from './types';
+
+/**
+ * Resistivity multiplier bringing 20 °C conductor resistance to its 70 °C
+ * operating value (1 + α·ΔT, α ≈ 0.0039/K for Cu/Al ⇒ ≈ 1.2). Used only for
+ * sizes outside the tabulated BS 7671 range and for aluminum.
+ */
+const TEMP_FACTOR_70C = 1.2;
+
+/**
+ * Tabulated mV/A/m (both conductors) per BS 7671 Appendix 4 Table 4D5,
+ * 70 °C thermoplastic flat twin-and-earth, COPPER, ≤ 16 mm² — the values
+ * used for Regulation 525 voltage-drop checks.
+ */
+const MV_PER_AMP_METER_COPPER: readonly (readonly [number, number])[] = [
+  [1.0, 44],
+  [1.5, 29],
+  [2.5, 18],
+  [4.0, 11],
+  [6.0, 7.3],
+  [10.0, 4.4],
+  [16.0, 2.8],
+];
+
+/**
+ * Two-way mV/A/m for voltage-drop checks. Tabulated BS 7671 values for
+ * standard copper T&E sizes; falls back to the 70 °C-corrected resistivity
+ * model for aluminum and for non-standard metric/AWG-derived sizes.
+ */
+export function getMillivoltAmpMeter(mm2: number, material: 'copper' | 'aluminum'): number {
+  if (material === 'copper' && Number.isFinite(mm2) && mm2 > 0) {
+    for (const [size, mv] of MV_PER_AMP_METER_COPPER) {
+      if (mm2 <= size) return mv;
+    }
+  }
+  const resistivity =
+    material === 'aluminum'
+      ? ELECTRICAL_DEFAULTS.aluminumResistivityOhmMm2PerM
+      : ELECTRICAL_DEFAULTS.copperResistivityOhmMm2PerM;
+  return mm2 > 0 ? (2 * resistivity * TEMP_FACTOR_70C * 1000) / mm2 : 0;
+}
+
 export function awgToMm2(awg: number): number {
   const map: Record<number, number> = {
     10: 5.26,
@@ -20,21 +63,20 @@ export function awgToMm2(awg: number): number {
   return map[awg] ?? 2.08;
 }
 
+/**
+ * Ampacity for the wire-inspector / validation path. Delegates to the
+ * audit-corrected BS 7671 table in `simulation/tripCurves.ts` (installed
+ * Reference Method selectable); aluminum uses the Module's traditional 0.78
+ * conductivity factor off the copper values — a teaching approximation,
+ * BS 7671 publishes separate Al tables.
+ */
 export function getStandardCableAmpacity(
   mm2: number,
   material: 'copper' | 'aluminum' = 'copper',
+  method: InstallationMethod = 'C',
 ): number {
   if (!Number.isFinite(mm2) || mm2 <= 0) return 0;
-  let baseAmpacity = 85;
-  if (mm2 <= 0.5) baseAmpacity = 6;
-  else if (mm2 <= 0.82) baseAmpacity = 9;
-  else if (mm2 <= 1) baseAmpacity = 11;
-  else if (mm2 <= 1.5) baseAmpacity = 16;
-  else if (mm2 <= 2.5) baseAmpacity = 27;
-  else if (mm2 <= 4) baseAmpacity = 37;
-  else if (mm2 <= 6) baseAmpacity = 47;
-  else if (mm2 <= 10) baseAmpacity = 65;
-
+  const baseAmpacity = getCableAmpacity(mm2, method);
   return material === 'aluminum' ? Math.round(baseAmpacity * 0.78) : baseAmpacity;
 }
 
@@ -47,6 +89,8 @@ export interface ElectricalCalculationInput {
   deratingFactor?: number;
   material?: 'copper' | 'aluminum';
   gauge?: number;
+  /** BS 7671 installation Reference Method for base ampacity (default `'C'`). */
+  installationMethod?: InstallationMethod;
 }
 
 export interface ElectricalCalculation {
@@ -114,13 +158,14 @@ export function calculateElectricalValues(
   const lengthMeters = Math.max(0.1, rawLength);
   const deratingFactor = Math.max(0.1, Math.min(1, rawDerating));
   const material = input.material === 'aluminum' ? 'aluminum' : 'copper';
-  const resistivity =
-    material === 'aluminum'
-      ? ELECTRICAL_DEFAULTS.aluminumResistivityOhmMm2PerM
-      : ELECTRICAL_DEFAULTS.copperResistivityOhmMm2PerM;
-  const ampacityAmps = getStandardCableAmpacity(cableMm2, material);
+  const installationMethod = input.installationMethod ?? 'C';
+  const ampacityAmps = getStandardCableAmpacity(cableMm2, material, installationMethod);
   const deratedAmpacityAmps = ampacityAmps * deratingFactor;
-  const resistanceOhms = (resistivity * lengthMeters * 2) / cableMm2;
+  // BS 7671 tabulated mV/A/m (both conductors) — the Regulation 525 method;
+  // resistance is derived from the same value so the inspector's R figure
+  // always reconciles with the displayed drop.
+  const milliVoltAmpMeter = getMillivoltAmpMeter(cableMm2, material);
+  const resistanceOhms = (milliVoltAmpMeter * lengthMeters) / 1000;
   const voltageDropVolts = input.currentAmps * resistanceOhms;
   const voltageDropPercent = input.voltage > 0 ? (voltageDropVolts / input.voltage) * 100 : 0;
   const status =

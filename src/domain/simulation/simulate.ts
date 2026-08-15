@@ -281,7 +281,7 @@ export function simulate(circuit: Circuit, options: SimulateOptions = {}): Simul
         const toCable = toComp.state.customCableMm2 ?? toDef?.recommendedCableMm2 ?? 2.5;
 
         const cableMm2 = Math.min(fromCable, toCable);
-        const cableCap = getCableAmpacity(cableMm2);
+        const cableCap = getCableAmpacity(cableMm2, wire.installationMethod ?? 'C');
         const heatRatio = totalCircuitAmps / cableCap;
         wireHeatRatios[wire.id] = heatRatio;
 
@@ -333,6 +333,7 @@ export function simulate(circuit: Circuit, options: SimulateOptions = {}): Simul
       cableMm2,
       lengthMeters: wire.lengthMeters,
       deratingFactor: wire.deratingFactor,
+      installationMethod: wire.installationMethod,
     });
     wireCalculations[wire.id] = calculation;
     if (options.appMode === 'pro' && calculation.status === 'warning') {

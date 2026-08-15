@@ -578,6 +578,15 @@ export const useCircuitStore = create<CircuitState>()(
           ) {
             w.customCableMm2 = updates.customCableMm2;
           }
+          if (
+            'installationMethod' in updates &&
+            (updates.installationMethod === undefined ||
+              updates.installationMethod === 'C' ||
+              updates.installationMethod === 'B1' ||
+              updates.installationMethod === 'A')
+          ) {
+            w.installationMethod = updates.installationMethod;
+          }
           if (updates.material === 'copper' || updates.material === 'aluminum') {
             w.material = updates.material;
           }

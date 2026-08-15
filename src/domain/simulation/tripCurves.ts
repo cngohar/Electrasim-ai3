@@ -6,32 +6,43 @@
  * no React / DOM imports so it can ship into `simulation.worker.ts`.
  *
  * Accuracy baseline (2026-08 audit against published references):
- * - Ampacity: BS 7671:2018 Appendix 4, Table 4D5, Reference Method C
- *   (clipped direct), 70°C thermoplastic flat twin-and-earth, 30 °C ambient.
+ * - Ampacity: BS 7671:2018 Appendix 4, 70 °C PVC copper, 30 °C ambient —
+ *   Table 4D5 (Method C), Table 4D1 (Method B1), Table 4D2A (Method A).
  * - MCB: IEC/EN 60898-1 time-current zones (Inf = 1.13×In, If = 1.45×In,
  *   2.55×In calibration point, instantaneous bands B 3–5 / C 5–10 / D 10–20×In).
  * - RCD: IEC/EN 61008-1 maximum break times, general (non-delayed) type.
  */
 
+import type { InstallationMethod } from '../types';
+
 /**
- * Get cable current carrying capacity in Amps per BS 7671 Table 4D5,
- * Reference Method C (clipped direct), 70 °C PVC twin-and-earth.
+ * Cable current-carrying capacity in Amps per BS 7671:2018 Appendix 4,
+ * 70 °C thermoplastic (PVC) two-core copper cable, 30 °C ambient — the
+ * table the twin-and-earth values of Table 4D5 come from.
  *
- * NOTE: installation method materially changes capacity. Method A
- * (enclosed in thermal insulation) derates 1.0 mm² to ~11 A and 1.5 mm²
- * to ~14 A; grouping, ambient temperature and insulation length apply
- * further correction factors (Appendix 4 Tables 4B1–4C5). This sim trains
- * on the best-case Method C values; educational copy should tell users a
- * real design must apply the derating factors.
+ * Reference Methods (single circuit, so no Cg grouping factor):
+ * - **C** (clipped direct): Table 4D5 — 16/20/27/37/47/64/85 A
+ * - **B1** (enclosed in conduit on a wall): Table 4D1 — 13.5/17.5/24/32/41/57/76 A
+ * - **A** (enclosed in conduit in thermal insulation): Table 4D2A —
+ *   11/14/18.5/25/32/43/57 A
+ *
+ * Grouping, ambient temperature and long runs through insulation apply
+ * FURTHER correction factors (Tables 4B1–4C5); callers multiply those on
+ * top via the wire's Cg derating factor.
  */
-export function getCableAmpacity(mm2: number): number {
-  if (mm2 <= 1.0) return 16;
-  if (mm2 <= 1.5) return 20;
-  if (mm2 <= 2.5) return 27;
-  if (mm2 <= 4.0) return 37;
-  if (mm2 <= 6.0) return 47;
-  if (mm2 <= 10.0) return 64;
-  return 85;
+const AMPACITY_SIZES = [1.0, 1.5, 2.5, 4.0, 6.0, 10.0] as const;
+const AMPACITY_BY_METHOD: Record<InstallationMethod, readonly number[]> = {
+  C: [16, 20, 27, 37, 47, 64, 85],
+  B1: [13.5, 17.5, 24, 32, 41, 57, 76],
+  A: [11, 14, 18.5, 25, 32, 43, 57],
+};
+
+export function getCableAmpacity(mm2: number, method: InstallationMethod = 'C'): number {
+  const table = AMPACITY_BY_METHOD[method] ?? AMPACITY_BY_METHOD.C;
+  for (let i = 0; i < AMPACITY_SIZES.length; i++) {
+    if (mm2 <= AMPACITY_SIZES[i]) return table[i];
+  }
+  return table[table.length - 1];
 }
 
 /**

@@ -2461,3 +2461,22 @@ Formula: 2 spinning icons × 13 steps/sec × 16 filter regions = ~416 filter rep
 **Suite now:** 39 passed / 12 skipped (6 intentional + 6 new phone-skips) / 0 failed ×3 viewports; `npm run check` (typecheck+biome+261 vitest) green; prod build OK.
 
 **Remaining roadmap:** six product features (installation-method selector, wire-length Vd, RCD types, AFDD, mini-EIC, Zs checker) → then final gates, docs, bundle, push.
+
+---
+
+## Session 2026-08-15 (part 7) — Feature roadmap 1+2: installation methods & standards-grade voltage drop
+
+**Scope (from the accuracy audit backlog):** (a) installation-method selector on wires, (b) BS 7671 mV/A/m voltage drop. Found existing scaffolding (`lengthMeters`, `deratingFactor`, `material`, `customCableMm2` + a per-wire `ElectricalCalculation`) but the data behind it pre-dated the audit: `getStandardCableAmpacity` was still the OLD mixed-method table (1.5 mm² → 16 A) disagreeing with the corrected `tripCurves.getCableAmpacity` (20 A Method C), and voltage drop used 20 °C resistivity, understating drops ~20 % vs the tabulated 70 °C values.
+
+**Changes:**
+- `types.ts`: `InstallationMethod = 'C' | 'B1' | 'A'`; `WireInstance.installationMethod`.
+- `tripCurves.ts`: `getCableAmpacity(mm2, method='C')` backed by three Appendix-4 tables (C 16/20/27/37/47/64/85; B1 13.5/17.5/24/32/41/57/76; A 11/14/18.5/25/32/43/57) — values from the 2026-08 web-verified audit.
+- `electricalCalculations.ts`: `getStandardCableAmpacity` delegates to the tripCurves tables (single source of truth; Al stays the documented ×0.78 approximation); new `getMillivoltAmpMeter` (Table 4D5 44/29/18/11/7.3/4.4/2.8 mV/A/m for Cu T&E ≤16 mm²; ×1.2 70 °C resistivity fallback); `calculateElectricalValues` accepts `installationMethod` and derives resistance from the same mV/A/m it uses for the drop.
+- `simulate.ts`: melt/overload ampacity + per-wire calculation both take the wire's method.
+- `circuitStore.updateWireProperties`: whitelists `installationMethod` (validated enum) — **probe6 caught this silently dropping the field before the fix.**
+- `WireInspectorView`: "Installation Method (BS 7671)" picker (C/B1/A with one-line hints) + live "N A base × Cg = M A effective" readout.
+- Tests: updated the three audit-stale expectations (1.5 mm² = 20 A; Cu 2.5/10 m/5 A Vd = 0.9 V; Al ≈ 1.35 V), added B1/A ampacity it.each blocks (14 rows), calc-level method test, 3 %-limit warning test. **279 unit + 39 e2e green.**
+
+**Verified at runtime (scripts/probe6-wire-method.mjs):** force-click wire (SVG zero-bbox workaround documented in the script) → Method picker renders; C→27 A base, B1→24 A, effective readout correct; zero console errors. Note: wires are NOT clickable by Playwright's normal actionability because a straight SVG path's bbox has no area — `.click({ force: true })` centres on the line.
+
+**Remaining roadmap:** RCD type (AC/A/F/B) + DC-blinding fault, AFDD + arc-fault, mini-EIC report, Zs/disconnection checker; then full gates, docs, bundle/push (user holds push until all done).

@@ -37,6 +37,33 @@ describe('getCableAmpacity (BS 7671 Table 4D5, Method C)', () => {
   });
 });
 
+describe('getCableAmpacity — installation Reference Methods B1 and A', () => {
+  it.each([
+    // Table 4D1 (B1, enclosed in conduit on a wall)
+    [1.0, 'B1', 13.5],
+    [1.5, 'B1', 17.5],
+    [2.5, 'B1', 24],
+    [4.0, 'B1', 32],
+    [6.0, 'B1', 41],
+    [10.0, 'B1', 57],
+    [16.0, 'B1', 76],
+    // Table 4D2A (A, enclosed in conduit in thermal insulation)
+    [1.0, 'A', 11],
+    [1.5, 'A', 14],
+    [2.5, 'A', 18.5],
+    [4.0, 'A', 25],
+    [6.0, 'A', 32],
+    [10.0, 'A', 43],
+    [16.0, 'A', 57],
+  ] as const)('%i mm² @ %s → %i A', (mm2, method, amps) => {
+    expect(getCableAmpacity(mm2, method as 'B1' | 'A')).toBe(amps);
+  });
+
+  it('keeps Method C as the default for back-compat', () => {
+    expect(getCableAmpacity(2.5)).toBe(getCableAmpacity(2.5, 'C'));
+  });
+});
+
 describe('calculateMCBTrip (IEC 60898-1)', () => {
   it('never trips below Inf = 1.13×In, even after an hour', () => {
     const r = calculateMCBTrip(16 * 1.12, 16, 'B', 3600);

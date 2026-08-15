@@ -4,7 +4,8 @@
  */
 
 import { Trash2 } from 'lucide-react';
-import type { SimulationResult, WireInstance } from '../../../domain';
+import type { InstallationMethod, SimulationResult, WireInstance } from '../../../domain';
+import { getCableAmpacity } from '../../../domain/simulation';
 import { useCircuitStore } from '../../../store';
 import { requestDeleteWire } from '../../canvas-actions';
 
@@ -20,6 +21,7 @@ export function WireInspectorView({
   const currentGauge = wire.customCableMm2 ?? 2.5;
   const currentPathKind = wire.pathKind ?? 'orthogonal';
   const currentDerating = wire.deratingFactor ?? 1.0;
+  const currentMethod: InstallationMethod = wire.installationMethod ?? 'C';
 
   const handleLengthChange = (m: number) => {
     useCircuitStore.getState().updateWireProperties(wire.id, { lengthMeters: m });
@@ -37,7 +39,14 @@ export function WireInspectorView({
     useCircuitStore.getState().updateWireProperties(wire.id, { deratingFactor: f });
   };
 
+  const handleMethodChange = (method: InstallationMethod) => {
+    useCircuitStore.getState().updateWireProperties(wire.id, { installationMethod: method });
+  };
+
   const handleDeleteWire = () => requestDeleteWire(wire.id);
+
+  /** Base (pre-Cg) ampacity for the current size + reference method — BS 7671. */
+  const baseAmpacity = getCableAmpacity(currentGauge, currentMethod);
 
   return (
     <div className="p-3.5 space-y-4 text-xs">
@@ -133,6 +142,55 @@ export function WireInspectorView({
             </button>
           ))}
         </div>
+      </div>
+
+      {/* Installation Method (BS 7671) */}
+      <div className="rounded-xl border border-slate-200 bg-slate-50/80 p-3 dark:border-slate-800 dark:bg-slate-950/60 space-y-2">
+        <div className="flex items-center justify-between">
+          <span className="font-bold text-slate-800 dark:text-slate-200">
+            Installation Method (BS 7671)
+          </span>
+          <span className="font-mono text-xs font-bold text-emerald-600 dark:text-emerald-400">
+            {baseAmpacity} A base
+          </span>
+        </div>
+
+        <div className="grid grid-cols-3 gap-1.5">
+          {(
+            [
+              { method: 'C', label: 'Method C', hint: 'Clipped direct' },
+              { method: 'B1', label: 'Method B1', hint: 'Conduit on wall' },
+              { method: 'A', label: 'Method A', hint: 'Thermal insulation' },
+            ] as const
+          ).map((option) => (
+            <button
+              key={option.method}
+              type="button"
+              onClick={() => handleMethodChange(option.method)}
+              className={`rounded-lg border p-1.5 text-center transition ${
+                currentMethod === option.method
+                  ? 'border-emerald-500 bg-emerald-600 text-white dark:bg-emerald-600'
+                  : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-100 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300'
+              }`}
+            >
+              <span className="block text-[10px] font-bold">{option.label}</span>
+              <span
+                className={`block text-[9px] ${
+                  currentMethod === option.method
+                    ? 'text-emerald-100'
+                    : 'text-slate-400 dark:text-slate-500'
+                }`}
+              >
+                {option.hint}
+              </span>
+            </button>
+          ))}
+        </div>
+        <p className="text-[10px] text-slate-500 dark:text-slate-400">
+          Reference installation method sets the base ampacity for {currentGauge} mm²; the Cg
+          derating factor below then applies on top ({baseAmpacity} A × {currentDerating.toFixed(2)}{' '}
+          = {(baseAmpacity * currentDerating).toFixed(1)} A effective).
+        </p>
       </div>
 
       {/* Routing Style */}
