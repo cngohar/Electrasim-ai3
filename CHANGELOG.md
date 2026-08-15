@@ -11,6 +11,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **Standards audit — trip-curve & ampacity data corrected against published references (web-verified 2026-08):**
+  - `getCableAmpacity` claimed "BS 7671 Table 4D5" but mixed installation methods: 1.0 mm² and 1.5 mm² returned derated Method-A-ish values (11 A / 16 A) while the rest of the table was Method C. Now consistently Reference Method C (clipped direct): 1.0 → 16 A, 1.5 → 20 A, 2.5 → 27 A, 4 → 37 A, 6 → 47 A, 10 → 64 A, 16 → 85 A, with a header note that Methods A/B and grouping/ambient factors derate further.
+  - `calculateMCBTrip` thermal model `t = 3600/(m²−1)` let a 2.55×In overload persist ~654 s — IEC 60898-1 Table 7 mandates trip between 1 s and 60 s. Replaced with a power law fitted exactly through the two IEC anchors (1.45×In → 3600 s, 2.55×In → 60 s), reproducing the published 0.1–45 s Type B response band at 3–5×In.
+  - MCB instantaneous trip previously fired from the *lower* band edge (3×In for Type B), where IEC 60898-1 only demands the *no-trip* test; guaranteed magnetic trip is now modelled at ≥ the upper edge (5/10/20×In for B/C/D).
+  - `calculateRCDTrip` interpolated linearly from 300 ms → 40 ms, giving 235 ms at 2×IΔn vs the IEC 61008-1 / BS 7671 Table 3A limit of 150 ms. Now a stepped curve: 300 ms @ 1×, 150 ms @ 2×, 40 ms @ 5×IΔn.
+- Branch `fix/bs7671-data-accuracy`.
+
+### Added
+- **`tripCurves.test.ts` standards-locking regression suite** (+25 tests, 256 total) — every expectation is a published objective value (BS 7671 Table 4D5 ampacities; IEC 60898-1 Inf/If/2.55×In anchors and instantaneous band edges; IEC 61008-1 break times), so the protection physics can no longer silently drift.
+
+### Content verified accurate (no change)
+- Blog: BS 7671 Amendment 4:2026 dates (published 15 Apr 2026, Orange Book, A3 withdrawal 15 Oct 2026), AFDD Reg 421.1.7 scope (A2:2022, ≤32 A socket circuits in HRRB/HMO/PBSA/care homes), EICR intervals (5-year statutory PRS England / 10-year owner-occupier recommendation), socket 30 mA RCD requirement, immersion 13 A, EV 7.36 kW @ 32 A.
+
 ### Added
 - **Component variant imagery** — generated studio-style product photos for the ten component variants referenced by `componentImages.ts` but never committed: RCBO, MCB Type C / Type D, industrial MCCB, SPD, USB / GFCI sockets, cooker switch, dimmer switch, and PIR sensor. The production build no longer fails on unresolved image imports.
 - **`ConnectionValidationResult.warnings`** — the connection validator now exposes non-blocking diagnostics as an optional array, matching what the canvas interaction layer expected when logging wire-creation warnings.

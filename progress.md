@@ -2373,3 +2373,22 @@ Formula: 2 spinning icons × 13 steps/sec × 16 filter regions = ~416 filter rep
 - `ComponentLayer.tsx` 889 → 97 + `ComponentNode.tsx` + `ComponentTooltip.tsx`.
 - `ContextMenu.tsx` 728 → ~150 + `contextMenuItems.ts`.
 - `circuitValidation.ts` 889 → 835 + `circuitValidationTypes.ts` (the remainder is one cohesive `validateCircuit()` pass; intentionally left unsplit).
+
+---
+
+## Session 2026-08-15 (part 2) — Real-world data accuracy audit (web-verified)
+
+**Task (user request):** "have you actually checked that all info in this repo is accurate according to real world data? … if not then correct" — full fact-check of engineering/regulatory claims against authoritative web sources.
+
+**Method:** inventoried every factual surface — `simulation/tripCurves.ts` (ampacity table + MCB/RCD curves), component definitions, `componentHelp/` educational copy, `faults.ts` testing prose, validation rules, and astro-site blog regulatory claims — then web-verified the load-bearing numbers against BS 7671 / IEC 60898-1 / IEC 61008-1 references.
+
+**Corrections made** (branch `fix/bs7671-data-accuracy`):
+1. **Cable ampacity** was a mixed-method table masquerading as "BS 7671 Table 4D5": 1.0 mm² = 11 A and 1.5 mm² = 16 A are derated (Method A/B-territory) values; corrected to consistent Reference Method C: 16/20/27/37/47/64/85 A. Header now explicitly documents the Method C assumption + derating caveat.
+2. **MCB thermal curve** `t = 3600/(m²−1)` violated IEC 60898-1 Table 7: 2.55×In persisted ~654 s vs mandated 1–60 s. Replaced with power law `t = K/(m²−1)^α` (K = 4615.65876415, α = 2.5468325498) fitted exactly through both IEC anchors; also reproduces the published 0.1–45 s Type B response band at 3–5×In.
+3. **Magnetic trip threshold** modelled at the *lower* band edge (3×In) where IEC only specifies the *no-trip* test; now instantaneous at ≥ upper band edge (B 5×, C 10×, D 20×In).
+4. **RCD break times** were linearly interpolated (235 ms at 2×IΔn vs IEC 61008-1 limit 150 ms); now stepped 300/150/40 ms at 1×/2×/5×IΔn.
+5. **New `tripCurves.test.ts`** — 25 regression tests whose expectations are the published standard values themselves, locking the physics against future drift. 256/256 green, lint clean, build OK.
+
+**Verified accurate, no change required:** Amendment 4:2026 blog (dates, Orange Book, transition), AFDD 421.1.7 blog scope, EICR 5/10-year intervals, socket ≤32 A 30 mA RCD requirement, GFCI/UL 943 refs, immersion 3 kW ≈ 13 A, EV 7.36 kW @ 32 A, LED efficacy figures, insulation-resistance ≥1 MΩ test minimum, twin-socket 20 A combined rating.
+
+**Follow-up ideas surfaced by the audit (product features):** installation-method/derating selector, wire-length voltage-drop checks, Zs/disconnection checker, RCD type (AC/A/F/B) selection with DC-blinding fault scenario, AFDD component + arc-fault scenario, mini-EIC report export.
