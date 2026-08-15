@@ -81,4 +81,17 @@
       "enabled": false
     }
   }
+,
+  "overrides": [
+    {
+      "include": ["src/ui/canvas/ComponentNode.tsx", "src/ui/canvas/ComponentLayer.tsx"],
+      "linter": {
+        "rules": {
+          "a11y": {
+            "useSemanticElements": "off"
+          }
+        }
+      }
+    }
+  ]
 }

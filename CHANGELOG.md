@@ -35,6 +35,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Restored `.gitignore`** — its rules had been overwritten with prose, leaving `node_modules/` and `dist/` untracked; standard build/test/editor ignores are back in place.
 - **Restored canvas keyboard / screen-reader roles** — the v0 roadmap merge had removed `role="button"` from component and wire hitboxes, breaking the accessibility contract locked in `CircuitCanvas.test.tsx` (3 failing tests); the roles are back and the suite is green again.
 
+### Added (refactor follow-ups)
+- **Context-menu item builder extraction** — the 507-line `buildItems` target-aware menu definition moved out of `ContextMenu.tsx` into `contextMenuItems.ts` (pure data builders; the dialog component now reads at ~150 lines).
+- **Validation report types module** — `circuitValidation.ts` types now live in `circuitValidationTypes.ts`, re-exported from the original path.
+
+### Fixed (refactor follow-ups)
+- **Latent lint failure on `role="button"` SVG hit-targets** — the pre-existing `useSemanticElements` error on port circles (unsupressible via comments in Biome 1.9.4 at that nesting) is now handled with a scoped override in `biome.json` for the canvas component-node files; the two stale (never-binding) inline suppression comments were removed. `biome lint` now exits clean with zero warnings for the first time.
+
 ## [1.6.1] — 2026-07-21
 
 ### Added

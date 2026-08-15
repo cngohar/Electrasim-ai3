@@ -196,7 +196,6 @@ export function ComponentNode({
           pointerEvents="none"
         />
       )}
-      {/* biome-ignore lint/a11y/useSemanticElements: SVG groups cannot contain HTML buttons. */}
       <g
         role="button"
         data-component-hitbox
@@ -615,7 +614,6 @@ export function ComponentNode({
       </g>
 
       {definition.isMomentary && (
-        // biome-ignore lint/a11y/useSemanticElements: SVG groups cannot contain HTML buttons.
         <g
           role="button"
           data-momentary-control={component.id}
@@ -711,6 +709,37 @@ export function ComponentNode({
           portStrokeWidth = 1;
         }
 
+        const portCircle = (
+          <circle
+            data-port-index={portIndex}
+            cx={port.relX * COMP_W}
+            cy={port.relY * COMP_H}
+            r={portRadius}
+            fill={portFill}
+            stroke={portStroke}
+            strokeWidth={portStrokeWidth}
+            tabIndex={0}
+            role="button"
+            aria-label={`${port.label ?? port.type} port on ${definition.label} ${component.id}${compat?.message ? ` (${compat.message})` : ''}`}
+            style={{ cursor: 'crosshair' }}
+            onPointerDown={(event) => {
+              if (event.button === 0) event.stopPropagation();
+            }}
+            onClick={(event) => {
+              event.stopPropagation();
+              onPortClick(component.id, portIndex);
+            }}
+            onKeyDown={(event) => {
+              if (event.key !== 'Enter' && event.key !== ' ') return;
+              event.preventDefault();
+              event.stopPropagation();
+              onPortClick(component.id, portIndex);
+            }}
+          >
+            {compat?.message && <title>{compat.message}</title>}
+          </circle>
+        );
+
         return (
           <g key={portIndex} opacity={activeSource && isInvalid && !pending ? 0.45 : 1}>
             {showPortLabel && (
@@ -728,34 +757,7 @@ export function ComponentNode({
                 {port.label}
               </text>
             )}
-            <circle
-              data-port-index={portIndex}
-              cx={port.relX * COMP_W}
-              cy={port.relY * COMP_H}
-              r={portRadius}
-              fill={portFill}
-              stroke={portStroke}
-              strokeWidth={portStrokeWidth}
-              tabIndex={0}
-              role="button"
-              aria-label={`${port.label ?? port.type} port on ${definition.label} ${component.id}${compat?.message ? ` (${compat.message})` : ''}`}
-              style={{ cursor: 'crosshair' }}
-              onPointerDown={(event) => {
-                if (event.button === 0) event.stopPropagation();
-              }}
-              onClick={(event) => {
-                event.stopPropagation();
-                onPortClick(component.id, portIndex);
-              }}
-              onKeyDown={(event) => {
-                if (event.key !== 'Enter' && event.key !== ' ') return;
-                event.preventDefault();
-                event.stopPropagation();
-                onPortClick(component.id, portIndex);
-              }}
-            >
-              {compat?.message && <title>{compat.message}</title>}
-            </circle>
+            {portCircle}
           </g>
         );
       })}
