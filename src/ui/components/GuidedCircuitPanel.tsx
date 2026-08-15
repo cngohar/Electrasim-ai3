@@ -1,6 +1,17 @@
-import { Check, ChevronRight, Circle, Lightbulb, RotateCcw, Trophy, X } from 'lucide-react';
+import {
+  Check,
+  ChevronLeft,
+  ChevronRight,
+  Circle,
+  Lightbulb,
+  MousePointerClick,
+  RotateCcw,
+  Trophy,
+  X,
+} from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { getChallengeProgress } from '../../domain/challengeProgress';
+import { COMPONENT_DEFS } from '../../domain/components';
 import { cloneTemplateCircuit, getGuidedCircuitTemplate } from '../../domain/templates';
 import { markChallengeCompleted } from '../../lib/challengeProgressPersistence';
 import { useCircuitStore, useUiStore } from '../../store';
@@ -15,7 +26,8 @@ export function GuidedCircuitPanel({ isPhone }: Props) {
   const simResult = useUiStore((s) => s.simResult);
   const components = useCircuitStore((s) => s.components);
   const wires = useCircuitStore((s) => s.wires);
-  const inspectorVisible = useCircuitStore((s) => s.selectedComponentId !== null);
+  const selectedComponentId = useCircuitStore((s) => s.selectedComponentId);
+  const inspectorVisible = selectedComponentId !== null;
   const [showHint, setShowHint] = useState(false);
   const template = activeGuideId ? getGuidedCircuitTemplate(activeGuideId) : undefined;
   const progress = useMemo(
@@ -30,7 +42,51 @@ export function GuidedCircuitPanel({ isPhone }: Props) {
     if (template && progress?.completed) markChallengeCompleted(template.id);
   }, [template, progress?.completed]);
 
-  if (!template || (!isPhone && inspectorVisible) || !progress) return null;
+  if (!template || !progress) return null;
+
+  // Guided hand-off (desktop/tablet): selecting a component hides the step
+  // checklist so the Inspector can take over. Offer an explicit, discoverable
+  // way back — previously the only return path was clicking empty canvas to
+  // deselect, which stranded users mid-challenge.
+  if (!isPhone && inspectorVisible) {
+    const selected = components.find((c) => c.id === selectedComponentId);
+    const selectedLabel = selected ? (COMPONENT_DEFS[selected.type]?.label ?? null) : null;
+    return (
+      <aside className="absolute right-4 top-28 z-20 w-56 overflow-hidden rounded-2xl border border-white/80 bg-white/95 shadow-xl shadow-slate-900/10 ring-1 ring-slate-900/5 backdrop-blur-xl lg:w-[340px] dark:border-slate-700/80 dark:bg-slate-900/95 dark:ring-slate-700/50">
+        <div className="flex items-start gap-3 border-b border-slate-100 px-4 py-3 dark:border-slate-700/60">
+          <div className="mt-0.5 grid size-8 flex-shrink-0 place-items-center rounded-xl bg-indigo-600 text-white shadow-sm shadow-indigo-600/30">
+            <MousePointerClick className="size-4" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <h2 className="text-sm font-semibold leading-tight text-slate-900 dark:text-slate-100">
+              Inspector
+            </h2>
+            <p className="mt-0.5 text-[10px] font-medium uppercase tracking-wider text-indigo-600 dark:text-indigo-300">
+              Guide paused
+            </p>
+          </div>
+        </div>
+        <div className="space-y-3 px-4 py-3">
+          <p className="text-xs leading-relaxed text-slate-600 dark:text-slate-300">
+            {selectedLabel
+              ? `${selectedLabel} is selected. The challenge steps are hidden while you inspect it.`
+              : 'A component is selected. The challenge steps are hidden while you inspect it.'}
+          </p>
+          <button
+            type="button"
+            onClick={() => {
+              useCircuitStore.getState().clearSelection();
+              useUiStore.getState().setInspectorCollapsed(true);
+            }}
+            className="flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-3 py-2 text-xs font-semibold text-white shadow-sm shadow-blue-600/30 transition hover:bg-blue-700"
+          >
+            <ChevronLeft className="size-3.5" />
+            Close inspector and return to guide
+          </button>
+        </div>
+      </aside>
+    );
+  }
 
   const restart = () => {
     useCircuitStore.getState().setCircuit(cloneTemplateCircuit(template));
