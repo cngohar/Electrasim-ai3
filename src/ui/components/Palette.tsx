@@ -9,6 +9,7 @@ import { useMemo, useState } from 'react';
 import { COMPONENT_DEFS } from '../../domain';
 import { useUiStore } from '../../store';
 import { useSettingsStore } from '../../store/settingsStore';
+import { getComponentImage } from './componentImages';
 
 interface PaletteEntry {
   type: string;
@@ -258,6 +259,11 @@ export function Palette({ open, isPhone }: Props) {
                 <div className="grid grid-cols-3 gap-2">
                   {cat.items.map((it) => {
                     const active = placingType === it.type;
+                    const isLighting =
+                      cat.category.toLowerCase() === 'lighting' ||
+                      it.type.startsWith('bulb') ||
+                      it.type === 'led-downlight' ||
+                      it.type === 'tube-light';
                     return (
                       <button
                         type="button"
@@ -272,7 +278,18 @@ export function Palette({ open, isPhone }: Props) {
                             : 'border-slate-200 bg-white text-slate-700 hover:border-blue-300 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300',
                         ].join(' ')}
                       >
-                        <span className="text-2xl leading-none">{it.icon}</span>
+                        {isLighting ? (
+                          <div className="size-8 rounded-lg overflow-hidden bg-slate-900 flex items-center justify-center p-0.5 border border-slate-700/60">
+                            <img
+                              src={getComponentImage(it.type, 'lighting')}
+                              alt={it.label}
+                              referrerPolicy="no-referrer"
+                              className="size-full object-contain"
+                            />
+                          </div>
+                        ) : (
+                          <span className="text-2xl leading-none">{it.icon}</span>
+                        )}
                         <span className="truncate text-center w-full">{it.label}</span>
                       </button>
                     );
@@ -375,27 +392,55 @@ export function Palette({ open, isPhone }: Props) {
               {cat.items.map((it) => {
                 const active = placingType === it.type;
                 const isProItem = it.tier === 'pro';
+                const isLighting =
+                  cat.category.toLowerCase() === 'lighting' ||
+                  it.type.startsWith('bulb') ||
+                  it.type === 'led-downlight' ||
+                  it.type === 'tube-light';
                 return (
-                  <button
-                    type="button"
-                    key={it.type}
-                    title={`Click to place ${it.label} on canvas${isProItem ? ' (Pro Component)' : ''}`}
-                    onClick={() => useUiStore.getState().setPlacingType(active ? null : it.type)}
-                    className={[
-                      'relative flex flex-col items-center gap-1 rounded-xl border px-2 py-2.5 text-[10px] font-medium shadow-sm transition hover:scale-[1.03]',
-                      active
-                        ? 'border-blue-400 bg-blue-50 text-blue-700 ring-2 ring-blue-200 dark:bg-blue-950/60 dark:text-blue-400 dark:border-blue-600 dark:ring-blue-900'
-                        : 'border-slate-200/80 bg-white/80 text-slate-700 hover:border-blue-300 hover:bg-white hover:text-blue-700 dark:border-slate-700 dark:bg-slate-800/80 dark:text-slate-300 dark:hover:border-blue-500 dark:hover:bg-slate-700/80 dark:hover:text-blue-400',
-                    ].join(' ')}
-                  >
-                    {isProItem && (
-                      <span className="absolute top-1 right-1 rounded bg-purple-100 px-1 py-0.5 text-[8px] font-bold text-purple-700 dark:bg-purple-900/60 dark:text-purple-300">
-                        PRO
-                      </span>
-                    )}
-                    <span className="text-xl leading-none">{it.icon}</span>
-                    <span className="truncate text-center w-full px-1">{it.label}</span>
-                  </button>
+                  <div key={it.type} className="relative group">
+                    <button
+                      type="button"
+                      title={`Click to place ${it.label} on canvas${isProItem ? ' (Pro Component)' : ''}`}
+                      onClick={() => useUiStore.getState().setPlacingType(active ? null : it.type)}
+                      className={[
+                        'w-full flex flex-col items-center gap-1 rounded-xl border px-2 py-2.5 text-[10px] font-medium shadow-sm transition hover:scale-[1.02]',
+                        active
+                          ? 'border-blue-400 bg-blue-50 text-blue-700 ring-2 ring-blue-200 dark:bg-blue-950/60 dark:text-blue-400 dark:border-blue-600 dark:ring-blue-900'
+                          : 'border-slate-200/80 bg-white/80 text-slate-700 hover:border-blue-300 hover:bg-white hover:text-blue-700 dark:border-slate-700 dark:bg-slate-800/80 dark:text-slate-300 dark:hover:border-blue-500 dark:hover:bg-slate-700/80 dark:hover:text-blue-400',
+                      ].join(' ')}
+                    >
+                      {isProItem && (
+                        <span className="absolute top-1 left-1 rounded bg-purple-100 px-1 py-0.5 text-[8px] font-bold text-purple-700 dark:bg-purple-900/60 dark:text-purple-300">
+                          PRO
+                        </span>
+                      )}
+                      {isLighting ? (
+                        <div className="size-8 rounded-lg overflow-hidden bg-slate-900 flex items-center justify-center p-0.5 border border-slate-700/60 shadow-2xs">
+                          <img
+                            src={getComponentImage(it.type, 'lighting')}
+                            alt={it.label}
+                            referrerPolicy="no-referrer"
+                            className="size-full object-contain"
+                          />
+                        </div>
+                      ) : (
+                        <span className="text-xl leading-none">{it.icon}</span>
+                      )}
+                      <span className="truncate text-center w-full px-1">{it.label}</span>
+                    </button>
+                    <button
+                      type="button"
+                      title={`View ${it.label} Technical Specifications`}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        useUiStore.getState().setActiveComponentInfoType(it.type);
+                      }}
+                      className="absolute top-1 right-1 p-0.5 rounded-full bg-slate-100 hover:bg-sky-500 text-slate-400 hover:text-white dark:bg-slate-800 dark:hover:bg-sky-600 transition shadow-sm cursor-pointer z-10"
+                    >
+                      <span className="text-[9px] font-bold block w-3.5 h-3.5 leading-none text-center">?</span>
+                    </button>
+                  </div>
                 );
               })}
             </div>

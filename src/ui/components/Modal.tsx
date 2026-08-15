@@ -12,7 +12,7 @@
  * portals, animations, or a richer focus trap.
  */
 
-import { useId, useRef } from 'react';
+import { type ReactNode, useEffect, useId, useRef, useState } from 'react';
 import { useDialogFocus } from '../hooks/useDialogFocus';
 
 export interface ModalProps {
@@ -23,8 +23,8 @@ export interface ModalProps {
   /** Optional short subtitle/description rendered under the title. */
   description?: string;
   /** Footer slot — typically the action buttons. */
-  footer?: React.ReactNode;
-  children: React.ReactNode;
+  footer?: ReactNode;
+  children: ReactNode;
   /** Tailwind max-width override; defaults to `max-w-md`. */
   widthClass?: string;
   /** Accessible name for callers that render a custom header instead of `title`. */
@@ -43,9 +43,36 @@ export function Modal({
 }: ModalProps) {
   const titleId = useId();
   const panelRef = useRef<HTMLDivElement | null>(null);
-  useDialogFocus(open, onClose, panelRef);
+  const [mounted, setMounted] = useState(open);
+  const [isClosing, setIsClosing] = useState(false);
 
-  if (!open) return null;
+  useEffect(() => {
+    if (open) {
+      setMounted(true);
+      setIsClosing(false);
+    } else if (mounted && !isClosing) {
+      setIsClosing(true);
+      const timer = window.setTimeout(() => {
+        setMounted(false);
+        setIsClosing(false);
+      }, 200);
+      return () => window.clearTimeout(timer);
+    }
+  }, [open, mounted, isClosing]);
+
+  const handleRequestClose = () => {
+    if (isClosing) return;
+    setIsClosing(true);
+    window.setTimeout(() => {
+      onClose();
+      setMounted(false);
+      setIsClosing(false);
+    }, 200);
+  };
+
+  useDialogFocus(mounted && !isClosing, handleRequestClose, panelRef);
+
+  if (!mounted) return null;
 
   return (
     <dialog
@@ -58,13 +85,17 @@ export function Modal({
       <button
         type="button"
         aria-label="Close"
-        className="absolute inset-0 cursor-default bg-slate-900/40 backdrop-blur-sm"
-        onClick={onClose}
+        className={`absolute inset-0 cursor-default bg-slate-950/60 backdrop-blur-md transition-all ${
+          isClosing ? 'animate-modal-backdrop-out' : 'animate-modal-backdrop-in'
+        }`}
+        onClick={handleRequestClose}
       />
       <div
         ref={panelRef}
         tabIndex={-1}
-        className={`relative min-w-0 w-full ${widthClass} max-h-[calc(100dvh-2rem)] max-w-[calc(100vw-2rem)] overflow-y-auto rounded-2xl border border-white/80 bg-white shadow-2xl shadow-slate-900/20 ring-1 ring-slate-900/10 outline-none dark:border-slate-700/80 dark:bg-slate-900 dark:ring-slate-700/50`}
+        className={`relative min-w-0 w-full ${widthClass} max-h-[calc(100dvh-2rem)] max-w-[calc(100vw-2rem)] overflow-y-auto rounded-2xl border border-slate-200/90 bg-white shadow-2xl shadow-slate-950/40 ring-1 ring-slate-900/10 outline-none dark:border-slate-700/80 dark:bg-slate-900 dark:ring-slate-700/50 ${
+          isClosing ? 'animate-modal-panel-out' : 'animate-modal-panel-in'
+        }`}
       >
         {title && (
           <div className="border-b border-slate-100 px-5 py-4 dark:border-slate-700/60">

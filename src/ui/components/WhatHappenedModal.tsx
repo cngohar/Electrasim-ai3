@@ -8,7 +8,7 @@ import {
   X,
   Zap,
 } from 'lucide-react';
-import { useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useCircuitStore, useUiStore } from '../../store';
 import { useSettingsStore } from '../../store/settingsStore';
 import { useDialogFocus } from '../hooks/useDialogFocus';
@@ -22,24 +22,50 @@ export function WhatHappenedModal() {
   const components = useCircuitStore((s) => s.components);
   const wires = useCircuitStore((s) => s.wires);
   const appMode = useSettingsStore((s) => s.appMode);
-  const panelRef = useRef<HTMLDialogElement | null>(null);
-  const close = () => setWhatHappenedOpen(false);
-  useDialogFocus(whatHappenedOpen, close, panelRef);
 
-  if (!whatHappenedOpen) return null;
+  const [mounted, setMounted] = useState(whatHappenedOpen);
+  const [isClosing, setIsClosing] = useState(false);
+  const panelRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (whatHappenedOpen) {
+      setMounted(true);
+      setIsClosing(false);
+    } else if (mounted && !isClosing) {
+      setIsClosing(true);
+      const timer = window.setTimeout(() => {
+        setMounted(false);
+        setIsClosing(false);
+      }, 200);
+      return () => window.clearTimeout(timer);
+    }
+  }, [whatHappenedOpen, mounted, isClosing]);
+
+  const handleClose = () => {
+    if (isClosing) return;
+    setIsClosing(true);
+    window.setTimeout(() => {
+      setWhatHappenedOpen(false);
+      setMounted(false);
+      setIsClosing(false);
+    }, 200);
+  };
+
+  useDialogFocus(mounted && !isClosing, handleClose, panelRef);
+
+  if (!mounted) return null;
 
   const activeAlert = faultAlert ?? lastFaultAlert;
-
   const hasBlownComponents = components.some((c) => c.state?.isBlown);
   const hasBustedWires = wires.some((w) => w.isBusted);
 
   const handleRepair = () => {
     repairAllFaults();
-    setWhatHappenedOpen(false);
     useUiStore.getState().clearFaultAlert();
     useUiStore
       .getState()
       .addLog('Circuit repaired — all blown components and melted cables restored.', 'success');
+    handleClose();
   };
 
   const isShort =
@@ -47,14 +73,26 @@ export function WhatHappenedModal() {
   const isMelt = activeAlert?.kind === 'melt' || activeAlert?.title?.toLowerCase().includes('melt');
 
   return (
-    <div className="fixed inset-0 z-110 flex items-center justify-center p-4 bg-slate-950/75 backdrop-blur-md animate-fade-in">
-      <dialog
-        open
+    <dialog
+      open
+      aria-modal="true"
+      aria-labelledby="what-happened-title"
+      className="fixed inset-0 z-110 m-0 flex h-dvh w-screen max-h-none max-w-none items-center justify-center overflow-y-auto border-0 bg-transparent p-4"
+    >
+      <button
+        type="button"
+        aria-label="Close"
+        className={`absolute inset-0 cursor-default bg-slate-950/75 backdrop-blur-md transition-all ${
+          isClosing ? 'animate-backdrop-fade-out' : 'animate-backdrop-fade-in'
+        }`}
+        onClick={handleClose}
+      />
+      <div
         ref={panelRef}
         tabIndex={-1}
-        aria-modal="true"
-        className="w-full max-w-xl rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100"
-        aria-labelledby="what-happened-title"
+        className={`relative w-full max-w-xl rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl transition-all dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100 outline-none ${
+          isClosing ? 'animate-dialog-fade-out' : 'animate-dialog-fade-in'
+        }`}
       >
         {/* Header */}
         <div className="flex items-start justify-between border-b border-slate-200 pb-4 dark:border-slate-800">
@@ -76,9 +114,9 @@ export function WhatHappenedModal() {
           </div>
           <button
             type="button"
-            onClick={close}
+            onClick={handleClose}
             aria-label="Close fault analysis"
-            className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-200"
+            className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-200 cursor-pointer"
           >
             <X className="size-5" />
           </button>
@@ -230,21 +268,21 @@ export function WhatHappenedModal() {
         <div className="mt-6 flex flex-col-reverse sm:flex-row items-center justify-between gap-3 border-t border-slate-200 pt-4 dark:border-slate-800">
           <button
             type="button"
-            onClick={close}
-            className="w-full sm:w-auto rounded-xl border border-slate-200 px-4 py-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-100 dark:border-slate-800 dark:text-slate-300 dark:hover:bg-slate-800"
+            onClick={handleClose}
+            className="w-full sm:w-auto rounded-xl border border-slate-200 px-4 py-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-100 dark:border-slate-800 dark:text-slate-300 dark:hover:bg-slate-800 cursor-pointer"
           >
             Close Guide
           </button>
           <button
             type="button"
             onClick={handleRepair}
-            className="w-full sm:w-auto flex items-center justify-center gap-2 rounded-xl bg-emerald-600 px-5 py-2.5 text-xs font-bold text-white shadow-md hover:bg-emerald-700 transition-all active:scale-95 dark:bg-emerald-600 dark:hover:bg-emerald-500"
+            className="w-full sm:w-auto flex items-center justify-center gap-2 rounded-xl bg-emerald-600 px-5 py-2.5 text-xs font-bold text-white shadow-md hover:bg-emerald-700 transition-all active:scale-95 dark:bg-emerald-600 dark:hover:bg-emerald-500 cursor-pointer"
           >
             <RefreshCw className="size-4" />
             Repair & Reset Circuit
           </button>
         </div>
-      </dialog>
-    </div>
+      </div>
+    </dialog>
   );
 }

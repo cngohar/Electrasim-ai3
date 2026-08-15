@@ -51,7 +51,7 @@ export function WelcomeModal() {
   return (
     <dialog
       open
-      className="fixed inset-0 z-50 m-0 flex h-dvh w-screen max-h-none max-w-none items-start justify-center overflow-y-auto border-0 bg-transparent p-4 sm:items-center"
+      className="fixed inset-0 z-50 m-0 flex h-dvh w-screen max-h-none max-w-none items-center justify-center overflow-y-auto border-0 bg-transparent p-4"
       aria-modal="true"
       aria-label="Welcome to ElectraSim"
     >
@@ -59,7 +59,7 @@ export function WelcomeModal() {
       <button
         type="button"
         aria-label="Close"
-        className="absolute inset-0 cursor-default bg-slate-900/50 backdrop-blur-sm"
+        className="absolute inset-0 cursor-default bg-slate-900/50 backdrop-blur-sm animate-backdrop-fade-in"
         onClick={close}
       />
 
@@ -67,7 +67,7 @@ export function WelcomeModal() {
       <div
         ref={panelRef}
         tabIndex={-1}
-        className="relative max-h-[calc(100dvh-2rem)] w-full max-w-md overflow-y-auto rounded-2xl border border-white/80 bg-white shadow-2xl shadow-slate-900/20 ring-1 ring-slate-900/10 outline-none dark:border-slate-700/80 dark:bg-slate-900 dark:ring-slate-700/50"
+        className="relative max-h-[calc(100dvh-2rem)] w-full max-w-md overflow-y-auto rounded-2xl border border-white/80 bg-white shadow-2xl shadow-slate-900/20 ring-1 ring-slate-900/10 outline-none animate-dialog-fade-in dark:border-slate-700/80 dark:bg-slate-900 dark:ring-slate-700/50"
       >
         {/* Header */}
         <div className="relative overflow-hidden bg-gradient-to-br from-blue-600 to-blue-700 px-6 py-5 text-white">

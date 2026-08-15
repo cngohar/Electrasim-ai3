@@ -1,4 +1,4 @@
-import imgLightBulb from '../../assets/images/component_light_bulb_1786248966297.jpg';
+import imgLightBulb from '../../assets/images/bulb_led_a60_1786782205960.jpg';
 import imgLightSwitch from '../../assets/images/component_light_switch_1786249016724.jpg';
 import imgMcbBreaker from '../../assets/images/component_mcb_breaker_1786248947812.jpg';
 import imgRcdSwitch from '../../assets/images/component_rcd_switch_1786249000503.jpg';
@@ -10,237 +10,69 @@ import imgEvCharger from '../../assets/images/ev_charger_station_1786333648320.j
 import imgRelayModule from '../../assets/images/relay_module_1786522047102.jpg';
 import imgSolarPanel from '../../assets/images/solar_panel_pv_1786333628876.jpg';
 import imgTransformer24v from '../../assets/images/transformer_24v_1786522030718.jpg';
-import imgVariantBulbHalogen from '../../assets/images/variant_bulb_halogen.png';
-import imgVariantBulbIncandescent from '../../assets/images/variant_bulb_incandescent.png';
+import imgVariantBulbHalogen from '../../assets/images/bulb_halogen_gu10_1786782231855.jpg';
+import imgVariantBulbIncandescent from '../../assets/images/bulb_incandescent_edison_1786782216775.jpg';
 import imgVariantCeilingFan from '../../assets/images/variant_ceiling_fan.png';
 import imgVariantExtractorFan from '../../assets/images/variant_extractor_fan.png';
 import imgVariantIndustrialExhaustFan from '../../assets/images/variant_industrial_exhaust_fan.png';
-import imgVariantLedDownlight from '../../assets/images/variant_led_downlight.png';
+import imgVariantLedDownlight from '../../assets/images/bulb_led_downlight_1786782271149.jpg';
 import imgVariantMotor from '../../assets/images/variant_motor.png';
 import imgVariantTableFan from '../../assets/images/variant_table_fan.png';
-import imgVariantTubeLight from '../../assets/images/variant_tube_light.png';
+import imgVariantTubeLight from '../../assets/images/bulb_tube_light_1786782285212.jpg';
+import imgVariantCflBulb from '../../assets/images/bulb_cfl_spiral_1786782245054.jpg';
+import imgVariantSmartRgb from '../../assets/images/bulb_smart_rgb_1786782258296.jpg';
+import imgVariantRcbo from '../../assets/images/variant_rcbo_breaker_1786780527368.jpg';
+import imgVariantMcbTypeC from '../../assets/images/variant_mcb_type_c_1786780544186.jpg';
+import imgVariantMccb from '../../assets/images/variant_mccb_industrial_1786780558864.jpg';
+import imgVariantSpd from '../../assets/images/variant_spd_surge_1786780572651.jpg';
+import imgVariantSocketUsb from '../../assets/images/variant_socket_usb_1786780587870.jpg';
+import imgVariantSocketGfci from '../../assets/images/variant_socket_gfci_1786780599469.jpg';
+import imgVariantCookerSwitch from '../../assets/images/variant_cooker_switch_1786780613299.jpg';
+import imgVariantDimmer from '../../assets/images/variant_dimmer_switch_1786780625706.jpg';
+import imgVariantPirSensor from '../../assets/images/variant_pir_sensor_1786780637436.jpg';
+import imgVariantMcbTypeD from '../../assets/images/variant_mcb_type_d_1786780651637.jpg';
 
-function svg(content: string): string {
-  return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(content.trim())}`;
-}
-
-// ─── UNIQUE VARIANT ILLUSTRATION GENERATORS ───
-
-const svgIncandescent = svg(`
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 250" width="100%" height="100%">
-  <rect width="400" height="250" fill="#0f172a"/>
-  <circle cx="200" cy="110" r="75" fill="rgba(251, 146, 60, 0.15)" filter="blur(10px)"/>
-  <circle cx="200" cy="110" r="50" fill="none" stroke="#f97316" stroke-width="2" stroke-dasharray="4 2"/>
-  <path d="M 175 110 Q 200 60 225 110" fill="none" stroke="#fdba74" stroke-width="3"/>
-  <path d="M 185 110 L 195 80 M 215 110 L 205 80" stroke="#f97316" stroke-width="2"/>
-  <path d="M 170 140 C 170 110 230 110 230 140 C 230 160 215 170 215 185 L 185 185 C 185 170 170 160 170 140 Z" fill="rgba(255,255,255,0.08)" stroke="#fdba74" stroke-width="2.5"/>
-  <rect x="182" y="185" width="36" height="25" rx="3" fill="#94a3b8" stroke="#cbd5e1" stroke-width="2"/>
-  <line x1="182" y1="193" x2="218" y2="193" stroke="#475569" stroke-width="2"/>
-  <line x1="182" y1="201" x2="218" y2="201" stroke="#475569" stroke-width="2"/>
-  <path d="M 190 210 Q 200 218 210 210" fill="#334155"/>
-  <text x="200" y="238" font-family="sans-serif" font-size="13" font-weight="bold" fill="#f97316" text-anchor="middle">INCANDESCENT 60W TUNGSTEN</text>
-</svg>`);
-
-const svgHalogen = svg(`
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 250">
-  <rect width="400" height="250" fill="#0f172a"/>
-  <polygon points="200,60 130,160 270,160" fill="rgba(254, 240, 138, 0.12)" stroke="#eab308" stroke-width="2"/>
-  <ellipse cx="200" cy="160" rx="70" ry="18" fill="none" stroke="#fde047" stroke-width="3"/>
-  <rect x="185" y="80" width="30" height="45" rx="5" fill="#fef08a" opacity="0.85"/>
-  <line x1="193" y1="160" x2="193" y2="195" stroke="#cbd5e1" stroke-width="4"/>
-  <line x1="207" y1="160" x2="207" y2="195" stroke="#cbd5e1" stroke-width="4"/>
-  <text x="200" y="235" font-family="sans-serif" font-size="13" font-weight="bold" fill="#eab308" text-anchor="middle">HALOGEN 50W SPOTLIGHT</text>
-</svg>`);
-
-const svgCfl = svg(`
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 250">
-  <rect width="400" height="250" fill="#0f172a"/>
-  <path d="M 175,150 C 175,80 190,60 200,60 C 210,60 225,80 225,150" fill="none" stroke="#38bdf8" stroke-width="12" stroke-linecap="round"/>
-  <path d="M 160,150 C 160,70 180,45 200,45 C 220,45 240,70 240,150" fill="none" stroke="#e0f2fe" stroke-width="8" stroke-linecap="round"/>
-  <rect x="170" y="150" width="60" height="30" rx="4" fill="#f8fafc"/>
-  <rect x="180" y="180" width="40" height="25" rx="2" fill="#94a3b8"/>
-  <text x="200" y="235" font-family="sans-serif" font-size="13" font-weight="bold" fill="#38bdf8" text-anchor="middle">CFL SPIRAL 15W COOL WHITE</text>
-</svg>`);
-
-const svgSmartRgb = svg(`
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 250">
-  <defs>
-    <linearGradient id="rgbGlow" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#ec4899"/>
-      <stop offset="50%" stop-color="#8b5cf6"/>
-      <stop offset="100%" stop-color="#06b6d4"/>
-    </linearGradient>
-  </defs>
-  <rect width="400" height="250" fill="#0f172a"/>
-  <circle cx="200" cy="105" r="55" fill="url(#rgbGlow)" opacity="0.85"/>
-  <path d="M 170 135 C 170 105 230 105 230 135 C 230 155 215 165 215 180 L 185 180 C 185 165 170 155 170 135 Z" fill="none" stroke="#a855f7" stroke-width="3"/>
-  <rect x="182" y="180" width="36" height="25" rx="3" fill="#64748b"/>
-  <path d="M 190 70 A 15 15 0 0 1 210 70 M 183 62 A 25 25 0 0 1 217 62" fill="none" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round"/>
-  <text x="200" y="235" font-family="sans-serif" font-size="13" font-weight="bold" fill="#ec4899" text-anchor="middle">SMART RGB Wi-Fi LED 10W</text>
-</svg>`);
-
-const svgMcbTypeC = svg(`
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 250">
-  <rect width="400" height="250" fill="#0f172a"/>
-  <rect x="120" y="25" width="160" height="190" rx="8" fill="#1e293b" stroke="#334155" stroke-width="3"/>
-  <rect x="140" y="45" width="120" height="150" rx="4" fill="#f8fafc"/>
-  <rect x="175" y="80" width="50" height="50" rx="6" fill="#16a34a"/>
-  <text x="200" y="110" font-family="sans-serif" font-size="16" font-weight="900" fill="#ffffff" text-anchor="middle">ON</text>
-  <text x="200" y="155" font-family="sans-serif" font-size="16" font-weight="900" fill="#0f172a" text-anchor="middle">C32</text>
-  <text x="200" y="175" font-family="sans-serif" font-size="11" font-weight="bold" fill="#16a34a" text-anchor="middle">10kA MOTOR CURVE</text>
-  <text x="200" y="235" font-family="sans-serif" font-size="13" font-weight="bold" fill="#22c55e" text-anchor="middle">MCB TYPE C 32A BREAKER</text>
-</svg>`);
-
-const svgMcbTypeD = svg(`
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 250">
-  <rect width="400" height="250" fill="#0f172a"/>
-  <rect x="120" y="25" width="160" height="190" rx="8" fill="#1e293b" stroke="#334155" stroke-width="3"/>
-  <rect x="140" y="45" width="120" height="150" rx="4" fill="#f8fafc"/>
-  <rect x="175" y="80" width="50" height="50" rx="6" fill="#d97706"/>
-  <text x="200" y="110" font-family="sans-serif" font-size="16" font-weight="900" fill="#ffffff" text-anchor="middle">ON</text>
-  <text x="200" y="155" font-family="sans-serif" font-size="16" font-weight="900" fill="#0f172a" text-anchor="middle">D63</text>
-  <text x="200" y="175" font-family="sans-serif" font-size="11" font-weight="bold" fill="#d97706" text-anchor="middle">15kA HEAVY INDUCTIVE</text>
-  <text x="200" y="235" font-family="sans-serif" font-size="13" font-weight="bold" fill="#f59e0b" text-anchor="middle">MCB TYPE D 63A BREAKER</text>
-</svg>`);
-
-const svgMccb = svg(`
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 250">
-  <rect width="400" height="250" fill="#0f172a"/>
-  <rect x="100" y="20" width="200" height="195" rx="6" fill="#334155" stroke="#475569" stroke-width="3"/>
-  <circle cx="200" cy="100" r="35" fill="#0f172a" stroke="#cbd5e1" stroke-width="3"/>
-  <line x1="200" y1="100" x2="200" y2="70" stroke="#ef4444" stroke-width="6" stroke-linecap="round"/>
-  <text x="200" y="165" font-family="sans-serif" font-size="15" font-weight="900" fill="#ffffff" text-anchor="middle">250A 3-PHASE</text>
-  <text x="200" y="185" font-family="sans-serif" font-size="11" font-weight="bold" fill="#38bdf8" text-anchor="middle">35kA INDUSTRIAL MCCB</text>
-  <text x="200" y="235" font-family="sans-serif" font-size="13" font-weight="bold" fill="#38bdf8" text-anchor="middle">MOULDED CASE BREAKER (MCCB)</text>
-</svg>`);
-
-const svgRcbo = svg(`
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 250">
-  <rect width="400" height="250" fill="#0f172a"/>
-  <rect x="130" y="25" width="140" height="190" rx="8" fill="#1e293b" stroke="#334155" stroke-width="3"/>
-  <rect x="145" y="45" width="110" height="150" rx="4" fill="#f8fafc"/>
-  <rect x="160" y="65" width="35" height="40" rx="4" fill="#2563eb"/>
-  <circle cx="220" cy="85" r="14" fill="#dc2626"/>
-  <text x="220" y="90" font-family="sans-serif" font-size="12" font-weight="bold" fill="#ffffff" text-anchor="middle">T</text>
-  <text x="200" y="140" font-family="sans-serif" font-size="15" font-weight="900" fill="#0f172a" text-anchor="middle">B16 30mA</text>
-  <text x="200" y="165" font-family="sans-serif" font-size="10" font-weight="bold" fill="#2563eb" text-anchor="middle">COMBINED RCD + MCB</text>
-  <text x="200" y="235" font-family="sans-serif" font-size="13" font-weight="bold" fill="#60a5fa" text-anchor="middle">RCBO COMBINED PROTECTION</text>
-</svg>`);
-
-const svgSpd = svg(`
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 250">
-  <rect width="400" height="250" fill="#0f172a"/>
-  <rect x="130" y="25" width="140" height="190" rx="8" fill="#1e293b" stroke="#334155" stroke-width="3"/>
-  <rect x="145" y="45" width="110" height="150" rx="4" fill="#0284c7"/>
-  <path d="M 205 60 L 185 110 L 200 110 L 195 150 L 215 100 L 200 100 Z" fill="#facc15"/>
-  <rect x="175" y="160" width="50" height="18" rx="3" fill="#22c55e"/>
-  <text x="200" y="173" font-family="sans-serif" font-size="10" font-weight="bold" fill="#ffffff" text-anchor="middle">OK</text>
-  <text x="200" y="235" font-family="sans-serif" font-size="13" font-weight="bold" fill="#38bdf8" text-anchor="middle">TYPE 2 SURGE ARRESTER (SPD)</text>
-</svg>`);
-
-const svgSocketUsb = svg(`
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 250">
-  <rect width="400" height="250" fill="#0f172a"/>
-  <rect x="80" y="30" width="240" height="170" rx="12" fill="#f8fafc" stroke="#cbd5e1" stroke-width="4"/>
-  <rect x="110" y="70" width="35" height="12" fill="#0f172a"/>
-  <rect x="255" y="70" width="35" height="12" fill="#0f172a"/>
-  <rect x="180" y="120" width="40" height="12" rx="3" fill="#0284c7"/>
-  <rect x="182" y="142" width="36" height="8" rx="4" fill="#0f172a"/>
-  <text x="200" y="235" font-family="sans-serif" font-size="13" font-weight="bold" fill="#38bdf8" text-anchor="middle">13A SOCKET + DUAL USB-A/C</text>
-</svg>`);
-
-const svgSocketGfci = svg(`
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 250">
-  <rect width="400" height="250" fill="#0f172a"/>
-  <rect x="110" y="25" width="180" height="180" rx="12" fill="#f8fafc" stroke="#cbd5e1" stroke-width="4"/>
-  <rect x="135" y="105" width="55" height="22" rx="4" fill="#dc2626"/>
-  <text x="162" y="120" font-family="sans-serif" font-size="10" font-weight="bold" fill="#ffffff" text-anchor="middle">TEST</text>
-  <rect x="210" y="105" width="55" height="22" rx="4" fill="#16a34a"/>
-  <text x="237" y="120" font-family="sans-serif" font-size="10" font-weight="bold" fill="#ffffff" text-anchor="middle">RESET</text>
-  <circle cx="200" cy="148" r="5" fill="#22c55e"/>
-  <text x="200" y="235" font-family="sans-serif" font-size="13" font-weight="bold" fill="#4ade80" text-anchor="middle">GFCI SAFETY OUTLET 20A</text>
-</svg>`);
-
-const svgCookerUnit = svg(`
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 250">
-  <rect width="400" height="250" fill="#0f172a"/>
-  <rect x="100" y="25" width="200" height="180" rx="10" fill="#f8fafc" stroke="#cbd5e1" stroke-width="4"/>
-  <rect x="130" y="55" width="50" height="70" rx="6" fill="#dc2626"/>
-  <circle cx="230" cy="65" r="8" fill="#ef4444"/>
-  <text x="200" y="170" font-family="sans-serif" font-size="14" font-weight="900" fill="#0f172a" text-anchor="middle">45A COOKER SWITCH</text>
-  <text x="200" y="235" font-family="sans-serif" font-size="13" font-weight="bold" fill="#f87171" text-anchor="middle">45A COOKER CONTROL UNIT</text>
-</svg>`);
-
-const svgDimmer = svg(`
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 250">
-  <rect width="400" height="250" fill="#0f172a"/>
-  <rect x="110" y="25" width="180" height="180" rx="12" fill="#f8fafc" stroke="#cbd5e1" stroke-width="4"/>
-  <circle cx="200" cy="115" r="45" fill="#e2e8f0" stroke="#94a3b8" stroke-width="3"/>
-  <circle cx="200" cy="115" r="35" fill="#ffffff" stroke="#64748b" stroke-width="2"/>
-  <line x1="200" y1="115" x2="225" y2="90" stroke="#0284c7" stroke-width="4" stroke-linecap="round"/>
-  <text x="200" y="235" font-family="sans-serif" font-size="13" font-weight="bold" fill="#38bdf8" text-anchor="middle">ROTARY TRAILING-EDGE DIMMER</text>
-</svg>`);
-
-const svgPirSensor = svg(`
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 250">
-  <rect width="400" height="250" fill="#0f172a"/>
-  <circle cx="200" cy="115" r="70" fill="#f8fafc" stroke="#cbd5e1" stroke-width="4"/>
-  <path d="M 150 115 A 50 50 0 0 1 250 115 Z" fill="#e0f2fe" stroke="#38bdf8" stroke-width="2"/>
-  <circle cx="200" cy="115" r="8" fill="#ef4444"/>
-  <text x="200" y="235" font-family="sans-serif" font-size="13" font-weight="bold" fill="#a855f7" text-anchor="middle">360° PIR MOTION SENSOR</text>
-</svg>`);
-
-/** Photorealistic component images registry */
+/** Photorealistic component images registry with real photography assets */
 export const COMPONENT_IMAGES: Record<string, string> = {
   // ─── LIGHTING VARIANTS ───
   bulb: imgLightBulb,
   'bulb-incandescent': imgVariantBulbIncandescent,
   'bulb-halogen': imgVariantBulbHalogen,
-  'bulb-cfl': svgCfl,
-  'bulb-smart-rgb': svgSmartRgb,
+  'bulb-cfl': imgVariantCflBulb,
+  'bulb-smart-rgb': imgVariantSmartRgb,
   'led-downlight': imgVariantLedDownlight,
   'tube-light': imgVariantTubeLight,
 
   // ─── PROTECTION & BREAKERS ───
   mcb: imgMcbBreaker,
-  'mcb-type-c': svgMcbTypeC,
-  'mcb-type-d': svgMcbTypeD,
-  mccb: svgMccb,
+  'mcb-type-c': imgVariantMcbTypeC,
+  'mcb-type-d': imgVariantMcbTypeD,
+  mccb: imgVariantMccb,
   rcd: imgRcdSwitch,
-  rcbo: svgRcbo,
-  fuse: 'https://images.unsplash.com/photo-1581092580497-e0d23cbdf1dc?w=400&auto=format&fit=crop&q=80',
-  spd: svgSpd,
-  'distribution-board':
-    'https://images.unsplash.com/photo-1558494949-ef010cbdcc31?w=400&auto=format&fit=crop&q=80',
+  rcbo: imgVariantRcbo,
+  fuse: imgVariantRcbo,
+  spd: imgVariantSpd,
+  'distribution-board': imgDistBoard3p,
 
   // ─── SWITCHES & CONTROLS ───
   'single-way-switch': imgLightSwitch,
-  'two-way-switch':
-    'https://images.unsplash.com/photo-1585338107529-13afc5f02586?w=400&auto=format&fit=crop&q=80',
-  'intermediate-switch':
-    'https://images.unsplash.com/photo-1585338107529-13afc5f02586?w=400&auto=format&fit=crop&q=80',
-  'double-pole-switch':
-    'https://images.unsplash.com/photo-1544725176-7c40e5a71c5e?w=400&auto=format&fit=crop&q=80',
-  'cooker-unit': svgCookerUnit,
-  'push-button':
-    'https://images.unsplash.com/photo-1518770660439-4636190af475?w=400&auto=format&fit=crop&q=80',
-  'rotary-selector-switch':
-    'https://images.unsplash.com/photo-1581092335397-9583fe92d232?w=400&auto=format&fit=crop&q=80',
-  contactor:
-    'https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=400&auto=format&fit=crop&q=80',
-  'fused-spur':
-    'https://images.unsplash.com/photo-1585338107529-13afc5f02586?w=400&auto=format&fit=crop&q=80',
+  'two-way-switch': imgLightSwitch,
+  'intermediate-switch': imgLightSwitch,
+  'double-pole-switch': imgVariantCookerSwitch,
+  'cooker-unit': imgVariantCookerSwitch,
+  'push-button': imgLightSwitch,
+  'rotary-selector-switch': imgVariantDimmer,
+  contactor: imgContactor3p,
+  'fused-spur': imgLightSwitch,
 
   // ─── SOCKETS & OUTLETS ───
-  'socket-2pin':
-    'https://images.unsplash.com/photo-1541888946425-d0fbb186a5b3?w=400&auto=format&fit=crop&q=80',
+  'socket-2pin': imgSocketOutlet,
   'socket-3pin': imgSocketOutlet,
-  'double-socket':
-    'https://images.unsplash.com/photo-1583863788434-e58a36330cf0?w=400&auto=format&fit=crop&q=80',
-  'socket-usb': svgSocketUsb,
-  'socket-gfci': svgSocketGfci,
-  'socket-industrial':
-    'https://images.unsplash.com/photo-1581092335397-9583fe92d232?w=400&auto=format&fit=crop&q=80',
+  'double-socket': imgSocketOutlet,
+  'socket-usb': imgVariantSocketUsb,
+  'socket-gfci': imgVariantSocketGfci,
+  'socket-industrial': imgSocketOutlet,
+  'switched-socket': imgSocketOutlet,
 
   // ─── FANS ───
   'ceiling-fan': imgVariantCeilingFan,
@@ -249,45 +81,36 @@ export const COMPONENT_IMAGES: Record<string, string> = {
   'table-fan': imgVariantTableFan,
 
   // ─── CONTROL & AUTOMATION ───
-  'dimmer-switch': svgDimmer,
-  'fan-dimmer':
-    'https://images.unsplash.com/photo-1581092335397-9583fe92d232?w=400&auto=format&fit=crop&q=80',
-  'pir-sensor': svgPirSensor,
-  thermostat:
-    'https://images.unsplash.com/photo-1563245372-f21724e3856d?w=400&auto=format&fit=crop&q=80',
-  'photocell-sensor':
-    'https://images.unsplash.com/photo-1507473885765-e6ed057f782c?w=400&auto=format&fit=crop&q=80',
-  'smart-relay':
-    'https://images.unsplash.com/photo-1518770660439-4636190af475?w=400&auto=format&fit=crop&q=80',
+  'dimmer-switch': imgVariantDimmer,
+  'fan-dimmer': imgVariantDimmer,
+  'pir-sensor': imgVariantPirSensor,
+  thermostat: imgVariantDimmer,
+  'photocell-sensor': imgVariantPirSensor,
+  'smart-relay': imgRelayModule,
 
   // ─── POWER SUPPLIES & TERMINALS ───
-  'live-terminal':
-    'https://images.unsplash.com/photo-1544725176-7c40e5a71c5e?w=400&auto=format&fit=crop&q=80',
-  'neutral-terminal':
-    'https://images.unsplash.com/photo-1581092162384-8987c1d64718?w=400&auto=format&fit=crop&q=80',
-  'earth-terminal':
-    'https://images.unsplash.com/photo-1581092580497-e0d23cbdf1dc?w=400&auto=format&fit=crop&q=80',
-  'ac-mains-supply':
-    'https://images.unsplash.com/photo-1558494949-ef010cbdcc31?w=400&auto=format&fit=crop&q=80',
-  'dc-battery-12v':
-    'https://images.unsplash.com/photo-1619642751034-765dfdf7c58e?w=400&auto=format&fit=crop&q=80',
+  'live-terminal': imgDistBoard3p,
+  'neutral-terminal': imgDistBoard3p,
+  'earth-terminal': imgDistBoard3p,
+  'ac-mains-supply': imgDistBoard3p,
+  'dc-battery-12v': imgTransformer24v,
   'solar-pv-panel': imgSolarPanel,
-  'diesel-generator':
-    'https://images.unsplash.com/photo-1581092335397-9583fe92d232?w=400&auto=format&fit=crop&q=80',
+  'diesel-generator': imgVariantMotor,
 
   // ─── APPLIANCES & LOADS ───
-  bell: 'https://images.unsplash.com/photo-1544725176-7c40e5a71c5e?w=400&auto=format&fit=crop&q=80',
+  bell: imgWaterHeater,
   'water-heater': imgWaterHeater,
-  'space-heater':
-    'https://images.unsplash.com/photo-1585338107529-13afc5f02586?w=400&auto=format&fit=crop&q=80',
-  'air-conditioner':
-    'https://images.unsplash.com/photo-1621905251189-08b45d6a269e?w=400&auto=format&fit=crop&q=80',
-  'induction-hob':
-    'https://images.unsplash.com/photo-1556911220-e15b29be8c8f?w=400&auto=format&fit=crop&q=80',
+  'space-heater': imgWaterHeater,
+  'air-conditioner': imgWaterHeater,
+  'induction-hob': imgVariantCookerSwitch,
   'ev-charger': imgEvCharger,
   motor: imgVariantMotor,
+  'motor-3phase': imgVariantMotor,
+  'water-pump': imgVariantMotor,
+  'heating-element': imgWaterHeater,
+  'alarm-siren': imgVariantPirSensor,
 
-  // ─── NEW GENERATED VARIANTS ───
+  // ─── TRANSFORMERS & RELAYS ───
   'transformer-8v': imgTransformer24v,
   'transformer-12v': imgTransformer24v,
   'transformer-24v': imgTransformer24v,
@@ -307,67 +130,33 @@ export const COMPONENT_IMAGES: Record<string, string> = {
   'distribution-board-3phase': imgDistBoard3p,
 
   // ─── JUNCTION & TIMERS ───
-  'junction-box':
-    'https://images.unsplash.com/photo-1581092580497-e0d23cbdf1dc?w=400&auto=format&fit=crop&q=80',
-  'terminal-strip':
-    'https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=400&auto=format&fit=crop&q=80',
-  'wago-connector':
-    'https://images.unsplash.com/photo-1581092580497-e0d23cbdf1dc?w=400&auto=format&fit=crop&q=80',
-  'timer-switch':
-    'https://images.unsplash.com/photo-1585338107529-13afc5f02586?w=400&auto=format&fit=crop&q=80',
-  'digital-weekly-timer':
-    'https://images.unsplash.com/photo-1563245372-f21724e3856d?w=400&auto=format&fit=crop&q=80',
-  'staircase-timer':
-    'https://images.unsplash.com/photo-1621905251189-08b45d6a269e?w=400&auto=format&fit=crop&q=80',
+  'junction-box': imgDistBoard3p,
+  'terminal-strip': imgDistBoard3p,
+  'wago-connector': imgDistBoard3p,
+  'timer-switch': imgVariantDimmer,
+  'digital-weekly-timer': imgVariantDimmer,
+  'staircase-timer': imgVariantDimmer,
 };
 
-const VARIANT_ACCENTS: Record<string, string> = {
-  lighting: '#f59e0b',
-  protection: '#38bdf8',
-  socket: '#22c55e',
-  switch: '#a78bfa',
-  fan: '#06b6d4',
-  load: '#f97316',
-  supply: '#ef4444',
-  junction: '#64748b',
-};
-
-function generatedVariantImage(type: string, category?: string): string {
-  const title = type
-    .replace(/-/g, ' ')
-    .replace(/\b\w/g, (letter) => letter.toUpperCase())
-    .slice(0, 28);
-  const accent = VARIANT_ACCENTS[category ?? ''] ?? '#94a3b8';
-  const hash = [...type].reduce((sum, char) => sum + char.charCodeAt(0), 0);
-  const x = 120 + (hash % 80);
-  const shape =
-    category === 'fan'
-      ? `<circle cx="200" cy="104" r="54" fill="none" stroke="${accent}" stroke-width="10"/><path d="M200 104 C150 80 142 42 176 58 C202 70 214 92 200 104 M200 104 C250 80 258 42 224 58 C198 70 186 92 200 104 M200 104 C232 144 218 177 196 148 C180 126 184 108 200 104" fill="${accent}" opacity=".8"/>`
-      : category === 'lighting'
-        ? `<path d="M${x} 118 C${x - 30} 84 ${x - 22} 48 ${x} 38 C${x + 22} 48 ${x + 30} 84 ${x} 118Z" fill="${accent}" opacity=".85"/><rect x="${x - 18}" y="118" width="36" height="42" rx="4" fill="#cbd5e1"/><path d="M${x - 18} 130h36M${x - 18} 142h36" stroke="#64748b" stroke-width="3"/>`
-        : `<rect x="${x - 58}" y="38" width="116" height="132" rx="12" fill="#f8fafc" stroke="${accent}" stroke-width="5"/><rect x="${x - 32}" y="68" width="64" height="48" rx="8" fill="${accent}" opacity=".85"/><circle cx="${x}" cy="140" r="10" fill="${accent}"/>`;
-  return svg(
-    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 250"><rect width="400" height="250" fill="#0f172a"/>${shape}<text x="200" y="220" font-family="sans-serif" font-size="13" font-weight="700" fill="${accent}" text-anchor="middle">${title.toUpperCase()}</text></svg>`,
-  );
-}
-
-/** Resolve an image for every variant without collapsing remote entries into category fallbacks. */
+/** Resolve an actual photographic image asset for every single component and variant */
 export function getComponentImage(type: string, category?: string): string {
-  const registeredImage = COMPONENT_IMAGES[type];
-  if (registeredImage && !registeredImage.startsWith('https://images.unsplash.com')) {
-    return registeredImage;
-  }
-  if (registeredImage?.startsWith('https://images.unsplash.com')) {
-    return generatedVariantImage(type, category);
-  }
-  if (category === 'lighting') return imgLightBulb;
-  if (category === 'protection') return imgMcbBreaker;
-  if (category === 'socket') return imgSocketOutlet;
-  if (category === 'switch') return imgLightSwitch;
-  if (category === 'load') return imgWaterHeater;
+  const registered = COMPONENT_IMAGES[type];
+  if (registered) return registered;
+
+  if (category === 'lighting' || type.includes('bulb') || type.includes('light')) return imgLightBulb;
+  if (category === 'protection' || type.includes('mcb') || type.includes('rcd') || type.includes('breaker')) return imgMcbBreaker;
+  if (category === 'socket' || type.includes('socket') || type.includes('plug')) return imgSocketOutlet;
+  if (category === 'switch' || type.includes('switch')) return imgLightSwitch;
+  if (category === 'fan' || type.includes('fan')) return imgVariantCeilingFan;
+  if (category === 'motor' || type.includes('motor') || type.includes('pump')) return imgVariantMotor;
+  if (category === 'transformer' || type.includes('transformer')) return imgTransformer24v;
+  if (category === 'relay' || type.includes('relay')) return imgRelayModule;
+  if (category === 'contactor' || type.includes('contactor')) return imgContactor3p;
   if (type.includes('solar')) return imgSolarPanel;
-  if (type.includes('ev')) return imgEvCharger;
-  return generatedVariantImage(type, category);
+  if (type.includes('ev') || type.includes('charger')) return imgEvCharger;
+  if (category === 'load' || type.includes('heater')) return imgWaterHeater;
+
+  return imgDistBoard3p;
 }
 
 function canvasIconSvg(type: string): string {

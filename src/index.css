@@ -541,6 +541,77 @@
   transform-box: fill-box;
 }
 
+/* ─── Dialog / Modal Appearance & Exit Animations ─── */
+@keyframes electrasim-dialog-fade-in {
+  0% {
+    opacity: 0;
+    transform: scale(0.95) translateY(8px);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@keyframes electrasim-dialog-fade-out {
+  0% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(0.96) translateY(6px);
+  }
+}
+
+@keyframes electrasim-backdrop-fade-in {
+  0% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+@keyframes electrasim-backdrop-fade-out {
+  0% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+.animate-dialog-fade-in,
+.animate-modal-panel-in,
+.animate-scaleUp {
+  animation: electrasim-dialog-fade-in 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  will-change: opacity, transform;
+}
+
+.animate-dialog-fade-out,
+.animate-modal-panel-out,
+.animate-scaleDown {
+  animation: electrasim-dialog-fade-out 0.18s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  will-change: opacity, transform;
+}
+
+.animate-backdrop-fade-in,
+.animate-modal-backdrop-in,
+.animate-fadeIn,
+.animate-fade-in {
+  animation: electrasim-backdrop-fade-in 0.2s ease-out forwards;
+  will-change: opacity;
+}
+
+.animate-backdrop-fade-out,
+.animate-modal-backdrop-out,
+.animate-fadeOut,
+.animate-fade-out {
+  animation: electrasim-backdrop-fade-out 0.18s ease-in forwards;
+  will-change: opacity;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .electrasim-wire-flow,
   .electrasim-fan-spin,
@@ -555,7 +626,19 @@
   .electrasim-wire-heat,
   .electrasim-wire-busted,
   .electrasim-flame-flicker,
-  .electrasim-trip-pulse {
+  .electrasim-trip-pulse,
+  .animate-dialog-fade-in,
+  .animate-dialog-fade-out,
+  .animate-modal-panel-in,
+  .animate-modal-panel-out,
+  .animate-backdrop-fade-in,
+  .animate-backdrop-fade-out,
+  .animate-scaleUp,
+  .animate-scaleDown,
+  .animate-fadeIn,
+  .animate-fadeOut,
+  .animate-fade-in,
+  .animate-fade-out {
     animation: none !important;
   }
 

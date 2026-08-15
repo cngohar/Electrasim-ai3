@@ -17,10 +17,14 @@ import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
 import {
   COMPONENT_DEFS,
+  createInjectedFault,
+  validateFaultCoexistence,
   type Circuit,
   type ComponentGroup,
   type ComponentInstance,
+  type FaultTarget,
   type FaultType,
+  type InjectedFault,
   type WireInstance,
 } from '../domain';
 import { buildSeedCircuit } from './seed';
@@ -47,6 +51,8 @@ interface CircuitState {
   components: ComponentInstance[];
   wires: WireInstance[];
   globalVoltage: number;
+  /** Active user-injected faults */
+  faults: InjectedFault[];
 
   selectedComponentId: string | null;
   selectedWireIds: string[];
@@ -197,6 +203,7 @@ export const useCircuitStore = create<CircuitState>()(
       components: seed.components,
       wires: seed.wires,
       globalVoltage: 230,
+      faults: [],
       selectedComponentId: null,
       selectedWireIds: [],
       selectedComponentIds: [],
@@ -206,6 +213,7 @@ export const useCircuitStore = create<CircuitState>()(
         set((s) => {
           s.components = circuit.components;
           s.wires = circuit.wires;
+          s.faults = circuit.faults ? [...circuit.faults] : [];
           const nextVoltage = circuit.globalVoltage ?? 230;
           s.globalVoltage = Number.isFinite(nextVoltage) && nextVoltage > 0 ? nextVoltage : 230;
           s.selectedComponentId = null;
@@ -246,7 +254,20 @@ export const useCircuitStore = create<CircuitState>()(
         set((s) => {
           if (useUiStore.getState().simRunning) return;
           s.components = s.components.filter((c) => c.id !== id);
-          s.wires = s.wires.filter((w) => w.fromComponentId !== id && w.toComponentId !== id);
+          const removedWireIds = new Set<string>();
+          s.wires = s.wires.filter((w) => {
+            if (w.fromComponentId === id || w.toComponentId === id) {
+              removedWireIds.add(w.id);
+              return false;
+            }
+            return true;
+          });
+          s.faults = s.faults.filter(
+            (f) =>
+              !(f.target.type === 'component' && f.target.id === id) &&
+              !(f.target.type === 'port' && f.target.componentId === id) &&
+              !(f.target.type === 'wire' && removedWireIds.has(f.target.id)),
+          );
           s.selectedComponentIds = s.selectedComponentIds.filter((selectedId) => selectedId !== id);
           if (s.selectedComponentId === id) {
             s.selectedComponentId = s.selectedComponentIds[0] ?? null;
@@ -323,6 +344,7 @@ export const useCircuitStore = create<CircuitState>()(
         set((s) => {
           if (useUiStore.getState().simRunning) return;
           s.wires = s.wires.filter((w) => w.id !== id);
+          s.faults = s.faults.filter((f) => !(f.target.type === 'wire' && f.target.id === id));
           s.selectedWireIds = s.selectedWireIds.filter((wid) => wid !== id);
         }),
 
@@ -330,6 +352,7 @@ export const useCircuitStore = create<CircuitState>()(
         set((s) => {
           if (useUiStore.getState().simRunning) return;
           s.wires = [];
+          s.faults = s.faults.filter((f) => f.target.type !== 'wire');
           s.selectedWireIds = [];
         }),
 
@@ -338,6 +361,7 @@ export const useCircuitStore = create<CircuitState>()(
           if (useUiStore.getState().simRunning) return;
           s.components = [];
           s.wires = [];
+          s.faults = [];
           s.selectedComponentId = null;
           s.selectedWireIds = [];
           s.selectedComponentIds = [];
@@ -371,8 +395,19 @@ export const useCircuitStore = create<CircuitState>()(
           const ids = new Set(componentIds);
           if (ids.size === 0) return;
           s.components = s.components.filter((component) => !ids.has(component.id));
-          s.wires = s.wires.filter(
-            (wire) => !ids.has(wire.fromComponentId) && !ids.has(wire.toComponentId),
+          const removedWireIds = new Set<string>();
+          s.wires = s.wires.filter((wire) => {
+            if (ids.has(wire.fromComponentId) || ids.has(wire.toComponentId)) {
+              removedWireIds.add(wire.id);
+              return false;
+            }
+            return true;
+          });
+          s.faults = s.faults.filter(
+            (f) =>
+              !(f.target.type === 'component' && ids.has(f.target.id)) &&
+              !(f.target.type === 'port' && ids.has(f.target.componentId)) &&
+              !(f.target.type === 'wire' && removedWireIds.has(f.target.id)),
           );
           const remainingWireIds = new Set(s.wires.map((wire) => wire.id));
           s.selectedWireIds = s.selectedWireIds.filter((id) => remainingWireIds.has(id));
@@ -389,7 +424,20 @@ export const useCircuitStore = create<CircuitState>()(
           if (s.selectedComponentId) ids.add(s.selectedComponentId);
           if (ids.size === 0) return;
           s.components = s.components.filter((c) => !ids.has(c.id));
-          s.wires = s.wires.filter((w) => !ids.has(w.fromComponentId) && !ids.has(w.toComponentId));
+          const removedWireIds = new Set<string>();
+          s.wires = s.wires.filter((w) => {
+            if (ids.has(w.fromComponentId) || ids.has(w.toComponentId)) {
+              removedWireIds.add(w.id);
+              return false;
+            }
+            return true;
+          });
+          s.faults = s.faults.filter(
+            (f) =>
+              !(f.target.type === 'component' && ids.has(f.target.id)) &&
+              !(f.target.type === 'port' && ids.has(f.target.componentId)) &&
+              !(f.target.type === 'wire' && removedWireIds.has(f.target.id)),
+          );
           s.selectedComponentId = null;
           s.selectedComponentIds = [];
           s.selectedWireIds = [];
@@ -405,11 +453,19 @@ export const useCircuitStore = create<CircuitState>()(
           if (compIds.size === 0 && wireIds.size === 0) return;
 
           s.components = s.components.filter((c) => !compIds.has(c.id));
-          s.wires = s.wires.filter(
-            (w) =>
-              !wireIds.has(w.id) &&
-              !compIds.has(w.fromComponentId) &&
-              !compIds.has(w.toComponentId),
+          const removedWireIds = new Set<string>(wireIds);
+          s.wires = s.wires.filter((w) => {
+            if (wireIds.has(w.id) || compIds.has(w.fromComponentId) || compIds.has(w.toComponentId)) {
+              removedWireIds.add(w.id);
+              return false;
+            }
+            return true;
+          });
+          s.faults = s.faults.filter(
+            (f) =>
+              !(f.target.type === 'component' && compIds.has(f.target.id)) &&
+              !(f.target.type === 'port' && compIds.has(f.target.componentId)) &&
+              !(f.target.type === 'wire' && removedWireIds.has(f.target.id)),
           );
           s.selectedComponentId = null;
           s.selectedComponentIds = [];
@@ -572,12 +628,122 @@ export const useCircuitStore = create<CircuitState>()(
           s.selectedWireIds = [];
         }),
 
+      injectFault: (faultOrParams) => {
+        let faultId = '';
+        set((s) => {
+          const fault =
+            'category' in faultOrParams
+              ? faultOrParams
+              : createInjectedFault(
+                  faultOrParams.type,
+                  faultOrParams.target,
+                  faultOrParams.parameters,
+                );
+
+          // Check coexistence
+          const validation = validateFaultCoexistence(s.faults, fault);
+          if (!validation.valid) {
+            console.warn(`Cannot inject fault: ${validation.reason}`);
+            return;
+          }
+          s.faults.push(fault);
+          faultId = fault.id;
+
+          // Sync legacy properties for backwards compatibility
+          if (fault.target.type === 'component') {
+            const c = s.components.find((comp) => comp.id === fault.target.id);
+            if (c && !c.state.fault) c.state.fault = fault.type;
+          } else if (fault.target.type === 'wire') {
+            const w = s.wires.find((wire) => wire.id === fault.target.id);
+            if (
+              w &&
+              !w.fault &&
+              (fault.type === 'open-circuit' || fault.type === 'short-circuit')
+            ) {
+              w.fault = fault.type;
+            }
+          }
+          useUiStore.getState().setSimRunning(false);
+        });
+        return faultId;
+      },
+
+      removeFault: (faultId) =>
+        set((s) => {
+          const faultToRemove = s.faults.find((f) => f.id === faultId);
+          s.faults = s.faults.filter((f) => f.id !== faultId);
+          if (faultToRemove) {
+            if (faultToRemove.target.type === 'component') {
+              const c = s.components.find((comp) => comp.id === faultToRemove.target.id);
+              if (c && c.state.fault === faultToRemove.type) {
+                c.state.fault = undefined;
+              }
+            } else if (faultToRemove.target.type === 'wire') {
+              const w = s.wires.find((wire) => wire.id === faultToRemove.target.id);
+              if (w && w.fault === faultToRemove.type) {
+                w.fault = undefined;
+              }
+            }
+          }
+        }),
+
+      toggleFault: (type, target) =>
+        set((s) => {
+          const existingIndex = s.faults.findIndex(
+            (f) =>
+              f.type === type &&
+              f.target.type === target.type &&
+              ((f.target.type === 'component' &&
+                target.type === 'component' &&
+                f.target.id === target.id) ||
+                (f.target.type === 'wire' &&
+                  target.type === 'wire' &&
+                  f.target.id === target.id) ||
+                (f.target.type === 'port' &&
+                  target.type === 'port' &&
+                  f.target.componentId === target.componentId &&
+                  f.target.portIndex === target.portIndex)),
+          );
+
+          if (existingIndex >= 0) {
+            const removed = s.faults[existingIndex];
+            s.faults.splice(existingIndex, 1);
+            if (removed.target.type === 'component') {
+              const c = s.components.find((comp) => comp.id === removed.target.id);
+              if (c && c.state.fault === removed.type) c.state.fault = undefined;
+            } else if (removed.target.type === 'wire') {
+              const w = s.wires.find((wire) => wire.id === removed.target.id);
+              if (w && w.fault === removed.type) w.fault = undefined;
+            }
+          } else {
+            const fault = createInjectedFault(type, target);
+            const validation = validateFaultCoexistence(s.faults, fault);
+            if (validation.valid) {
+              s.faults.push(fault);
+              if (target.type === 'component') {
+                const c = s.components.find((comp) => comp.id === target.id);
+                if (c) c.state.fault = type;
+              } else if (target.type === 'wire') {
+                const w = s.wires.find((wire) => wire.id === target.id);
+                if (w && (type === 'open-circuit' || type === 'short-circuit')) {
+                  w.fault = type;
+                }
+              }
+              useUiStore.getState().setSimRunning(false);
+            }
+          }
+        }),
+
       setComponentFault: (id, fault) =>
         set((s) => {
           const c = s.components.find((c) => c.id === id);
           if (c) {
             c.state.fault = fault;
+            s.faults = s.faults.filter(
+              (f) => !(f.target.type === 'component' && f.target.id === id),
+            );
             if (fault) {
+              s.faults.push(createInjectedFault(fault, { type: 'component', id }));
               useUiStore.getState().setSimRunning(false);
             }
           }
@@ -588,7 +754,9 @@ export const useCircuitStore = create<CircuitState>()(
           const w = s.wires.find((w) => w.id === id);
           if (w) {
             w.fault = fault;
+            s.faults = s.faults.filter((f) => !(f.target.type === 'wire' && f.target.id === id));
             if (fault) {
+              s.faults.push(createInjectedFault(fault, { type: 'wire', id }));
               useUiStore.getState().setSimRunning(false);
             }
           }
@@ -596,6 +764,7 @@ export const useCircuitStore = create<CircuitState>()(
 
       clearAllFaults: () =>
         set((s) => {
+          s.faults = [];
           for (const c of s.components) c.state.fault = undefined;
           for (const w of s.wires) w.fault = undefined;
         }),
@@ -919,4 +1088,5 @@ export const selectCircuit = (s: CircuitState): Circuit => ({
   components: s.components,
   wires: s.wires,
   globalVoltage: s.globalVoltage,
+  faults: s.faults,
 });

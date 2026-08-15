@@ -1,5 +1,5 @@
 import { AlertTriangle, Flame, HelpCircle, RefreshCw, X, Zap } from 'lucide-react';
-import { useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useCircuitStore, useUiStore } from '../../store';
 import { useDialogFocus } from '../hooks/useDialogFocus';
 
@@ -8,26 +8,54 @@ export function FaultAlertModal() {
   const clearFaultAlert = useUiStore((s) => s.clearFaultAlert);
   const setWhatHappenedOpen = useUiStore((s) => s.setWhatHappenedOpen);
   const repairAllFaults = useCircuitStore((s) => s.repairAllFaults);
-  const panelRef = useRef<HTMLDialogElement | null>(null);
-  useDialogFocus(Boolean(faultAlert), clearFaultAlert, panelRef);
 
-  if (!faultAlert) return null;
+  const [currentAlert, setCurrentAlert] = useState(faultAlert);
+  const [isClosing, setIsClosing] = useState(false);
+  const panelRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (faultAlert) {
+      setCurrentAlert(faultAlert);
+      setIsClosing(false);
+    } else if (currentAlert && !isClosing) {
+      setIsClosing(true);
+      const timer = window.setTimeout(() => {
+        setCurrentAlert(null);
+        setIsClosing(false);
+      }, 200);
+      return () => window.clearTimeout(timer);
+    }
+  }, [faultAlert, currentAlert, isClosing]);
+
+  const handleClose = () => {
+    if (isClosing) return;
+    setIsClosing(true);
+    window.setTimeout(() => {
+      clearFaultAlert();
+      setCurrentAlert(null);
+      setIsClosing(false);
+    }, 200);
+  };
+
+  useDialogFocus(Boolean(currentAlert) && !isClosing, handleClose, panelRef);
+
+  if (!currentAlert) return null;
 
   const handleRepair = () => {
     repairAllFaults();
-    clearFaultAlert();
+    handleClose();
   };
 
   const handleWhatHappened = () => {
     setWhatHappenedOpen(true);
-    clearFaultAlert();
+    handleClose();
   };
 
   const handleAdjustInInspector = () => {
-    if (faultAlert.deviceId) {
-      useCircuitStore.getState().selectComponent(faultAlert.deviceId);
-    } else if (faultAlert.wireId) {
-      useCircuitStore.getState().selectWire(faultAlert.wireId);
+    if (currentAlert.deviceId) {
+      useCircuitStore.getState().selectComponent(currentAlert.deviceId);
+    } else if (currentAlert.wireId) {
+      useCircuitStore.getState().selectWire(currentAlert.wireId);
     } else {
       const cs = useCircuitStore.getState();
       const blownComp = cs.components.find((c) => c.state?.isBlown);
@@ -42,20 +70,32 @@ export function FaultAlertModal() {
     }
     useUiStore.getState().setInspectorCollapsed(false);
     useUiStore.getState().setInspectorOpen(true);
-    clearFaultAlert();
+    handleClose();
   };
 
-  const isMelt = faultAlert.kind === 'melt';
+  const isMelt = currentAlert.kind === 'melt';
 
   return (
-    <div className="fixed inset-0 z-100 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm animate-fade-in">
-      <dialog
-        open
+    <dialog
+      open
+      aria-modal="true"
+      aria-labelledby="fault-alert-title"
+      className="fixed inset-0 z-100 m-0 flex h-dvh w-screen max-h-none max-w-none items-center justify-center overflow-y-auto border-0 bg-transparent p-4"
+    >
+      <button
+        type="button"
+        aria-label="Close"
+        className={`absolute inset-0 cursor-default bg-slate-950/75 backdrop-blur-md transition-all ${
+          isClosing ? 'animate-backdrop-fade-out' : 'animate-backdrop-fade-in'
+        }`}
+        onClick={handleClose}
+      />
+      <div
         ref={panelRef}
         tabIndex={-1}
-        aria-modal="true"
-        aria-labelledby="fault-alert-title"
-        className={`w-full max-w-lg rounded-2xl border bg-white p-6 shadow-2xl transition-all dark:bg-slate-900 ${
+        className={`relative w-full max-w-lg rounded-2xl border bg-white p-6 shadow-2xl transition-all dark:bg-slate-900 outline-none ${
+          isClosing ? 'animate-dialog-fade-out' : 'animate-dialog-fade-in'
+        } ${
           isMelt
             ? 'border-red-500/50 shadow-red-500/20 dark:border-red-600/60'
             : 'border-amber-500/50 shadow-amber-500/20 dark:border-amber-600/60'
@@ -83,21 +123,21 @@ export function FaultAlertModal() {
                 id="fault-alert-title"
                 className="text-lg font-extrabold tracking-tight text-slate-900 dark:text-slate-100"
               >
-                {faultAlert.title}
+                {currentAlert.title}
               </h2>
               <button
                 type="button"
-                onClick={clearFaultAlert}
-                className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-200"
+                onClick={handleClose}
+                className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-200 cursor-pointer"
                 aria-label="Close modal"
               >
                 <X className="h-5 w-5" />
               </button>
             </div>
 
-            {faultAlert.deviceName && (
+            {currentAlert.deviceName && (
               <span className="mt-1 inline-block rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-semibold text-slate-700 dark:bg-slate-800 dark:text-slate-300">
-                {faultAlert.deviceName}
+                {currentAlert.deviceName}
               </span>
             )}
           </div>
@@ -106,7 +146,7 @@ export function FaultAlertModal() {
         {/* Content Body */}
         <div className="mt-4 space-y-3">
           <p className="text-sm leading-relaxed text-slate-700 dark:text-slate-300">
-            {faultAlert.reason}
+            {currentAlert.reason}
           </p>
 
           {/* Metrics Card */}
@@ -116,7 +156,7 @@ export function FaultAlertModal() {
                 Current Demand
               </span>
               <span className="text-base font-extrabold font-mono text-red-600 dark:text-red-400">
-                {faultAlert.currentAmps.toFixed(1)} A
+                {currentAlert.currentAmps.toFixed(1)} A
               </span>
             </div>
             <div>
@@ -124,7 +164,7 @@ export function FaultAlertModal() {
                 {isMelt ? 'Cable Capacity' : 'Protection Rating'}
               </span>
               <span className="text-base font-extrabold font-mono text-emerald-600 dark:text-emerald-400">
-                {faultAlert.limitAmps.toFixed(1)} A
+                {currentAlert.limitAmps.toFixed(1)} A
               </span>
             </div>
           </div>
@@ -134,7 +174,7 @@ export function FaultAlertModal() {
             <AlertTriangle className="h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400 mt-0.5" />
             <div>
               <strong className="font-semibold block mb-0.5">How to Resolve Issue:</strong>
-              {faultAlert.resolutionHint}
+              {currentAlert.resolutionHint}
             </div>
           </div>
         </div>
@@ -144,7 +184,7 @@ export function FaultAlertModal() {
           <button
             type="button"
             onClick={handleWhatHappened}
-            className="w-full sm:w-auto flex items-center justify-center gap-1.5 rounded-xl border border-amber-300 bg-amber-50 px-3.5 py-2.5 text-xs font-bold text-amber-800 hover:bg-amber-100 dark:border-amber-800 dark:bg-amber-950/60 dark:text-amber-300 dark:hover:bg-amber-900/80"
+            className="w-full sm:w-auto flex items-center justify-center gap-1.5 rounded-xl border border-amber-300 bg-amber-50 px-3.5 py-2.5 text-xs font-bold text-amber-800 hover:bg-amber-100 dark:border-amber-800 dark:bg-amber-950/60 dark:text-amber-300 dark:hover:bg-amber-900/80 cursor-pointer"
           >
             <HelpCircle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
             What Happened?
@@ -153,14 +193,14 @@ export function FaultAlertModal() {
             <button
               type="button"
               onClick={handleAdjustInInspector}
-              className="w-1/2 sm:w-auto rounded-xl border border-slate-200 px-4 py-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-100 dark:border-slate-800 dark:text-slate-300 dark:hover:bg-slate-800"
+              className="w-1/2 sm:w-auto rounded-xl border border-slate-200 px-4 py-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-100 dark:border-slate-800 dark:text-slate-300 dark:hover:bg-slate-800 cursor-pointer"
             >
               Adjust in Inspector
             </button>
             <button
               type="button"
               onClick={handleRepair}
-              className={`w-1/2 sm:w-auto flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-xs font-bold text-white shadow-md transition-all active:scale-95 ${
+              className={`w-1/2 sm:w-auto flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-xs font-bold text-white shadow-md transition-all active:scale-95 cursor-pointer ${
                 isMelt
                   ? 'bg-red-600 hover:bg-red-700 dark:bg-red-600 dark:hover:bg-red-500'
                   : 'bg-amber-600 hover:bg-amber-700 dark:bg-amber-600 dark:hover:bg-amber-500'
@@ -171,7 +211,7 @@ export function FaultAlertModal() {
             </button>
           </div>
         </div>
-      </dialog>
-    </div>
+      </div>
+    </dialog>
   );
 }

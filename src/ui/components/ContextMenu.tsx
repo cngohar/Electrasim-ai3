@@ -272,7 +272,7 @@ function buildItems(target: ContextMenuState['target']): MenuEntry[] {
 
     items.push({
       icon: RefreshCcw,
-      label: 'Inject Reverse Polarity',
+      label: 'Inject Reverse Polarity (L↔N Swap)',
       disabled: comp?.state.fault === 'reverse-polarity',
       action: () => {
         useCircuitStore.getState().setComponentFault(target.id, 'reverse-polarity');
@@ -283,10 +283,52 @@ function buildItems(target: ContextMenuState['target']): MenuEntry[] {
       },
     });
 
+    if (def?.isSwitch) {
+      items.push({
+        icon: AlertTriangle,
+        label: 'Inject Switched Neutral (BS 7671 Reg 132.14 Hazard)',
+        disabled: comp?.state.fault === 'switched-neutral',
+        action: () => {
+          useCircuitStore.getState().setComponentFault(target.id, 'switched-neutral');
+          useUiStore
+            .getState()
+            .addLog(`Injected Switched Neutral Hazard on ${def?.label ?? 'switch'}`, 'error');
+          close();
+        },
+      });
+    }
+
+    if (def?.isProtection) {
+      items.push({
+        icon: Zap,
+        label: 'Inject Protection Bypass (Bridged)',
+        disabled: comp?.state.fault === 'protection-bypass',
+        action: () => {
+          useCircuitStore.getState().setComponentFault(target.id, 'protection-bypass');
+          useUiStore
+            .getState()
+            .addLog(`Injected Protection Bypass on ${def?.label ?? 'breaker'}`, 'warning');
+          close();
+        },
+      });
+      items.push({
+        icon: Sliders,
+        label: 'Inject Breaker Jammed Open',
+        disabled: comp?.state.fault === 'protection-forced-open',
+        action: () => {
+          useCircuitStore.getState().setComponentFault(target.id, 'protection-forced-open');
+          useUiStore
+            .getState()
+            .addLog(`Injected Mechanism Jam on ${def?.label ?? 'breaker'}`, 'warning');
+          close();
+        },
+      });
+    }
+
     items.push({
       icon: Unlink,
-      label: 'Inject Earth Fault',
-      disabled: comp?.state.fault === 'earth-fault',
+      label: 'Inject Earth Leakage / Earth Fault',
+      disabled: comp?.state.fault === 'earth-fault' || comp?.state.fault === 'live-to-earth',
       action: () => {
         useCircuitStore.getState().setComponentFault(target.id, 'earth-fault');
         useUiStore
@@ -376,12 +418,36 @@ function buildItems(target: ContextMenuState['target']): MenuEntry[] {
     });
 
     items.push({
+      icon: Scissors,
+      label: 'Inject Broken Neutral Return',
+      disabled: wire?.fault === 'open-neutral',
+      action: () => {
+        useCircuitStore.getState().setWireFault(target.id, 'open-neutral');
+        useUiStore
+          .getState()
+          .addLog('Injected Floating/Broken Neutral on wire', 'warning');
+        close();
+      },
+    });
+
+    items.push({
       icon: Flame,
-      label: 'Inject Short Circuit',
+      label: 'Inject Short Circuit (L-N Fault)',
       disabled: wire?.fault === 'short-circuit',
       action: () => {
         useCircuitStore.getState().setWireFault(target.id, 'short-circuit');
         useUiStore.getState().addLog('Injected Short Circuit fault on wire', 'error');
+        close();
+      },
+    });
+
+    items.push({
+      icon: Unlink,
+      label: 'Inject Live-to-Earth Insulation Breakdown',
+      disabled: wire?.fault === 'live-to-earth',
+      action: () => {
+        useCircuitStore.getState().setWireFault(target.id, 'live-to-earth');
+        useUiStore.getState().addLog('Injected Live-to-Earth fault on wire', 'error');
         close();
       },
     });

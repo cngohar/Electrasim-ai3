@@ -14,6 +14,8 @@ import { useCircuitStore } from '../../store/circuitStore';
 import { useUiStore } from '../../store/uiStore';
 import { Modal } from './Modal';
 
+import { useEffect, useState } from 'react';
+
 export function ValidationDetailsModal() {
   const activeIssue = useUiStore((s) => s.activeValidationIssueModal);
   const setActiveIssue = useUiStore((s) => s.setActiveValidationIssueModal);
@@ -21,41 +23,49 @@ export function ValidationDetailsModal() {
   const selectComponent = useCircuitStore((s) => s.selectComponent);
   const selectWire = useCircuitStore((s) => s.selectWire);
 
-  if (!activeIssue) return null;
+  const [currentIssue, setCurrentIssue] = useState<ValidationIssue | null>(activeIssue);
+
+  useEffect(() => {
+    if (activeIssue) {
+      setCurrentIssue(activeIssue);
+    }
+  }, [activeIssue]);
+
+  if (!currentIssue) return null;
 
   const handleClose = () => setActiveIssue(null);
 
   const handleLocateOnCanvas = () => {
-    if (activeIssue.componentId) {
-      selectComponent(activeIssue.componentId);
+    if (currentIssue.componentId) {
+      selectComponent(currentIssue.componentId);
       useUiStore.setState({ inspectorOpen: true, inspectorCollapsed: false });
-    } else if (activeIssue.wireId) {
-      selectWire(activeIssue.wireId);
+    } else if (currentIssue.wireId) {
+      selectWire(currentIssue.wireId);
       useUiStore.setState({ inspectorOpen: true, inspectorCollapsed: false });
     }
     handleClose();
   };
 
   const handleApplyQuickFix = () => {
-    if (activeIssue.quickFix) {
-      applyQuickFix(activeIssue.quickFix);
+    if (currentIssue.quickFix) {
+      applyQuickFix(currentIssue.quickFix);
       handleClose();
     }
   };
 
-  const breakdown = activeIssue.detailedBreakdown;
+  const breakdown = currentIssue.detailedBreakdown;
 
   const severityColor =
-    activeIssue.severity === 'error'
+    currentIssue.severity === 'error'
       ? 'bg-rose-500/10 text-rose-600 dark:bg-rose-500/20 dark:text-rose-400 border-rose-500/20'
-      : activeIssue.severity === 'warning'
+      : currentIssue.severity === 'warning'
         ? 'bg-amber-500/10 text-amber-600 dark:bg-amber-500/20 dark:text-amber-400 border-amber-500/20'
         : 'bg-blue-500/10 text-blue-600 dark:bg-blue-500/20 dark:text-blue-400 border-blue-500/20';
 
   const severityIcon =
-    activeIssue.severity === 'error' ? (
+    currentIssue.severity === 'error' ? (
       <ShieldAlert className="size-5 text-rose-500" />
-    ) : activeIssue.severity === 'warning' ? (
+    ) : currentIssue.severity === 'warning' ? (
       <AlertTriangle className="size-5 text-amber-500" />
     ) : (
       <Info className="size-5 text-blue-500" />
@@ -66,7 +76,7 @@ export function ValidationDetailsModal() {
       open={Boolean(activeIssue)}
       onClose={handleClose}
       widthClass="max-w-2xl"
-      ariaLabel={activeIssue.title}
+      ariaLabel={currentIssue.title}
     >
       <div className="space-y-5">
         {/* Header section */}
@@ -82,15 +92,15 @@ export function ValidationDetailsModal() {
                 <span
                   className={`inline-flex items-center rounded-md px-2 py-0.5 text-xs font-semibold capitalize border ${severityColor}`}
                 >
-                  {activeIssue.severity}
+                  {currentIssue.severity}
                 </span>
                 <span className="inline-flex items-center gap-1 text-xs font-medium text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-md">
                   <Zap className="size-3" />
-                  {activeIssue.category.replace('_', ' ')}
+                  {currentIssue.category.replace('_', ' ')}
                 </span>
               </div>
               <h2 className="mt-1 text-lg font-bold text-slate-900 dark:text-slate-100">
-                {activeIssue.title}
+                {currentIssue.title}
               </h2>
             </div>
           </div>
@@ -106,7 +116,7 @@ export function ValidationDetailsModal() {
 
         {/* Primary Description */}
         <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
-          {activeIssue.description}
+          {currentIssue.description}
         </p>
 
         {/* Electrical Physics & Risk Explanation */}
@@ -168,11 +178,11 @@ export function ValidationDetailsModal() {
 
         {/* Footer actions */}
         <div className="flex items-center justify-between gap-3 pt-3 border-t border-slate-200/80 dark:border-slate-800">
-          {activeIssue.componentId || activeIssue.wireId ? (
+          {currentIssue.componentId || currentIssue.wireId ? (
             <button
               type="button"
               onClick={handleLocateOnCanvas}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 px-3 py-2 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 px-3 py-2 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors cursor-pointer"
             >
               <Crosshair className="size-3.5 text-emerald-500" />
               Locate on Canvas
@@ -185,18 +195,18 @@ export function ValidationDetailsModal() {
             <button
               type="button"
               onClick={handleClose}
-              className="rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-2 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+              className="rounded-lg border border-slate-300 dark:border-slate-700 px-3 py-2 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
             >
               Close
             </button>
-            {activeIssue.quickFix && (
+            {currentIssue.quickFix && (
               <button
                 type="button"
                 onClick={handleApplyQuickFix}
-                className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-4 py-2 text-xs font-bold text-white shadow-sm hover:bg-emerald-500 active:bg-emerald-700 transition-colors"
+                className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-4 py-2 text-xs font-bold text-white shadow-sm hover:bg-emerald-500 active:bg-emerald-700 transition-colors cursor-pointer"
               >
                 <Wrench className="size-3.5" />
-                Quick Fix: {activeIssue.quickFix.label}
+                Quick Fix: {currentIssue.quickFix.label}
               </button>
             )}
           </div>

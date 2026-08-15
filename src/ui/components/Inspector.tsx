@@ -61,6 +61,8 @@ import { PillField } from './PillField';
 import { ValidationDetailsModal } from './ValidationDetailsModal';
 import { ValidationReportView } from './ValidationReportView';
 import { getComponentImage } from './componentImages';
+import { AnimatedNumber } from './AnimatedNumber';
+import { ComponentVoltageSparkline } from './ComponentVoltageSparkline';
 
 /** Map of component types to their valid variant family members */
 const VALID_VARIANT_FAMILIES: Record<string, string[]> = {
@@ -1402,7 +1404,7 @@ function ComponentPropertiesView({
   return (
     <div className="p-3.5 space-y-3.5 text-xs">
       {/* Component Image Card - Fully fitted without clipping */}
-      <div className="relative overflow-hidden rounded-xl border border-slate-200 bg-slate-950 dark:border-slate-800 shadow-inner">
+      <div className="relative overflow-hidden rounded-xl border border-slate-200 bg-slate-950 dark:border-slate-800 shadow-inner group">
         <div className="relative h-32 w-full overflow-hidden bg-slate-900/90 flex items-center justify-center p-2">
           <img
             src={getComponentImage(selectedComp.type, def.category)}
@@ -1414,6 +1416,15 @@ function ComponentPropertiesView({
           <span className="absolute bottom-1 left-2 right-2 text-[10px] font-medium text-slate-200 truncate">
             {def.description || def.label}
           </span>
+          <button
+            type="button"
+            title={`View ${def.label} Real-World Technical Specifications`}
+            onClick={() => useUiStore.getState().setActiveComponentInfoType(selectedComp.type)}
+            className="absolute top-2 right-2 px-2 py-1 bg-slate-900/80 hover:bg-sky-600 text-sky-400 hover:text-white rounded-lg border border-slate-700/80 transition cursor-pointer flex items-center gap-1 text-[10px] font-semibold shadow-md z-10"
+          >
+            <HelpCircle className="size-3.5" />
+            <span>Specs</span>
+          </button>
         </div>
       </div>
 
@@ -1428,23 +1439,35 @@ function ComponentPropertiesView({
             {variantEntries.map(([vType, vDef]) => {
               const isSelected = selectedComp.type === vType;
               return (
-                <button
-                  key={vType}
-                  type="button"
-                  onClick={() => {
-                    useCircuitStore.getState().updateComponentType(selectedComp.id, vType);
-                    setPreviewVariant(null);
-                  }}
-                  onMouseEnter={() => setPreviewVariant(vType, selectedComp.id)}
-                  onMouseLeave={() => setPreviewVariant(null)}
-                  className={`rounded-lg border p-1.5 text-center transition ${
-                    isSelected
-                      ? 'border-blue-500 bg-blue-50 text-blue-700 font-bold dark:border-blue-500 dark:bg-blue-950/40 dark:text-blue-300'
-                      : 'border-slate-200 bg-white text-slate-700 hover:border-blue-300 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300'
-                  }`}
-                >
-                  <span className="truncate block text-[10px]">{vDef.label}</span>
-                </button>
+                <div key={vType} className="relative flex items-center group">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      useCircuitStore.getState().updateComponentType(selectedComp.id, vType);
+                      setPreviewVariant(null);
+                    }}
+                    onMouseEnter={() => setPreviewVariant(vType, selectedComp.id)}
+                    onMouseLeave={() => setPreviewVariant(null)}
+                    className={`w-full rounded-lg border py-1.5 pl-2 pr-6 text-left transition ${
+                      isSelected
+                        ? 'border-blue-500 bg-blue-50 text-blue-700 font-bold dark:border-blue-500 dark:bg-blue-950/40 dark:text-blue-300'
+                        : 'border-slate-200 bg-white text-slate-700 hover:border-blue-300 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300'
+                    }`}
+                  >
+                    <span className="truncate block text-[10px]">{vDef.label}</span>
+                  </button>
+                  <button
+                    type="button"
+                    title={`View ${vDef.label} Specifications`}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      useUiStore.getState().setActiveComponentInfoType(vType);
+                    }}
+                    className="absolute right-1 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-sky-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded transition cursor-pointer z-10"
+                  >
+                    <HelpCircle className="size-3.5" />
+                  </button>
+                </div>
               );
             })}
           </div>
@@ -1478,7 +1501,12 @@ function ComponentPropertiesView({
             <div
               className={`font-mono text-sm font-bold ${isOvervoltage ? 'text-red-600 dark:text-red-400' : 'text-slate-800 dark:text-slate-200'}`}
             >
-              {simRunning ? `${liveVoltage.toFixed(1)}V` : '0.0V'}
+              <AnimatedNumber
+                value={simRunning ? liveVoltage : 0}
+                decimals={1}
+                suffix="V"
+                duration={250}
+              />
             </div>
           </div>
           <div
@@ -1496,7 +1524,12 @@ function ComponentPropertiesView({
             <div
               className={`font-mono text-sm font-bold ${isOvercurrent ? 'text-red-600 dark:text-red-400' : 'text-slate-800 dark:text-slate-200'}`}
             >
-              {simRunning ? `${liveCurrent.toFixed(2)}A` : '0.00A'}
+              <AnimatedNumber
+                value={simRunning ? liveCurrent : 0}
+                decimals={2}
+                suffix="A"
+                duration={250}
+              />
             </div>
           </div>
           <div
@@ -1514,11 +1547,26 @@ function ComponentPropertiesView({
             <div
               className={`font-mono text-sm font-bold ${isOverload ? 'text-red-600 dark:text-red-400' : 'text-slate-800 dark:text-slate-200'}`}
             >
-              {simRunning ? `${livePower.toFixed(0)}W` : '0W'}
+              <AnimatedNumber
+                value={simRunning ? livePower : 0}
+                decimals={0}
+                suffix="W"
+                duration={250}
+              />
             </div>
           </div>
         </div>
       </div>
+
+      {/* Real-time Voltage Fluctuation Sparkline (Last 30 Seconds) */}
+      <ComponentVoltageSparkline
+        componentId={selectedComp.id}
+        componentLabel={def.label}
+        liveVoltage={liveVoltage}
+        isEnergized={isEnergized}
+        simRunning={simRunning}
+        nominalVoltage={def.defaultVoltage ?? 230}
+      />
 
       {/* Manual Fault Simulation Panel */}
       <div className="rounded-xl border border-amber-200 bg-amber-50/80 p-3 dark:border-amber-800 dark:bg-amber-950/40 space-y-2.5">
@@ -1557,10 +1605,83 @@ function ComponentPropertiesView({
           </button>
           <button
             type="button"
-            onClick={() => useCircuitStore.getState().setComponentFault(selectedComp.id, undefined)}
-            className="rounded border border-emerald-300 bg-emerald-50 py-1.5 text-[10px] font-bold text-emerald-800 hover:bg-emerald-100 dark:border-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 transition"
+            onClick={() =>
+              useCircuitStore.getState().setComponentFault(selectedComp.id, 'reverse-polarity')
+            }
+            className={`rounded border py-1.5 text-[10px] font-bold transition ${
+              selectedComp.state.fault === 'reverse-polarity'
+                ? 'border-red-500 bg-red-600 text-white'
+                : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300'
+            }`}
           >
-            Clear Fault
+            Reverse Polarity
+          </button>
+          {def.isSwitch && (
+            <button
+              type="button"
+              onClick={() =>
+                useCircuitStore.getState().setComponentFault(selectedComp.id, 'switched-neutral')
+              }
+              className={`col-span-2 rounded border py-1.5 text-[10px] font-bold transition ${
+                selectedComp.state.fault === 'switched-neutral'
+                  ? 'border-red-500 bg-red-600 text-white'
+                  : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300'
+              }`}
+            >
+              Switched Neutral (Reg 132.14)
+            </button>
+          )}
+          {def.isProtection && (
+            <>
+              <button
+                type="button"
+                onClick={() =>
+                  useCircuitStore.getState().setComponentFault(selectedComp.id, 'protection-bypass')
+                }
+                className={`rounded border py-1.5 text-[10px] font-bold transition ${
+                  selectedComp.state.fault === 'protection-bypass'
+                    ? 'border-red-500 bg-red-600 text-white'
+                    : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300'
+                }`}
+              >
+                Bypass Breaker
+              </button>
+              <button
+                type="button"
+                onClick={() =>
+                  useCircuitStore
+                    .getState()
+                    .setComponentFault(selectedComp.id, 'protection-forced-open')
+                }
+                className={`rounded border py-1.5 text-[10px] font-bold transition ${
+                  selectedComp.state.fault === 'protection-forced-open'
+                    ? 'border-red-500 bg-red-600 text-white'
+                    : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300'
+                }`}
+              >
+                Jam Breaker Open
+              </button>
+            </>
+          )}
+          <button
+            type="button"
+            onClick={() =>
+              useCircuitStore.getState().setComponentFault(selectedComp.id, 'earth-fault')
+            }
+            className={`rounded border py-1.5 text-[10px] font-bold transition ${
+              selectedComp.state.fault === 'earth-fault'
+                ? 'border-red-500 bg-red-600 text-white'
+                : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300'
+            }`}
+          >
+            Earth Fault
+          </button>
+          <button
+            type="button"
+            onClick={() => useCircuitStore.getState().setComponentFault(selectedComp.id, undefined)}
+            className="col-span-3 rounded border border-emerald-300 bg-emerald-50 py-1.5 text-[10px] font-bold text-emerald-800 hover:bg-emerald-100 dark:border-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 transition"
+          >
+            Clear Faults
           </button>
         </div>
 
@@ -2323,6 +2444,18 @@ function InspectorSimulationContent({
 
             <button
               type="button"
+              onClick={() => useCircuitStore.getState().setWireFault(wire.id, 'open-neutral')}
+              className={`rounded border py-1.5 text-[10px] font-bold transition ${
+                wire.fault === 'open-neutral'
+                  ? 'border-red-500 bg-red-600 text-white'
+                  : 'border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100 dark:border-slate-800 dark:bg-slate-800 dark:text-slate-300'
+              }`}
+            >
+              Broken Neutral
+            </button>
+
+            <button
+              type="button"
               onClick={() => useCircuitStore.getState().setWireFault(wire.id, 'short-circuit')}
               className={`rounded border py-1.5 text-[10px] font-bold transition ${
                 wire.fault === 'short-circuit'
@@ -2331,6 +2464,18 @@ function InspectorSimulationContent({
               }`}
             >
               Short Circuit
+            </button>
+
+            <button
+              type="button"
+              onClick={() => useCircuitStore.getState().setWireFault(wire.id, 'live-to-earth')}
+              className={`col-span-2 rounded border py-1.5 text-[10px] font-bold transition ${
+                wire.fault === 'live-to-earth'
+                  ? 'border-red-500 bg-red-600 text-white'
+                  : 'border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100 dark:border-slate-800 dark:bg-slate-800 dark:text-slate-300'
+              }`}
+            >
+              Live-to-Earth Breakdown
             </button>
 
             <button
@@ -2461,27 +2606,23 @@ function InspectorSimulationContent({
 }
 
 /* =========================================================================
-   WAVEFORM SCOPE & LOGS VIEWS
+   WAVEFORM SCOPE, LIVE MEASUREMENTS & LOGS VIEWS
    ========================================================================= */
 
 function InspectorAnalyticsView({ simResult }: { simResult: SimulationResult | null }) {
   const simRunning = useUiStore((s) => s.simRunning);
   const components = useCircuitStore((s) => s.components);
   const globalVoltage = useCircuitStore((s) => s.globalVoltage);
-  const setGlobalSupplyVoltage = useCircuitStore((s) => s.setGlobalSupplyVoltage);
   const wires = useCircuitStore((s) => s.wires);
   const componentGroups = useCircuitStore((s) => s.componentGroups);
   const thermalOverlayEnabled = useUiStore((s) => s.thermalOverlayEnabled);
-  const [channel, setChannel] = useState<'voltage' | 'current' | 'power' | 'pf' | 'freq'>(
-    'voltage',
-  );
 
   const [time, setTime] = useState(0);
   useEffect(() => {
     if (!simRunning) return;
     const interval = setInterval(() => {
-      setTime((t) => (t + 0.1) % (Math.PI * 100));
-    }, 40);
+      setTime((t) => (t + 0.08) % (Math.PI * 200));
+    }, 35);
     return () => clearInterval(interval);
   }, [simRunning]);
 
@@ -2508,24 +2649,121 @@ function InspectorAnalyticsView({ simResult }: { simResult: SimulationResult | n
     }
   }
 
+  // Realistic dynamic calculations for Live Measurements
+  const voltageLive = simRunning
+    ? liveSupplyVoltage - 0.4 + 0.3 * Math.sin(time * 1.8)
+    : liveSupplyVoltage;
+  
+  const currentAmpsCalculated =
+    activePowerW > 0 ? activePowerW / Math.max(1, liveSupplyVoltage) : 0;
+  const currentLive =
+    simRunning && activePowerW > 0
+      ? currentAmpsCalculated + 0.05 * Math.sin(time * 2.3)
+      : currentAmpsCalculated;
+
+  const powerLive =
+    simRunning && activePowerW > 0
+      ? activePowerW + 2.5 * Math.sin(time * 2.8)
+      : activePowerW;
+
+  const hasInductive = components.some(
+    (c) =>
+      c.type.includes('motor') ||
+      c.type.includes('transformer') ||
+      c.type.includes('fan') ||
+      c.type.includes('pump'),
+  );
+  const powerFactorLive = simRunning
+    ? hasInductive
+      ? 0.94 + 0.02 * Math.sin(time * 1.2)
+      : 0.98 + 0.01 * Math.sin(time * 0.9)
+    : 0.98;
+
+  const frequencyLive = hasAcSupply
+    ? simRunning
+      ? (liveSupplyVoltage === 110 || liveSupplyVoltage === 120 ? 60.0 : 50.0) +
+        0.012 * Math.sin(time * 1.5) +
+        0.008 * Math.cos(time * 3.4)
+      : liveSupplyVoltage === 110 || liveSupplyVoltage === 120
+        ? 60.0
+        : 50.0
+    : 0.0;
+
+  // Real-time mini sparklines for Live Measurements cards
+  const generateSineSparkline = (
+    color: string,
+    omega = 0.12,
+    speed = 3,
+    phase = 0,
+    width = 120,
+    height = 24,
+  ) => {
+    const midY = height / 2;
+    const points: string[] = [];
+    const amplitude = height * 0.38;
+
+    for (let x = 0; x <= width; x += 2) {
+      const y = simRunning
+        ? midY - Math.sin(x * omega + time * speed + phase) * amplitude
+        : midY - Math.sin(x * omega + phase) * (amplitude * 0.4);
+      points.push(`${x.toFixed(1)},${y.toFixed(1)}`);
+    }
+    return `M ${points.join(' L ')}`;
+  };
+
+  const generatePowerSparkline = (width = 120, height = 24) => {
+    const midY = height / 2;
+    const points: string[] = [];
+    const amplitude = height * 0.36;
+
+    for (let x = 0; x <= width; x += 2) {
+      const y = simRunning
+        ? midY -
+          (Math.sin(2 * (x * 0.12 + time * 3)) * 0.7 +
+            0.15 * Math.sin(x * 0.36 + time * 6)) *
+            amplitude
+        : midY - Math.sin(2 * (x * 0.12)) * (amplitude * 0.4);
+      points.push(`${x.toFixed(1)},${y.toFixed(1)}`);
+    }
+    return `M ${points.join(' L ')}`;
+  };
+
+  const generateFrequencyTransientSparkline = (width = 180, height = 36) => {
+    const midY = height / 2;
+    const points: string[] = [];
+    const amplitude = height * 0.42;
+
+    for (let x = 0; x <= width; x += 1.5) {
+      const progress = x / width;
+      const t = simRunning ? time * 2.8 : 0;
+      // Multi-harmonic envelope packet mimicking the frequency resonance visual
+      const burst = Math.exp(-(((progress - 0.6) * 4.2) ** 2));
+      const baseWave = 0.22 * Math.sin(x * 0.14 + t);
+      const ringing = burst * 0.88 * Math.sin(x * 0.38 + t * 1.9);
+      const y = midY - (baseWave + ringing) * amplitude;
+      points.push(`${x.toFixed(1)},${y.toFixed(1)}`);
+    }
+    return `M ${points.join(' L ')}`;
+  };
+
   const generateWaveformPath = (width = 280, height = 80) => {
     const midY = height / 2;
     if (!simRunning) {
       return `M 0,${midY} L ${width},${midY}`;
     }
     const points: string[] = [];
-    const amplitude = hasAcSupply ? height * 0.36 : Math.min(height * 0.35, Math.max(10, (liveSupplyVoltage / 240) * (height * 0.35)));
+    const amplitude = hasAcSupply
+      ? height * 0.36
+      : Math.min(height * 0.35, Math.max(10, (liveSupplyVoltage / 240) * (height * 0.35)));
 
     for (let x = 0; x <= width; x += 1.5) {
       let y = midY;
       if (hasAcSupply) {
-        // Realistic AC sinusoidal wave with slight 3rd harmonic for realism
         const omega = 0.07;
         const fundamental = Math.sin(x * omega + time * 3);
         const harmonic3 = 0.04 * Math.sin(3 * (x * omega + time * 3));
         y = midY - (fundamental + harmonic3) * amplitude;
       } else {
-        // DC voltage level with minor switching ripple
         const ripple = Math.sin(x * 0.4 + time * 10) * 1.5;
         y = midY - amplitude + ripple;
       }
@@ -2546,7 +2784,6 @@ function InspectorAnalyticsView({ simResult }: { simResult: SimulationResult | n
     for (let x = 0; x <= width; x += 1.5) {
       let y = midY;
       if (hasAcSupply) {
-        // AC load current with slight inductive phase lag (approx 20 deg)
         const omega = 0.07;
         const phaseLag = 0.35;
         const fundamental = Math.sin(x * omega + time * 3 - phaseLag);
@@ -2570,29 +2807,213 @@ function InspectorAnalyticsView({ simResult }: { simResult: SimulationResult | n
     totalGroups: componentGroups.length,
   };
 
-  // Thermal data calculation
-  const getThermalColor = (componentId: string): string => {
-    if (!simResult || !simResult.energizedComponents.has(componentId)) {
-      return '#22c55e'; // Green - normal/off
-    }
-    const comp = components.find((c) => c.id === componentId);
-    if (!comp) return '#22c55e';
-
-    const def = COMPONENT_DEFS[comp.type];
-    const power = comp.state?.customPowerWatts ?? def?.powerWatts ?? 0;
-    const maxPower = def?.powerWatts ?? 100;
-
-    const ratio = Math.min(power / maxPower, 1);
-
-    if (ratio < 0.5) return '#22c55e'; // Green
-    if (ratio < 0.7) return '#eab308'; // Yellow
-    if (ratio < 0.85) return '#f97316'; // Orange
-    return '#ef4444'; // Red - danger
-  };
-
   return (
-    <div className="p-3.5 space-y-3 text-xs">
-      {/* Statistics Panel */}
+    <div className="p-3.5 space-y-3.5 text-xs select-none">
+      {/* ─── LIVE MEASUREMENTS PANEL (AS PER REFERENCE IMAGE) ─── */}
+      <div className="rounded-2xl border border-slate-800 bg-[#0c1322] p-3.5 shadow-xl text-slate-100 space-y-3">
+        <div className="flex items-center justify-between">
+          <div className="font-semibold text-sm tracking-tight text-white flex items-center gap-2">
+            <span className="size-2 rounded-full bg-emerald-500 shadow-[0_0_8px] shadow-emerald-400 animate-pulse" />
+            Live Measurements
+          </div>
+          <span className="font-mono text-[10px] text-slate-400">
+            {simRunning ? 'REAL-TIME 60Hz' : 'PAUSED'}
+          </span>
+        </div>
+
+        {/* 2x2 Grid for Voltage, Current, Power, Power Factor */}
+        <div className="grid grid-cols-2 gap-2.5">
+          {/* Card 1: Voltage (L-N) */}
+          <div className="rounded-xl border border-slate-800/80 bg-[#131d31] p-3 flex flex-col justify-between overflow-hidden shadow-xs hover:border-slate-700/80 transition">
+            <div className="text-[11px] font-medium text-slate-300">Voltage (L-N)</div>
+            <div className="font-mono text-xl font-bold tracking-tight text-white my-1">
+              <AnimatedNumber value={voltageLive} decimals={1} suffix=" V" duration={250} />
+            </div>
+            <div className="h-6 w-full pt-1">
+              <svg className="w-full h-full overflow-visible" viewBox="0 0 120 24">
+                <title>Voltage Waveform</title>
+                <path
+                  d={generateSineSparkline('#3b82f6', 0.12, 3, 0, 120, 24)}
+                  fill="none"
+                  stroke="#3b82f6"
+                  strokeWidth="2.2"
+                  strokeLinecap="round"
+                />
+              </svg>
+            </div>
+          </div>
+
+          {/* Card 2: Current (A) */}
+          <div className="rounded-xl border border-slate-800/80 bg-[#131d31] p-3 flex flex-col justify-between overflow-hidden shadow-xs hover:border-slate-700/80 transition">
+            <div className="text-[11px] font-medium text-slate-300">Current (A)</div>
+            <div className="font-mono text-xl font-bold tracking-tight text-white my-1">
+              <AnimatedNumber value={currentLive} decimals={1} suffix=" A" duration={250} />
+            </div>
+            <div className="h-6 w-full pt-1">
+              <svg className="w-full h-full overflow-visible" viewBox="0 0 120 24">
+                <title>Current Waveform</title>
+                <path
+                  d={generateSineSparkline('#22c55e', 0.12, 3, -0.35, 120, 24)}
+                  fill="none"
+                  stroke="#22c55e"
+                  strokeWidth="2.2"
+                  strokeLinecap="round"
+                />
+              </svg>
+            </div>
+          </div>
+
+          {/* Card 3: Power (W) */}
+          <div className="rounded-xl border border-slate-800/80 bg-[#131d31] p-3 flex flex-col justify-between overflow-hidden shadow-xs hover:border-slate-700/80 transition">
+            <div className="text-[11px] font-medium text-slate-300">Power (W)</div>
+            <div className="font-mono text-xl font-bold tracking-tight text-white my-1">
+              <AnimatedNumber value={powerLive} decimals={0} suffix=" W" duration={250} />
+            </div>
+            <div className="h-6 w-full pt-1">
+              <svg className="w-full h-full overflow-visible" viewBox="0 0 120 24">
+                <title>Power Waveform</title>
+                <path
+                  d={generatePowerSparkline(120, 24)}
+                  fill="none"
+                  stroke="#eab308"
+                  strokeWidth="2.2"
+                  strokeLinecap="round"
+                />
+              </svg>
+            </div>
+          </div>
+
+          {/* Card 4: Power Factor */}
+          <div className="rounded-xl border border-slate-800/80 bg-[#131d31] p-3 flex flex-col justify-between overflow-hidden shadow-xs hover:border-slate-700/80 transition">
+            <div className="text-[11px] font-medium text-slate-300">Power Factor</div>
+            <div className="font-mono text-xl font-bold tracking-tight text-white my-1">
+              <AnimatedNumber value={powerFactorLive} decimals={2} duration={250} />
+            </div>
+            <div className="h-6 w-full pt-1">
+              <svg className="w-full h-full overflow-visible" viewBox="0 0 120 24">
+                <title>Power Factor Waveform</title>
+                <path
+                  d={generateSineSparkline('#a855f7', 0.14, 2.6, 0.4, 120, 24)}
+                  fill="none"
+                  stroke="#a855f7"
+                  strokeWidth="2.2"
+                  strokeLinecap="round"
+                />
+              </svg>
+            </div>
+          </div>
+        </div>
+
+        {/* Card 5: Frequency (Wide Card with Harmonic Transient Waveform) */}
+        <div className="rounded-xl border border-slate-800/80 bg-[#131d31] p-3 flex items-center justify-between gap-3 overflow-hidden shadow-xs hover:border-slate-700/80 transition">
+          <div className="flex-shrink-0">
+            <div className="text-[11px] font-medium text-slate-300">Frequency</div>
+            <div className="font-mono text-xl font-bold tracking-tight text-white mt-1">
+              {hasAcSupply ? (
+                <AnimatedNumber value={frequencyLive} decimals={2} suffix=" Hz" duration={250} />
+              ) : (
+                '0.00 Hz (DC)'
+              )}
+            </div>
+          </div>
+          <div className="h-9 flex-1 pl-2">
+            <svg className="w-full h-full overflow-visible" viewBox="0 0 180 36">
+              <title>Frequency Waveform</title>
+              <defs>
+                <filter id="glow-freq" x="-20%" y="-20%" width="140%" height="140%">
+                  <feGaussianBlur stdDeviation="1.2" result="blur" />
+                  <feComposite in="SourceGraphic" in2="blur" operator="over" />
+                </filter>
+              </defs>
+              <path
+                d={generateFrequencyTransientSparkline(180, 36)}
+                fill="none"
+                stroke="#38bdf8"
+                strokeWidth="2.2"
+                strokeLinecap="round"
+                filter="url(#glow-freq)"
+              />
+            </svg>
+          </div>
+        </div>
+      </div>
+
+      {/* ─── Waveform Oscilloscope ─── */}
+      <div className="rounded-xl border border-slate-200 bg-white p-3 dark:border-slate-800 dark:bg-slate-900 space-y-2">
+        <div className="flex items-center justify-between">
+          <span className="font-bold text-slate-800 dark:text-slate-200 text-[11px] uppercase tracking-wider flex items-center gap-1.5">
+            <Sparkles className="size-3.5 text-emerald-500" /> DSO Waveform Scope
+          </span>
+          <div className="flex items-center gap-1.5 font-mono text-[9px]">
+            <span className="rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold px-1.5 py-0.5">
+              CH1: {liveSupplyVoltage}V
+            </span>
+            <span className="rounded bg-amber-500/10 text-amber-600 dark:text-amber-400 font-bold px-1.5 py-0.5">
+              CH2: {activePowerW}W
+            </span>
+          </div>
+        </div>
+
+        <div className="relative h-28 w-full overflow-hidden rounded-lg bg-slate-950 p-1 border border-slate-800 shadow-inner">
+          <svg className="absolute inset-0 h-full w-full pointer-events-none opacity-20" xmlns="http://www.w3.org/2000/svg">
+            <title>Oscilloscope Graticule Grid</title>
+            <defs>
+              <pattern id="scope-grid" width="28" height="16" patternUnits="userSpaceOnUse">
+                <path d="M 28 0 L 0 0 0 16" fill="none" stroke="#22d3ee" strokeWidth="0.5" />
+              </pattern>
+            </defs>
+            <rect width="100%" height="100%" fill="url(#scope-grid)" />
+            <line x1="50%" y1="0" x2="50%" y2="100%" stroke="#22d3ee" strokeWidth="1" strokeDasharray="2,2" />
+            <line x1="0" y1="50%" x2="100%" y2="50%" stroke="#22d3ee" strokeWidth="1" strokeDasharray="2,2" />
+          </svg>
+
+          <svg
+            className="h-full w-full relative z-10"
+            viewBox="0 0 280 80"
+            preserveAspectRatio="none"
+          >
+            <title>Waveform Oscilloscope View</title>
+            <defs>
+              <filter id="glow-ch1" x="-20%" y="-20%" width="140%" height="140%">
+                <feGaussianBlur stdDeviation="1.5" result="blur" />
+                <feComposite in="SourceGraphic" in2="blur" operator="over" />
+              </filter>
+              <filter id="glow-ch2" x="-20%" y="-20%" width="140%" height="140%">
+                <feGaussianBlur stdDeviation="1.5" result="blur" />
+                <feComposite in="SourceGraphic" in2="blur" operator="over" />
+              </filter>
+            </defs>
+
+            {simRunning && activePowerW > 0 && (
+              <path
+                d={generateCurrentWaveformPath(280, 80)}
+                fill="none"
+                stroke="#f59e0b"
+                strokeWidth="1.8"
+                strokeLinecap="round"
+                filter="url(#glow-ch2)"
+                opacity="0.85"
+              />
+            )}
+
+            <path
+              d={generateWaveformPath(280, 80)}
+              fill="none"
+              stroke="#10b981"
+              strokeWidth="2"
+              strokeLinecap="round"
+              filter="url(#glow-ch1)"
+            />
+          </svg>
+
+          <div className="absolute bottom-1 left-2 right-2 flex items-center justify-between text-[8px] font-mono text-slate-400 pointer-events-none z-20">
+            <span>5.0ms/div • 50V/div</span>
+            <span>{hasAcSupply ? '50.0 Hz AC' : 'DC Steady'} • {simRunning ? 'TRIG: AUTO' : 'HOLD'}</span>
+          </div>
+        </div>
+      </div>
+
+      {/* ─── Runtime Statistics ─── */}
       <div className="rounded-xl border border-slate-200 bg-white p-3 dark:border-slate-800 dark:bg-slate-900">
         <div className="flex items-center justify-between mb-2">
           <span className="font-bold text-slate-800 dark:text-slate-200 text-[11px] uppercase tracking-wider flex items-center gap-1.5">
@@ -2645,7 +3066,7 @@ function InspectorAnalyticsView({ simResult }: { simResult: SimulationResult | n
         </div>
       </div>
 
-      {/* Thermal Overlay Toggle */}
+      {/* ─── Thermal Overlay Toggle ─── */}
       <div className="rounded-xl border border-slate-200 bg-white p-3 dark:border-slate-800 dark:bg-slate-900">
         <div className="flex items-center justify-between mb-2">
           <span className="font-bold text-slate-800 dark:text-slate-200 text-[11px] uppercase tracking-wider flex items-center gap-1.5">
@@ -2677,103 +3098,6 @@ function InspectorAnalyticsView({ simResult }: { simResult: SimulationResult | n
           <div className="flex items-center gap-1">
             <div className="w-3 h-3 rounded bg-[#ef4444]"></div>
             <span>Danger</span>
-          </div>
-        </div>
-      </div>
-
-      {/* Waveform Oscilloscope */}
-      <div className="rounded-xl border border-slate-200 bg-white p-3 dark:border-slate-800 dark:bg-slate-900 space-y-2">
-        <div className="flex items-center justify-between">
-          <span className="font-bold text-slate-800 dark:text-slate-200 text-[11px] uppercase tracking-wider flex items-center gap-1.5">
-            <Sparkles className="size-3.5 text-emerald-500" /> DSO Waveform Scope
-          </span>
-          <div className="flex items-center gap-1.5 font-mono text-[9px]">
-            <span className="rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold px-1.5 py-0.5">
-              CH1: {liveSupplyVoltage}V
-            </span>
-            <span className="rounded bg-amber-500/10 text-amber-600 dark:text-amber-400 font-bold px-1.5 py-0.5">
-              CH2: {activePowerW}W
-            </span>
-          </div>
-        </div>
-
-        <div className="relative h-28 w-full overflow-hidden rounded-lg bg-slate-950 p-1 border border-slate-800 shadow-inner">
-          {/* CRT Oscilloscope Graticule Grid */}
-          <svg className="absolute inset-0 h-full w-full pointer-events-none opacity-20" xmlns="http://www.w3.org/2000/svg">
-            <title>Oscilloscope Graticule Grid</title>
-            <defs>
-              <pattern id="scope-grid" width="28" height="16" patternUnits="userSpaceOnUse">
-                <path d="M 28 0 L 0 0 0 16" fill="none" stroke="#22d3ee" strokeWidth="0.5" />
-              </pattern>
-            </defs>
-            <rect width="100%" height="100%" fill="url(#scope-grid)" />
-            {/* Center crosshair */}
-            <line x1="50%" y1="0" x2="50%" y2="100%" stroke="#22d3ee" strokeWidth="1" strokeDasharray="2,2" />
-            <line x1="0" y1="50%" x2="100%" y2="50%" stroke="#22d3ee" strokeWidth="1" strokeDasharray="2,2" />
-          </svg>
-
-          {/* Waveform Traces */}
-          <svg
-            className="h-full w-full relative z-10"
-            viewBox="0 0 280 80"
-            preserveAspectRatio="none"
-          >
-            <title>Waveform Oscilloscope View</title>
-            <defs>
-              <filter id="glow-ch1" x="-20%" y="-20%" width="140%" height="140%">
-                <feGaussianBlur stdDeviation="1.5" result="blur" />
-                <feComposite in="SourceGraphic" in2="blur" operator="over" />
-              </filter>
-              <filter id="glow-ch2" x="-20%" y="-20%" width="140%" height="140%">
-                <feGaussianBlur stdDeviation="1.5" result="blur" />
-                <feComposite in="SourceGraphic" in2="blur" operator="over" />
-              </filter>
-            </defs>
-
-            {/* CH2 (Current / Load) Trace - Amber */}
-            {simRunning && activePowerW > 0 && (
-              <path
-                d={generateCurrentWaveformPath(280, 80)}
-                fill="none"
-                stroke="#f59e0b"
-                strokeWidth="1.8"
-                strokeLinecap="round"
-                filter="url(#glow-ch2)"
-                opacity="0.85"
-              />
-            )}
-
-            {/* CH1 (Voltage) Trace - Emerald Phosphor Glow */}
-            <path
-              d={generateWaveformPath(280, 80)}
-              fill="none"
-              stroke="#10b981"
-              strokeWidth="2"
-              strokeLinecap="round"
-              filter="url(#glow-ch1)"
-            />
-          </svg>
-
-          {/* Scope HUD Overlay */}
-          <div className="absolute bottom-1 left-2 right-2 flex items-center justify-between text-[8px] font-mono text-slate-400 pointer-events-none z-20">
-            <span>5.0ms/div • 50V/div</span>
-            <span>{hasAcSupply ? '50.0 Hz AC' : 'DC Steady'} • {simRunning ? 'TRIG: AUTO' : 'HOLD'}</span>
-          </div>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-2 gap-2">
-        <div className="rounded-xl border border-slate-200 bg-slate-50/80 p-2.5 dark:border-slate-800 dark:bg-slate-950/60">
-          <div className="text-[10px] text-slate-500 dark:text-slate-400 font-medium">Supply</div>
-          <div className="font-mono text-base font-bold text-blue-600 dark:text-blue-400">
-            {liveSupplyVoltage} V
-          </div>
-        </div>
-
-        <div className="rounded-xl border border-slate-200 bg-slate-50/80 p-2.5 dark:border-slate-800 dark:bg-slate-950/60">
-          <div className="text-[10px] text-slate-500 dark:text-slate-400 font-medium">Power</div>
-          <div className="font-mono text-base font-bold text-amber-600 dark:text-amber-400">
-            {activePowerW} W
           </div>
         </div>
       </div>

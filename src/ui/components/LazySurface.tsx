@@ -22,7 +22,7 @@ function LazySurfaceFailure({ error, label, onClose }: FailureProps) {
   useDialogFocus(true, onClose, panelRef);
 
   return (
-    <div className="fixed inset-0 z-[100] grid place-items-center bg-slate-900/40 p-4 backdrop-blur-sm">
+    <div className="fixed inset-0 z-[100] grid place-items-center bg-slate-900/40 p-4 backdrop-blur-sm animate-backdrop-fade-in">
       <div
         ref={panelRef}
         tabIndex={-1}
@@ -30,7 +30,7 @@ function LazySurfaceFailure({ error, label, onClose }: FailureProps) {
         aria-modal="true"
         aria-labelledby={titleId}
         aria-describedby={descriptionId}
-        className="w-full max-w-sm rounded-lg border border-red-100 bg-white p-5 shadow-2xl outline-none dark:border-red-900/50 dark:bg-slate-900"
+        className="w-full max-w-sm rounded-lg border border-red-100 bg-white p-5 shadow-2xl outline-none animate-dialog-fade-in dark:border-red-900/50 dark:bg-slate-900"
       >
         <h2 id={titleId} className="text-sm font-semibold text-slate-900 dark:text-slate-100">
           {label} could not load

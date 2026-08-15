@@ -36,6 +36,7 @@ export function useSimulation() {
   const components = useCircuitStore((s) => s.components);
   const wires = useCircuitStore((s) => s.wires);
   const globalVoltage = useCircuitStore((s) => s.globalVoltage);
+  const faults = useCircuitStore((s) => s.faults);
   const simRunning = useUiStore((s) => s.simRunning);
   const appMode = useSettingsStore((s) => s.appMode);
 
@@ -71,7 +72,7 @@ export function useSimulation() {
       timerRef.current = null;
       // Snapshot the inputs at scheduling time so a later mutation
       // doesn't slip into the worker call we're about to make.
-      const circuit = { components, wires, globalVoltage };
+      const circuit = { components, wires, globalVoltage, faults };
 
       void simulateAsync(circuit, { appMode })
         .then((result) => {
@@ -170,9 +171,10 @@ export function useSimulation() {
               },
             });
           } else if (
-            result.errors.length > 0 &&
-            (useCircuitStore.getState().components.some((c) => c.state?.fault) ||
-              useCircuitStore.getState().wires.some((w) => w.fault))
+            (result.faultDiagnostics && result.faultDiagnostics.length > 0) ||
+            (result.errors.length > 0 &&
+              (useCircuitStore.getState().components.some((c) => c.state?.fault) ||
+                useCircuitStore.getState().wires.some((w) => w.fault)))
           ) {
             const cs = useCircuitStore.getState();
             const faultedComp = cs.components.find((c) => c.state?.fault);
@@ -334,5 +336,5 @@ export function useSimulation() {
       // change the replacement effect immediately allocates a newer revision.
       if (seqRef.current === mySeq) seqRef.current++;
     };
-  }, [components, wires, globalVoltage, simRunning, appMode]);
+  }, [components, wires, globalVoltage, faults, simRunning, appMode]);
 }

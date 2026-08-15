@@ -1,5 +1,15 @@
-import { ChevronDown, Edit2, Sliders, Zap } from 'lucide-react';
+import {
+  ChevronDown,
+  ChevronRight,
+  Edit2,
+  Layers,
+  Route,
+  Sliders,
+  X,
+  Zap,
+} from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
+import { COMPONENT_DEFS } from '../../domain/components';
 import { useCircuitStore, useUiStore } from '../../store';
 
 const VOLTAGE_PRESETS = [
@@ -16,6 +26,12 @@ export function SubHeaderBar() {
   const globalVoltage = useCircuitStore((s) => s.globalVoltage);
   const setGlobalSupplyVoltage = useCircuitStore((s) => s.setGlobalSupplyVoltage);
   const simResult = useUiStore((s) => s.simResult);
+
+  const selectedComponentIds = useCircuitStore((s) => s.selectedComponentIds);
+  const selectedWireIds = useCircuitStore((s) => s.selectedWireIds);
+  const selectedId = useCircuitStore((s) => s.selectedComponentId);
+  const components = useCircuitStore((s) => s.components);
+  const wires = useCircuitStore((s) => s.wires);
 
   const [projectName, setProjectName] = useState('Kitchen Lighting & Sockets');
   const [isEditing, setIsEditing] = useState(false);
@@ -51,8 +67,29 @@ export function SubHeaderBar() {
   const effectiveVoltage = simResult?.supplyVoltage ?? globalVoltage;
   const isAc = effectiveVoltage > 48;
 
+  // Selected item calculations
+  const totalSelectedCount =
+    (selectedComponentIds.length > 0 ? selectedComponentIds.length : selectedId ? 1 : 0) +
+    selectedWireIds.length;
+
+  const singleCompId =
+    selectedId ?? (selectedComponentIds.length === 1 ? selectedComponentIds[0] : null);
+  const selectedComponent = singleCompId ? components.find((c) => c.id === singleCompId) : null;
+
+  const singleWireId = selectedWireIds.length === 1 ? selectedWireIds[0] : null;
+  const selectedWire = singleWireId ? wires.find((w) => w.id === singleWireId) : null;
+
+  const clearSelection = () => {
+    useCircuitStore.getState().clearSelection();
+  };
+
+  const openInspector = (tab: 'properties' | 'connections' | 'simulation' = 'properties') => {
+    useUiStore.getState().setInspectorCollapsed(false);
+    useUiStore.getState().setActiveInspectorTab(tab);
+  };
+
   return (
-    <div className="absolute left-1/2 top-16 z-10 flex -translate-x-1/2 items-center gap-3 rounded-full border border-white/80 bg-white/85 px-4 py-1 text-xs text-slate-700 shadow-lg ring-1 ring-slate-900/5 backdrop-blur-xl dark:border-slate-700/80 dark:bg-slate-900/85 dark:text-slate-300 dark:ring-slate-700/50">
+    <div className="absolute left-1/2 top-16 z-10 flex -translate-x-1/2 items-center gap-2.5 rounded-full border border-white/80 bg-white/90 px-3.5 py-1 text-xs text-slate-700 shadow-lg ring-1 ring-slate-900/5 backdrop-blur-xl transition-all duration-200 dark:border-slate-700/80 dark:bg-slate-900/90 dark:text-slate-300 dark:ring-slate-700/50 max-w-[calc(100vw-2rem)]">
       {/* Global Voltage Dropdown Picker */}
       <div className="relative" ref={pickerRef}>
         <button
@@ -131,41 +168,153 @@ export function SubHeaderBar() {
 
       <div className="h-3 w-px bg-slate-200 dark:bg-slate-700" />
 
-      <div className="flex items-center gap-1.5">
-        <span className="size-2 rounded-full bg-emerald-500 shadow-[0_0_6px] shadow-emerald-400" />
-        <span className="font-medium text-slate-500 dark:text-slate-400">System:</span>
-        <span className="font-mono font-semibold text-slate-800 dark:text-slate-200">TN-S</span>
-      </div>
-
-      <div className="hidden h-3 w-px bg-slate-200 dark:bg-slate-700 sm:block" />
-
-      <div className="hidden items-center gap-1.5 sm:flex">
-        <span className="font-medium text-slate-500 dark:text-slate-400">Project:</span>
-        {isEditing ? (
-          <input
-            type="text"
-            value={projectName}
-            onChange={(e) => setProjectName(e.target.value)}
-            onBlur={() => setIsEditing(false)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') setIsEditing(false);
-            }}
-            className="rounded border border-blue-400 bg-white px-1.5 py-0.5 text-xs font-semibold text-slate-900 focus:outline-none dark:bg-slate-800 dark:text-slate-100"
-          />
-        ) : (
+      {/* COMBINED SELECTED ITEM SECTION */}
+      {totalSelectedCount > 1 ? (
+        <div className="flex items-center gap-1.5 bg-blue-500/10 px-2 py-0.5 rounded-full border border-blue-400/30 text-blue-700 dark:text-blue-300">
+          <Layers className="size-3 text-blue-600 dark:text-blue-400" />
+          <span className="font-bold">{totalSelectedCount} Selected</span>
+          <span className="font-mono text-[10px] text-blue-600 dark:text-blue-300">
+            ({selectedComponentIds.length} comps, {selectedWireIds.length} wires)
+          </span>
           <button
             type="button"
-            onClick={() => setIsEditing(true)}
-            className="group flex items-center gap-1 rounded px-1.5 py-0.5 font-semibold text-slate-800 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800"
+            onClick={clearSelection}
+            className="rounded-full p-0.5 hover:bg-blue-200/60 dark:hover:bg-blue-900/60 text-blue-600 dark:text-blue-300 transition"
+            title="Deselect"
           >
-            <span>{projectName}</span>
-            <Edit2 className="size-3 text-slate-400 opacity-60 group-hover:opacity-100" />
+            <X className="size-3" />
           </button>
-        )}
-      </div>
+        </div>
+      ) : selectedComponent ? (
+        (() => {
+          const def = COMPONENT_DEFS[selectedComponent.type];
+          const label = def?.label ?? selectedComponent.type;
+          const isOn = selectedComponent.state.on === true;
+          const isEnergized = simResult?.energizedComponents.has(selectedComponent.id) ?? false;
+          return (
+            <div className="flex items-center gap-1.5 bg-purple-500/10 px-2 py-0.5 rounded-full border border-purple-400/30 text-purple-700 dark:text-purple-300">
+              <Sliders className="size-3 text-purple-600 dark:text-purple-400" />
+              <span className="font-bold truncate max-w-[130px]">{label}</span>
+              <span
+                className={`rounded-full px-1.5 py-0.2 text-[9px] font-bold uppercase font-mono ${
+                  isOn || isEnergized
+                    ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300'
+                    : 'bg-slate-200/80 text-slate-600 dark:bg-slate-800 dark:text-slate-400'
+                }`}
+              >
+                {isOn ? 'ON' : isEnergized ? 'ACTIVE' : 'IDLE'}
+              </span>
+              <button
+                type="button"
+                onClick={() => openInspector('properties')}
+                className="flex items-center gap-0.5 text-[10px] font-bold text-purple-700 hover:text-purple-900 dark:text-purple-300 dark:hover:text-purple-100"
+                title="Inspect in side panel"
+              >
+                <span>Inspect</span>
+                <ChevronRight className="size-3" />
+              </button>
+              <button
+                type="button"
+                onClick={() => useUiStore.getState().setActiveComponentInfoType(selectedComponent.type)}
+                className="flex items-center gap-0.5 rounded px-1 text-[10px] font-bold text-sky-600 hover:bg-sky-100 dark:text-sky-400 dark:hover:bg-sky-950/60"
+                title="View Technical Specifications"
+              >
+                <span>? Specs</span>
+              </button>
+              <button
+                type="button"
+                onClick={clearSelection}
+                className="rounded-full p-0.5 hover:bg-purple-200/60 dark:hover:bg-purple-900/60 text-purple-600 dark:text-purple-300 transition"
+                title="Deselect"
+              >
+                <X className="size-3" />
+              </button>
+            </div>
+          );
+        })()
+      ) : selectedWire ? (
+        (() => {
+          const isEnergized = simResult?.energizedWires.has(selectedWire.id) ?? false;
+          const length = selectedWire.lengthMeters ?? 10;
+          const gauge = selectedWire.customCableMm2 ?? 2.5;
+          return (
+            <div className="flex items-center gap-1.5 bg-blue-500/10 px-2 py-0.5 rounded-full border border-blue-400/30 text-blue-700 dark:text-blue-300">
+              <Route className="size-3 text-blue-600 dark:text-blue-400" />
+              <span className="font-bold font-mono">Wire #{selectedWire.id.slice(0, 5)}</span>
+              <span className="font-mono text-[10px] text-slate-500 dark:text-slate-400">
+                {length}m • {gauge}mm²
+              </span>
+              <span
+                className={`rounded-full px-1.5 py-0.2 text-[9px] font-bold uppercase font-mono ${
+                  isEnergized
+                    ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300'
+                    : selectedWire.fault
+                      ? 'bg-red-100 text-red-800 dark:bg-red-950/80 dark:text-red-300'
+                      : 'bg-slate-200/80 text-slate-600 dark:bg-slate-800 dark:text-slate-400'
+                }`}
+              >
+                {isEnergized ? 'LIVE' : selectedWire.fault ? 'FAULT' : 'IDLE'}
+              </span>
+              <button
+                type="button"
+                onClick={() => openInspector('properties')}
+                className="flex items-center gap-0.5 text-[10px] font-bold text-blue-700 hover:text-blue-900 dark:text-blue-300 dark:hover:text-blue-100"
+                title="Inspect in side panel"
+              >
+                <span>Inspect</span>
+                <ChevronRight className="size-3" />
+              </button>
+              <button
+                type="button"
+                onClick={clearSelection}
+                className="rounded-full p-0.5 hover:bg-blue-200/60 dark:hover:bg-blue-900/60 text-blue-600 dark:text-blue-300 transition"
+                title="Deselect"
+              >
+                <X className="size-3" />
+              </button>
+            </div>
+          );
+        })()
+      ) : (
+        <>
+          <div className="flex items-center gap-1.5">
+            <span className="size-2 rounded-full bg-emerald-500 shadow-[0_0_6px] shadow-emerald-400" />
+            <span className="font-medium text-slate-500 dark:text-slate-400">System:</span>
+            <span className="font-mono font-semibold text-slate-800 dark:text-slate-200">TN-S</span>
+          </div>
+
+          <div className="hidden h-3 w-px bg-slate-200 dark:bg-slate-700 sm:block" />
+
+          <div className="hidden items-center gap-1.5 sm:flex">
+            <span className="font-medium text-slate-500 dark:text-slate-400">Project:</span>
+            {isEditing ? (
+              <input
+                type="text"
+                value={projectName}
+                onChange={(e) => setProjectName(e.target.value)}
+                onBlur={() => setIsEditing(false)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') setIsEditing(false);
+                }}
+                className="rounded border border-blue-400 bg-white px-1.5 py-0.5 text-xs font-semibold text-slate-900 focus:outline-none dark:bg-slate-800 dark:text-slate-100"
+              />
+            ) : (
+              <button
+                type="button"
+                onClick={() => setIsEditing(true)}
+                className="group flex items-center gap-1 rounded px-1.5 py-0.5 font-semibold text-slate-800 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800"
+              >
+                <span>{projectName}</span>
+                <Edit2 className="size-3 text-slate-400 opacity-60 group-hover:opacity-100" />
+              </button>
+            )}
+          </div>
+        </>
+      )}
 
       <div className="h-3 w-px bg-slate-200 dark:bg-slate-700" />
 
+      {/* Simulation Running status indicator */}
       <div className="flex items-center gap-1.5">
         <span className="font-medium text-slate-500 dark:text-slate-400">Sim:</span>
         <span
@@ -186,3 +335,4 @@ export function SubHeaderBar() {
     </div>
   );
 }
+

@@ -41,7 +41,6 @@ const WelcomeModal = lazy(() =>
 import type { PendingDeletion } from '../store/uiStore';
 import { cancelPendingDeletion, confirmPendingDeletion } from './canvas-actions';
 import { AlignmentBar } from './components/AlignmentBar';
-import { CanvasSelectionIndicator } from './components/CanvasSelectionIndicator';
 import { ConfirmDialog } from './components/ConfirmDialog';
 import { ContextMenu } from './components/ContextMenu';
 import { EventHistoryPanel } from './components/EventHistoryPanel';
@@ -59,6 +58,7 @@ import { ToolDock } from './components/ToolDock';
 import { Toolbar } from './components/Toolbar';
 import { ValidationDetailsModal } from './components/ValidationDetailsModal';
 import { WhatHappenedModal } from './components/WhatHappenedModal';
+import { ComponentInfoModal } from './components/ComponentInfoModal';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 import { useResolvedTheme } from './hooks/useResolvedTheme';
 import {
@@ -251,7 +251,6 @@ export function Editor() {
         />
       )}
       {showMiniMap && <MiniMap consoleOffset={dashboardOpen ? 'expanded' : tabletConsoleOffset} />}
-      <CanvasSelectionIndicator />
       <StatusPill
         simRunning={simRunning}
         components={components.length}
@@ -321,6 +320,7 @@ export function Editor() {
       <FaultAlertModal />
       <WhatHappenedModal />
       <ValidationDetailsModal />
+      <ComponentInfoModal />
       <ContextMenu />
 
       <ConfirmDialog

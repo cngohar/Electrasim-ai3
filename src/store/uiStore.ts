@@ -191,6 +191,9 @@ interface UiState {
   /** Component ID associated with the previewed variant. */
   previewComponentId: string | null;
 
+  /** Active component technical specifications modal (type string or null). */
+  activeComponentInfoType: string | null;
+
   /** Event history panel open state. */
   eventHistoryOpen: boolean;
 
@@ -278,6 +281,7 @@ interface UiState {
   /** Phase 7: cancel (Esc) — discard the in-flight custom path. */
   cancelCustomPath: () => void;
   setPreviewVariant: (type: string | null, componentId?: string | null) => void;
+  setActiveComponentInfoType: (type: string | null) => void;
 }
 
 const MAX_LOGS = 100;
@@ -400,6 +404,7 @@ export const useUiStore = create<UiState>()(
     pendingCustomPath: null,
     previewVariantType: null,
     previewComponentId: null,
+    activeComponentInfoType: null,
     validationReport: null,
     isValidatingCircuit: false,
     activeValidationIssueModal: null,
@@ -892,6 +897,10 @@ export const useUiStore = create<UiState>()(
       set((s) => {
         s.previewVariantType = type;
         s.previewComponentId = type ? componentId : null;
+      }),
+    setActiveComponentInfoType: (type) =>
+      set((s) => {
+        s.activeComponentInfoType = type;
       }),
   })),
 );

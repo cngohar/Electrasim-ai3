@@ -8,7 +8,7 @@ import {
   type SimulationResult,
 } from '../../domain';
 import { useSettingsStore, useUiStore } from '../../store';
-import { getComponentIcon } from '../components/componentImages';
+import { getComponentIcon, getComponentImage } from '../components/componentImages';
 import type { CanvasTheme, PortLoc } from './types';
 
 const PORT_R = 5;
@@ -56,9 +56,14 @@ export function ComponentLayer({
   onHoverChange,
   onContextMenu,
 }: ComponentLayerProps) {
+  // Render selected component last so it stays on top of other components on canvas
+  const orderedComponents = selectedId
+    ? [...components].sort((a, b) => (a.id === selectedId ? 1 : b.id === selectedId ? -1 : 0))
+    : components;
+
   return (
     <g>
-      {components.map((component) => (
+      {orderedComponents.map((component) => (
         <ComponentNode
           key={component.id}
           component={component}
@@ -582,47 +587,77 @@ function ComponentNode({
           </text>
         ) : (
           <>
-            <g transform={`translate(${COMP_W / 2 - 12} 16)`}>
-              {getComponentIcon(component.type, definition.icon).startsWith(
-                'data:image/svg+xml',
-              ) ? (
-                <image
-                  href={getComponentIcon(component.type, definition.icon)}
-                  width="24"
-                  height="24"
-                  preserveAspectRatio="xMidYMid meet"
-                  className={
-                    showFanSpin
-                      ? 'electrasim-fan-spin'
-                      : showMotorSpin
-                        ? 'electrasim-motor-spin'
-                        : showBellPulse
-                          ? 'electrasim-bell-pulse'
-                          : undefined
-                  }
-                  style={{ pointerEvents: 'none' }}
-                />
-              ) : (
-                <text
-                  x="12"
-                  y="16"
-                  textAnchor="middle"
-                  fontSize="20"
-                  style={{ userSelect: 'none', pointerEvents: 'none' }}
-                  className={
-                    showFanSpin
-                      ? 'electrasim-fan-spin'
-                      : showMotorSpin
-                        ? 'electrasim-motor-spin'
-                        : showBellPulse
-                          ? 'electrasim-bell-pulse'
-                          : undefined
-                  }
-                >
-                  {getComponentIcon(component.type, definition.icon)}
-                </text>
-              )}
-            </g>
+            {(() => {
+              const isLightingBulb =
+                definition.category === 'lighting' ||
+                component.type.startsWith('bulb') ||
+                component.type === 'led-downlight' ||
+                component.type === 'tube-light';
+
+              if (isLightingBulb) {
+                const bulbImg = getComponentImage(component.type, definition.category);
+                const isLit = energized && !component.state.blown && fault !== 'open-circuit';
+                return (
+                  <g transform={`translate(${COMP_W / 2 - 13} 13)`}>
+                    <image
+                      href={bulbImg}
+                      width="26"
+                      height="26"
+                      preserveAspectRatio="xMidYMid meet"
+                      className={
+                        isLit
+                          ? 'drop-shadow-[0_0_8px_rgba(250,204,21,0.85)] filter'
+                          : 'drop-shadow-xs'
+                      }
+                      style={{ pointerEvents: 'none' }}
+                    />
+                  </g>
+                );
+              }
+
+              const icon = getComponentIcon(component.type, definition.icon);
+              return (
+                <g transform={`translate(${COMP_W / 2 - 12} 16)`}>
+                  {icon.startsWith('data:image/svg+xml') ? (
+                    <image
+                      href={icon}
+                      width="24"
+                      height="24"
+                      preserveAspectRatio="xMidYMid meet"
+                      className={
+                        showFanSpin
+                          ? 'electrasim-fan-spin'
+                          : showMotorSpin
+                            ? 'electrasim-motor-spin'
+                            : showBellPulse
+                              ? 'electrasim-bell-pulse'
+                              : undefined
+                      }
+                      style={{ pointerEvents: 'none' }}
+                    />
+                  ) : (
+                    <text
+                      x="12"
+                      y="16"
+                      textAnchor="middle"
+                      fontSize="20"
+                      style={{ userSelect: 'none', pointerEvents: 'none' }}
+                      className={
+                        showFanSpin
+                          ? 'electrasim-fan-spin'
+                          : showMotorSpin
+                            ? 'electrasim-motor-spin'
+                            : showBellPulse
+                              ? 'electrasim-bell-pulse'
+                              : undefined
+                      }
+                    >
+                      {icon}
+                    </text>
+                  )}
+                </g>
+              );
+            })()}
             <text
               x={COMP_W / 2}
               y={50}
@@ -774,7 +809,6 @@ function ComponentNode({
               stroke={portStroke}
               strokeWidth={portStrokeWidth}
               tabIndex={0}
-              role="button"
               aria-label={`${port.label ?? port.type} port on ${definition.label} ${component.id}${compat?.message ? ` (${compat.message})` : ''}`}
               style={{ cursor: 'crosshair' }}
               onPointerDown={(event) => {

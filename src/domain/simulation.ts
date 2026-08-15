@@ -778,17 +778,17 @@ export function simulate(circuit: Circuit, options: SimulateOptions = {}): Simul
       errors.push(`✂ OPEN CIRCUIT FAULT: Conductor break on ${def.label} — path interrupted.`);
     } else if (fault.type === 'open-neutral') {
       errors.push(
-        `⚠ FLOATING NEUTRAL FAULT: Broken neutral return path — voltage reaches load without return!`,
+        '⚠ FLOATING NEUTRAL FAULT: Broken neutral return path — voltage reaches load without return!',
       );
     } else if (fault.type === 'open-earth') {
       warnings.push(`🛡 MISSING CPC / OPEN EARTH: Protective bonding broken on ${def.label}!`);
     } else if (fault.type === 'terminal-disconnect') {
       errors.push(`🔧 TERMINAL DISCONNECT: Loose terminal screw on ${def.label} port!`);
     } else if (fault.type === 'reverse-polarity') {
-      errors.push(`↔ REVERSED POLARITY: Live and Neutral conductors reversed (BS 7671 Reg 643.6)!`);
+      errors.push('↔ REVERSED POLARITY: Live and Neutral conductors reversed (BS 7671 Reg 643.6)!');
     } else if (fault.type === 'switched-neutral') {
       errors.push(
-        `⛔ SWITCHED NEUTRAL HAZARD: Switch cuts Neutral; appliance remains LIVE at 230V when OFF (BS 7671 Reg 132.14 / 537.1)!`,
+        '⛔ SWITCHED NEUTRAL HAZARD: Switch cuts Neutral; appliance remains LIVE at 230V when OFF (BS 7671 Reg 132.14 / 537.1)!',
       );
     } else if (fault.type === 'live-to-earth' || fault.type === 'earth-fault') {
       errors.push(`🔥 EARTH LEAKAGE / FAULT: Insulation breakdown to earth on ${def.label}!`);
@@ -808,7 +808,7 @@ export function simulate(circuit: Circuit, options: SimulateOptions = {}): Simul
     } else if (fault.type === 'protection-bypass') {
       warnings.push(`⚡ PROTECTION BYPASS: Overcurrent protection bypassed on ${def.label}!`);
     } else if (fault.type === 'protection-forced-open') {
-      warnings.push(`🔒 BREAKER JAMMED OPEN: Device mechanism locked in open state.`);
+      warnings.push('🔒 BREAKER JAMMED OPEN: Device mechanism locked in open state.');
     }
 
     faultDiagnostics.push({

@@ -5,6 +5,7 @@ import { Activity, Cpu, Play, Square, Zap } from 'lucide-react';
 import type React from 'react';
 import { useCircuitStore } from '../../store/circuitStore';
 import { useUiStore } from '../../store/uiStore';
+import { AnimatedNumber } from './AnimatedNumber';
 
 export const StatisticsPanel: React.FC = () => {
   const components = useCircuitStore((s) => s.components);
@@ -51,9 +52,15 @@ export const StatisticsPanel: React.FC = () => {
             <Zap className="w-3 h-3 text-amber-400" />
             Active Nodes
           </div>
-          <div className="text-sm font-semibold text-white">
-            <span className="text-emerald-400">{activeNodes}</span>
-            <span className="text-slate-400 text-xs font-normal"> / {totalComponents}</span>
+          <div className="text-sm font-semibold text-white font-mono flex items-baseline">
+            <AnimatedNumber
+              value={activeNodes}
+              className="text-emerald-400 font-bold"
+              duration={300}
+            />
+            <span className="text-slate-400 text-xs font-normal ml-1">
+              / <AnimatedNumber value={totalComponents} duration={200} />
+            </span>
           </div>
         </div>
 
@@ -62,9 +69,15 @@ export const StatisticsPanel: React.FC = () => {
             <Cpu className="w-3 h-3 text-blue-400" />
             Live Wires
           </div>
-          <div className="text-sm font-semibold text-white">
-            <span className="text-blue-400">{activeWires}</span>
-            <span className="text-slate-400 text-xs font-normal"> / {totalWires}</span>
+          <div className="text-sm font-semibold text-white font-mono flex items-baseline">
+            <AnimatedNumber
+              value={activeWires}
+              className="text-blue-400 font-bold"
+              duration={300}
+            />
+            <span className="text-slate-400 text-xs font-normal ml-1">
+              / <AnimatedNumber value={totalWires} duration={200} />
+            </span>
           </div>
         </div>
       </div>
@@ -72,11 +85,15 @@ export const StatisticsPanel: React.FC = () => {
       <div className="space-y-1.5 pt-2 border-t border-slate-800 text-[11px] text-slate-400">
         <div className="flex justify-between items-center">
           <span>Solver Step Rate:</span>
-          <span className="font-mono font-medium text-slate-200">{tickRate} FPS</span>
+          <span className="font-mono font-medium text-slate-200">
+            <AnimatedNumber value={tickRate} duration={250} /> FPS
+          </span>
         </div>
         <div className="flex justify-between items-center">
           <span>Topology Complexity:</span>
-          <span className="font-mono text-slate-200">{totalComponents + totalWires} elements</span>
+          <span className="font-mono text-slate-200">
+            <AnimatedNumber value={totalComponents + totalWires} duration={250} /> elements
+          </span>
         </div>
       </div>
     </div>
