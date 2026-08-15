@@ -7,6 +7,7 @@ describe('component learning descriptions', () => {
     ['mcb', /educational overload estimate.*not standards-compliant.*trip timing/i],
     ['rcd', /Trips on .*earth leakage.*Type B.*residual type/i],
     ['rcbo', /Trips on bolted short.*earth leakage.*only Type B sees smooth DC/i],
+    ['afdd', /arc-fault.*BS EN 62606.*only.*detects.*arc/i],
     ['contactor', /without coil terminals.*coil logic.*auxiliary contacts/i],
     ['bell', /visual pulse.*does not play audio/i],
   ])('%s description matches its modelled behaviour', (type, limitation) => {

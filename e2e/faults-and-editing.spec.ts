@@ -219,6 +219,47 @@ test.describe('faults & editing', () => {
     await expect(rcboAria).not.toHaveAttribute('aria-label', /, tripped/);
   });
 
+  test('an arc fault with no AFDD in the network stops the sim with the Reg 421.1.7 blind-spot modal', async ({
+    page,
+  }) => {
+    const rcboId = `${RCBO_TEMPLATE}-rcbo`;
+    const socketId = `${RCBO_TEMPLATE}-socket`;
+    const arcFaultDialog = (p: Page) =>
+      p.getByRole('dialog').filter({ has: p.getByText('ARC FAULT') });
+
+    await loadGuide(page, RCBO_TEMPLATE, 'RCBO-Protected Socket');
+    await runSim(page);
+
+    // The template guards the socket with an RCBO + upstream MCB only — no
+    // AFDD. BS EN 62606: arcing rides at/below load current with no earth
+    // imbalance, so NOTHING may trip; the app teaches the blind spot instead.
+    await hitbox(page, socketId).click({ button: 'right' });
+    await page.getByRole('button', { name: 'Inject Arc Fault (series/parallel)' }).click();
+
+    await page.getByRole('button', { name: /^Run Simulation$/ }).click();
+    await expect(arcFaultDialog(page)).toBeVisible();
+    await expect(arcFaultDialog(page)).toContainText('NO AFDD PROTECTION');
+    await expect(faultAlertDialog(page)).toHaveCount(0);
+
+    const rcboAria = hitboxIn(page.locator(`[data-component-id="${rcboId}"]`));
+    await expect(rcboAria).not.toHaveAttribute('aria-label', /, tripped/);
+    await expect(page.getByRole('button', { name: /^Stop$/ })).toBeHidden();
+    // Teach the standard: the modal names the regulation behind the advice.
+    await expect(arcFaultDialog(page)).toContainText('BS EN 62606');
+    await arcFaultDialog(page)
+      .getByRole('button', { name: 'Close modal' })
+      .click();
+    await expect(arcFaultDialog(page)).toBeHidden();
+
+    // Recover: clear the injected arc fault and prove a clean run.
+    await hitbox(page, socketId).click({ button: 'right' });
+    await page.getByRole('button', { name: 'Clear Injected Fault' }).click();
+    await page.getByRole('button', { name: /^Run Simulation$/ }).click();
+    await expect(page.getByRole('button', { name: /^Stop$/ })).toBeVisible();
+    await expect(arcFaultDialog(page)).toHaveCount(0);
+    await expect(faultAlertDialog(page)).toBeHidden();
+  });
+
   test('deleting a component asks for confirmation and Ctrl+Z restores it', async ({ page }) => {
     const bulbId = `${STAIRCASE}-bulb`;
     await loadGuide(page, STAIRCASE, 'Two-Way Staircase Light');

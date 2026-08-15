@@ -2501,3 +2501,18 @@ Formula: 2 spinning icons × 13 steps/sec × 16 filter regions = ~416 filter rep
 **Gates:** `npm run check` (typecheck + biome + 284 unit) ✓, full Playwright suite 41 passed + 13 skipped (3 projects) ✓, `npx vite build` ✓.
 
 **Remaining roadmap:** AFDD + arc-fault (Feature 4 — web-verify BS EN 62606 / Reg 421.1.7 first), mini-EIC report (Feature 5, print-HTML no new dep), Zs/disconnection checker (Feature 6, Zs_max = 230×0.95/(band_upper×In)); then final gates, fresh bundle, push (user holds push until all done).
+
+
+---
+
+## Session 2026-08-15 (part 9) — Feature 4: AFDD component + arc-fault fault type
+
+**Scope:** audit roadmap item 4. **Web-verified (3 searches):** Reg 421.1.7 (BS 7671:2018+A2:2022) mandates BS EN 62606 AFDDs on single-phase ≤32 A socket final circuits in HRRB / HMO / student accommodation / care homes, recommended elsewhere; combined AFDD-RCBO units (BS EN 62606 + BS EN 61009-1, B curve, 30 mA Type A, 6–40 A, 1P+N) are the stock product form — mirrored in the component def.
+
+**Changes:** `protection.ts` new `afdd` def (rcbo 4-port topology, isProtection); `types.ts` `FaultType += 'arc-fault'`, `tripReason += 'arc-fault'`; `faults.ts` registry entry (category thermal, Reg citation, RDC-DD-style repair guidance); `simulate.ts` trip kind `'arc-fault'`, earth/smooth-DC residual predicates widened to `afdd`, new arc branch (trips in-network AFDDs only, else NO-AFDD diagnostic); `useSimulation.ts` reason cast widened + dedicated blind-spot manual-fault modal; `circuitFormat.ts` sanitizer accepts `arc-fault`/`manual-fault` trip reasons (they were silently dropped on re-import); picker gating + context-menu item + `#dc2626` fault frame.
+
+**Debugging story worth recording:** the first unit fixtures used a nonexistent `socket-single` type and then wired a 2-port MCB as a 4-port device; the engine's topology bolted-short detector (both rails visiting one port) correctly tripped on the invalid wiring — the "mystery regression" was the simulator catching real mis-wiring in my own fixture. Comment added to the fixture. AFDD filter mutation-proven (2 targeted failures).
+
+**Gates:** 290 unit ✓, full e2e 43 passed + 14 phone-skips ✓ (incl. new arc-modal test), `vite build` ✓.
+
+**Remaining roadmap:** mini-EIC report export (print-HTML, no new dep), Zs/disconnection checker (Zs_max = 230×0.95/(band_upper×In), R1+R2 from T&E mΩ/m — web-verify first); then final gates, fresh bundle, push (user holds push until all done).

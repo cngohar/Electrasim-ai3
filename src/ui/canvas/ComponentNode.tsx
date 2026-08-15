@@ -86,7 +86,9 @@ export function ComponentNode({
             ? '#eab308'
             : fault === 'smooth-dc-residual'
               ? '#8b5cf6'
-              : null;
+              : fault === 'arc-fault'
+                ? '#dc2626'
+                : null;
   const stroke = faultColor
     ? faultColor
     : error

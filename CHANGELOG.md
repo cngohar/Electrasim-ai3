@@ -11,6 +11,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — Session 2026-08-15 (part 9): AFDD + arc-fault fault type
+- **AFDD-RCBO component** (32 A, 30 mA, Type A, B curve — the combined units real consumer units ship) in the Protection palette. It is a full protective device: trips on bolted short, overload, 30 mA+ earth leakage, **smooth DC residual faults when set to Type B** (the RCD-type picker now shows on it), and — uniquely — on **arc faults**. Descriptions cite BS EN 62606 / BS EN 61009-1.
+- **New fault: Arc Fault (series/parallel arcing)**, injectable from the context menu (flame-framed component). Simulation semantics per BS EN 62606 / Reg 421.1.7: only AFDDs in the faulted network trip (reason `arc-fault`); networks without an AFDD raise a "NO AFDD IN THIS NETWORK" diagnostic and stop the sim with a dedicated "🔥 ARC FAULT — NO AFDD PROTECTION!" modal that teaches why MCBs/RCDs are blind (arc current ≤ load current, no earth imbalance) and where AFDDs are mandatory (≤32 A socket circuits in HRRBs, HMOs, student accommodation, care homes).
+- **Unit coverage** — 5 AFDD tests (AFDD trips with reason `arc-fault`; MCB-only and RCBO-only networks stay closed + Reg 421.1.7 diagnostic; AFDD still trips earth leakage as a 30 mA device; AFDD honours its RCD type for smooth DC). Filter mutation-proven (opening the filter trips every device → exactly the two "stays closed" tests fail).
+- **e2e coverage** — "an arc fault with no AFDD in the network stops the sim with the Reg 421.1.7 blind-spot modal" (desktop/tablet).
+- Import/export sanitizer now accepts the `arc-fault` and `manual-fault` trip reasons (both are produced at runtime; previously dropped as unrecognised on JSON re-import).
+
+### Fixed — Session 2026-08-15 (part 9)
+- Nothing user-facing; two of my new unit fixtures initially mis-wired a 2-port MCB as a 4-port device — the engine correctly reported the resulting bolted short (live bridged into neutral), which read as a test failure until the fixture matched real device topology. Kept as a comment in the test: the simulator caught genuinely wrong wiring.
+
+
 
 ### Added — Session 2026-08-15 (part 8): RCD types & smooth DC blinding
 - **RCD residual-current type model (AC / A / F / B)** — every RCD/RCBO now carries an `rcdType` in component state (default `'A'`, the modern baseline) with a four-way picker in the Inspector ("Residual Current Type": AC sine-only legacy, A + pulsating DC, F + mixed frequency, B all-current-sensitive) plus a live `Type X` badge and a one-line teaching note (BS EN 62423, BS 7671 Reg 531.3.3).

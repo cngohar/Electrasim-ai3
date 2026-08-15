@@ -67,7 +67,7 @@ export function simulate(circuit: Circuit, options: SimulateOptions = {}): Simul
    */
   const tripProtectionForFault = (
     faultedId: string,
-    kind: 'short-circuit' | 'ground-fault',
+    kind: 'short-circuit' | 'ground-fault' | 'arc-fault',
     extraFilter?: (type: string, device: (typeof circuit.components)[number]) => boolean,
   ) => {
     const devices = findProtectionDevicesInNetwork(faultedId, circuit, defs).filter(
@@ -93,7 +93,7 @@ export function simulate(circuit: Circuit, options: SimulateOptions = {}): Simul
         errors.push(
           `⚡ ${label} TRIPPED: bolted short circuit — prospective ${prospectiveAmps} A ≫ magnetic zone (${rating} A device), cleared in <0.1 s per IEC 60898-1.`,
         );
-      } else {
+      } else if (kind === 'ground-fault') {
         trippedComponents.push({
           id: dev.id,
           label,
@@ -101,6 +101,20 @@ export function simulate(circuit: Circuit, options: SimulateOptions = {}): Simul
           currentAmps: 0.045, // 45mA residual leakage
           ratingAmps: 0.03, // 30mA threshold
         });
+      } else {
+        // Arc fault: current floats around load level — far below the device
+        // rating, which is exactly why only the AFDD's waveform analysis sees it.
+        const rating = dev.state.customMaxAmps ?? devDef?.maxAmps ?? 32;
+        trippedComponents.push({
+          id: dev.id,
+          label,
+          reason: 'arc-fault',
+          currentAmps: 3,
+          ratingAmps: rating,
+        });
+        errors.push(
+          `🔥 ${label} TRIPPED (BS EN 62606): arc-fault signature detected — arcing interrupted before ignition temperatures developed.`,
+        );
       }
       errorComponents.add(dev.id);
     }
@@ -467,7 +481,7 @@ export function simulate(circuit: Circuit, options: SimulateOptions = {}): Simul
         tripProtectionForFault(
           faultAnchorId,
           'ground-fault',
-          (t) => t.includes('rcd') || t.includes('rcbo'),
+          (t) => t.includes('rcd') || t.includes('rcbo') || t.includes('afdd'),
         );
       }
     } else if (fault.type === 'smooth-dc-residual') {
@@ -475,7 +489,8 @@ export function simulate(circuit: Circuit, options: SimulateOptions = {}): Simul
         `🌊 SMOOTH DC RESIDUAL: Power-electronic earth leakage on ${def.label} — only Type B residual devices can detect a smooth DC component (BS EN 62423, BS 7671 Reg 531.3.3).`,
       );
       if (faultAnchorId) {
-        const isResidual = (t: string) => t.includes('rcd') || t.includes('rcbo');
+        const isResidual = (t: string) =>
+          t.includes('rcd') || t.includes('rcbo') || t.includes('afdd');
         const residualDevices = findProtectionDevicesInNetwork(faultAnchorId, circuit, defs).filter(
           (d) => isResidual(d.type),
         );
@@ -498,6 +513,21 @@ export function simulate(circuit: Circuit, options: SimulateOptions = {}): Simul
         if (residualDevices.length === 0) {
           warnings.push(
             'No residual-current device guards this network — no RCD present to evaluate for DC blinding.',
+          );
+        }
+      }
+    } else if (fault.type === 'arc-fault') {
+      errors.push(
+        `🔥 ARC FAULT: Series/parallel arcing on ${def.label} — arc current rides at/below load current with no earth imbalance, so thermal-magnetic and residual-current devices cannot see it (BS EN 62606).`,
+      );
+      if (faultAnchorId) {
+        tripProtectionForFault(faultAnchorId, 'arc-fault', (t) => t.includes('afdd'));
+        const afdds = findProtectionDevicesInNetwork(faultAnchorId, circuit, defs).filter((d) =>
+          d.type.includes('afdd'),
+        );
+        if (afdds.length === 0) {
+          errors.push(
+            '🚫 NO AFDD IN THIS NETWORK: the arc keeps burning while MCB/RCD/RCBO stay closed. BS 7671 Reg 421.1.7 requires AFDDs on single-phase socket final circuits up to 32 A in higher-risk residential buildings, HMOs, student accommodation and care homes — and recommends them for all other premises.',
           );
         }
       }

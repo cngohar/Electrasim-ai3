@@ -125,6 +125,28 @@ export const PROTECTION_DEFS: Record<string, ComponentDef> = {
     icon: '🛡️',
   },
 
+  afdd: {
+    label: 'AFDD-RCBO (32A 30mA Type A)',
+    description:
+      'Combined arc-fault, overcurrent and residual-current device (BS EN 62606 / BS EN 61009-1, B curve, 32 A, Type A). The only protective device that detects series/parallel arcing — the fire risk that MCBs and RCDs stay blind to; also trips on bolted short, overload and 30 mA+ earth leakage. BS 7671 Reg 421.1.7 requires AFDDs on single-phase socket-outlet final circuits up to 32 A in higher-risk residential buildings, HMOs, student accommodation and care homes (recommended elsewhere).',
+    category: 'protection',
+    isSwitch: true,
+    isPassThrough: true,
+    isProtection: true,
+    defaultOn: true,
+    tier: 'pro',
+    maxAmps: 32,
+    mcbType: 'B',
+    ratedLeakage_mA: 30,
+    ports: [
+      { type: 'live', relX: 0, relY: 0.35, label: 'L-in' },
+      { type: 'neutral', relX: 0, relY: 0.65, label: 'N-in' },
+      { type: 'live', relX: 1, relY: 0.35, label: 'L-out' },
+      { type: 'neutral', relX: 1, relY: 0.65, label: 'N-out' },
+    ],
+    icon: '🔥',
+  },
+
   fuse: {
     label: 'Cartridge Fuse (13A)',
     description:

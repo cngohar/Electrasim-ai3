@@ -346,6 +346,22 @@ export function buildItems(target: ContextMenuState['target']): MenuEntry[] {
       },
     });
 
+    items.push({
+      icon: Flame,
+      label: 'Inject Arc Fault (series/parallel)',
+      disabled: comp?.state.fault === 'arc-fault',
+      action: () => {
+        useCircuitStore.getState().setComponentFault(target.id, 'arc-fault');
+        useUiStore
+          .getState()
+          .addLog(
+            `Injected Arc Fault on ${def?.label ?? 'component'} — only an AFDD (BS EN 62606) detects arcing`,
+            'warning',
+          );
+        close();
+      },
+    });
+
     items.push({ separator: true });
 
     items.push({

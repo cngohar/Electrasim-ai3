@@ -100,7 +100,9 @@ export function ComponentPropertiesView({
       </div>
 
       {/* RCD residual-current type selector (RCD / RCBO only) */}
-      {(selectedComp.type.includes('rcd') || selectedComp.type.includes('rcbo')) &&
+      {(selectedComp.type.includes('rcd') ||
+        selectedComp.type.includes('rcbo') ||
+        selectedComp.type.includes('afdd')) &&
         (() => {
           const currentType = selectedComp.state.rcdType ?? 'A';
           const options = [

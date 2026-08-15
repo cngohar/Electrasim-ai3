@@ -649,3 +649,102 @@ describe('simulate — smooth DC residual blinding (RCD type selection)', () => 
     expect(result.errors.some((e) => e.includes('Type A') && e.includes('DID NOT TRIP'))).toBe(true);
   });
 });
+
+describe('simulate — arc fault detection (BS EN 62606 / Reg 421.1.7)', () => {
+  /** live → [protection] → bulb(+fault) with neutral return. */
+  const arcCircuit = (protectionType: 'afdd' | 'mcb' | 'rcbo', rcdType?: 'A' | 'B') => {
+    const l = C('live-terminal');
+    const n = C('neutral-terminal');
+    const prot = C(protectionType, { on: true, ...(rcdType ? { rcdType } : {}) });
+    const bulb = C('bulb', { fault: 'arc-fault' });
+    // Two-pole devices guard L and N; a 2-port MCB interrupts the live leg
+    // only (wiring it as 4-pole would bridge live into neutral — a REAL
+    // bolted short, which is exactly what the engine reported before).
+    const wires =
+      protectionType === 'mcb'
+        ? [
+            W({ c: l, p: 0 }, { c: prot, p: 0 }),
+            W({ c: prot, p: 1 }, { c: bulb, p: 0 }),
+            W({ c: n, p: 0 }, { c: bulb, p: 1 }),
+          ]
+        : [
+            W({ c: l, p: 0 }, { c: prot, p: 0 }),
+            W({ c: n, p: 0 }, { c: prot, p: 1 }),
+            W({ c: prot, p: 2 }, { c: bulb, p: 0 }),
+            W({ c: prot, p: 3 }, { c: bulb, p: 1 }),
+          ];
+    return { prot, result: simulate(circuit([l, n, prot, bulb], wires)) };
+  };
+
+  it('an AFDD trips on an arc fault in its network', () => {
+    const { prot, result } = arcCircuit('afdd');
+
+    const trips = result.trippedComponents ?? [];
+    expect(trips.map((t) => t.id)).toContain(prot.id);
+    expect(trips.find((t) => t.id === prot.id)?.reason).toBe('arc-fault');
+    expect(result.errors.some((e) => e.includes('BS EN 62606'))).toBe(true);
+  });
+
+  it('an MCB-only network stays closed on an arc and reports the missing AFDD', () => {
+    const { prot, result } = arcCircuit('mcb');
+
+    expect((result.trippedComponents ?? []).map((t) => t.id)).not.toContain(prot.id);
+    expect(result.errors.some((e) => e.includes('NO AFDD'))).toBe(true);
+    expect(result.errors.some((e) => e.includes('421.1.7'))).toBe(true);
+  });
+
+  it('an RCBO (no arc detection) also stays closed on an arc', () => {
+    const { prot, result } = arcCircuit('rcbo');
+
+    expect((result.trippedComponents ?? []).map((t) => t.id)).not.toContain(prot.id);
+    expect(result.errors.some((e) => e.includes('NO AFDD'))).toBe(true);
+  });
+
+  it('an AFDD still trips on earth leakage, like any 30 mA residual device', () => {
+    const l = C('live-terminal');
+    const n = C('neutral-terminal');
+    const afdd = C('afdd', { on: true });
+    const bulb = C('bulb', { fault: 'earth-fault' });
+    const wires = [
+      W({ c: l, p: 0 }, { c: afdd, p: 0 }),
+      W({ c: n, p: 0 }, { c: afdd, p: 1 }),
+      W({ c: afdd, p: 2 }, { c: bulb, p: 0 }),
+      W({ c: afdd, p: 3 }, { c: bulb, p: 1 }),
+    ];
+
+    const result = simulate(circuit([l, n, afdd, bulb], wires));
+
+    const trips = result.trippedComponents ?? [];
+    expect(trips.map((t) => t.id)).toContain(afdd.id);
+    expect(trips.find((t) => t.id === afdd.id)?.reason).toBe('ground-fault');
+  });
+
+  it('an AFDD honours its RCD type — Type A blinded by smooth DC, Type B trips', () => {
+    const blinded = arcCircuitRcdd('A');
+    expect((blinded.result.trippedComponents ?? []).map((t) => t.id)).not.toContain(
+      blinded.prot.id,
+    );
+    expect(blinded.result.errors.some((e) => e.includes('Type A') && e.includes('DID NOT TRIP'))).toBe(
+      true,
+    );
+
+    const sensitive = arcCircuitRcdd('B');
+    expect((sensitive.result.trippedComponents ?? []).map((t) => t.id)).toContain(
+      sensitive.prot.id,
+    );
+  });
+
+  function arcCircuitRcdd(rcdType: 'A' | 'B') {
+    const l = C('live-terminal');
+    const n = C('neutral-terminal');
+    const prot = C('afdd', { on: true, rcdType });
+    const bulb = C('bulb', { fault: 'smooth-dc-residual' });
+    const wires = [
+      W({ c: l, p: 0 }, { c: prot, p: 0 }),
+      W({ c: n, p: 0 }, { c: prot, p: 1 }),
+      W({ c: prot, p: 2 }, { c: bulb, p: 0 }),
+      W({ c: prot, p: 3 }, { c: bulb, p: 1 }),
+    ];
+    return { prot, result: simulate(circuit([l, n, prot, bulb], wires)) };
+  }
+});

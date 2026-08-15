@@ -143,6 +143,7 @@ export type FaultType =
   | 'switched-neutral'
   | 'live-to-earth'
   | 'smooth-dc-residual'
+  | 'arc-fault'
   | 'protection-forced-open'
   | 'protection-bypass';
 
@@ -249,7 +250,7 @@ export interface ComponentState {
 
   /** Protection device tripped status (for breakers/fuses). */
   isTripped?: boolean;
-  tripReason?: 'overload' | 'short-circuit' | 'ground-fault' | 'manual-fault';
+  tripReason?: 'overload' | 'short-circuit' | 'ground-fault' | 'arc-fault' | 'manual-fault';
 
   /**
    * Residual-current classification on RCD/RCBO devices (default `'A'`).
