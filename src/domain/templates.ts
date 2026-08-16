@@ -349,7 +349,7 @@ function rcboProtectedSocketTemplate(): GuidedCircuitTemplate {
     summary:
       'A socket outlet supplied through an RCBO, with protective earth and a lamp representing a plugged-in appliance.',
     teaches:
-      'An RCBO combines overcurrent and residual-current protection for one circuit. ElectraSim models manual open/closed continuity, not current, leakage, trip thresholds, or trip timing.',
+      'An RCBO combines overcurrent and residual-current protection for one circuit. Earth-leakage and bolted-short faults trip it (educational thresholds), and its residual type (AC/A/F/B) decides whether smooth DC leakage trips it too.',
     expected:
       'Run the simulation: the test lamp energises while the RCBO is closed. Open the RCBO and both outgoing Live and Neutral paths are interrupted; Earth remains connected.',
     steps: [

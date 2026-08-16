@@ -247,4 +247,27 @@ describe('circuitStore — undo/redo (zundo)', () => {
     expect(state.selectedComponentId).toBeNull();
     expect(state.selectedComponentIds).toEqual([]);
   });
+
+  it('undo removes an injected fault and its mirrored component marker together', () => {
+    useCircuitStore.setState({ faults: [] });
+    const bulb = useCircuitStore.getState().components.find((c) => c.type === 'bulb')!;
+    const entriesBefore = useCircuitStore.temporal.getState().pastStates.length;
+
+    useCircuitStore.getState().setComponentFault(bulb.id, 'short-circuit');
+    expect(useCircuitStore.getState().faults).toHaveLength(1);
+    expect(
+      useCircuitStore.getState().components.find((c) => c.id === bulb.id)?.state.fault,
+    ).toBe('short-circuit');
+    expect(useCircuitStore.temporal.getState().pastStates).toHaveLength(entriesBefore + 1);
+
+    undo();
+
+    // Without `faults` in the temporal partialize the scenario array kept the
+    // stale fault while the tracked marker reverted — an invisible ghost that
+    // still tripped protection on the next run.
+    expect(useCircuitStore.getState().faults).toHaveLength(0);
+    expect(
+      useCircuitStore.getState().components.find((c) => c.id === bulb.id)?.state.fault,
+    ).toBeUndefined();
+  });
 });

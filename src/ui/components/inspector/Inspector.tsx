@@ -24,13 +24,14 @@ import {
   type SimulationResult,
   type WireInstance,
 } from '../../../domain';
-import { useUiStore } from '../../../store';
+import { useCircuitStore, useUiStore } from '../../../store';
 import { ValidationReportView } from '../ValidationReportView';
 import { InspectorAnalyticsView } from './InspectorAnalyticsView';
 import { InspectorConnectionsContent } from './InspectorConnectionsContent';
 import { InspectorLogsView } from './InspectorLogsView';
 import { InspectorPropertiesContent } from './InspectorPropertiesContent';
 import { InspectorSimulationContent } from './InspectorSimulationContent';
+import { ZsCheckPanel } from './ZsCheckPanel';
 import { useInspectorSelectionState } from './useInspectorSelectionState';
 
 interface Props {
@@ -58,6 +59,7 @@ export function Inspector({
 
   const activeInspectorTab = useUiStore((s) => s.activeInspectorTab);
   const setActiveInspectorTab = useUiStore((s) => s.setActiveInspectorTab);
+  const activeGuideId = useUiStore((s) => s.activeGuideId);
 
   const validationReport = useUiStore((s) => s.validationReport);
   const runCircuitValidation = useUiStore((s) => s.runCircuitValidation);
@@ -194,9 +196,11 @@ export function Inspector({
     );
   }
 
-  // Expanded Inspector Layout with Vertical Navigation Tab Bar on Right
+  // Expanded Inspector Layout with Vertical Navigation Tab Bar on Right.
+  // Inset below the floating header toolbar (top-4 pill ≈ 64 px tall) so it
+  // can never cover — and swallow clicks for — the Menu / theme controls.
   return (
-    <aside className="fixed right-0 top-0 bottom-0 z-20 flex h-screen shadow-2xl border-l border-slate-200/80 bg-white/95 backdrop-blur-xl dark:border-slate-800 dark:bg-slate-900/95">
+    <aside className="fixed right-0 top-16 bottom-0 z-20 flex shadow-2xl border-l border-t rounded-tl-2xl border-slate-200/80 bg-white/95 backdrop-blur-xl dark:border-slate-800 dark:bg-slate-900/95">
       {/* Main Drawer Body Area */}
       <div className="flex-1 flex flex-col h-full overflow-hidden w-64 md:w-72 lg:w-80">
         {/* Header Bar */}
@@ -236,6 +240,32 @@ export function Inspector({
           </button>
         </div>
 
+        {/* Return-to-guide strip: while a Guided Circuit is active, selecting a
+            component pauses its steps — surface the way back inside the drawer
+            (the floating chip only covers the collapsed-rail state). */}
+        {activeGuideId && selectionState.kind === 'component' && (
+          <div className="flex items-center justify-between gap-2 border-b border-indigo-100 bg-indigo-50/80 px-3.5 py-2 flex-shrink-0 dark:border-indigo-900/60 dark:bg-indigo-950/40">
+            <div className="min-w-0">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-300">
+                Guide paused
+              </p>
+              <p className="truncate text-[11px] text-indigo-800 dark:text-indigo-200">
+                Challenge steps hidden while inspecting
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                useCircuitStore.getState().clearSelection();
+                useUiStore.getState().setInspectorCollapsed(true);
+              }}
+              className="flex-shrink-0 rounded-lg bg-blue-600 px-2.5 py-1.5 text-[11px] font-semibold text-white transition hover:bg-blue-700"
+            >
+              Close inspector and return to guide
+            </button>
+          </div>
+        )}
+
         {/* Dynamic Tab Body View */}
         <div className="flex-1 overflow-y-auto">
           {activeInspectorTab === 'properties' && (
@@ -259,6 +289,9 @@ export function Inspector({
 
           {activeInspectorTab === 'validation' && (
             <div className="h-full overflow-y-auto">
+              <div className="border-b border-slate-200/70 p-3 dark:border-slate-800/70">
+                <ZsCheckPanel />
+              </div>
               {validationReport ? (
                 <ValidationReportView
                   report={validationReport}

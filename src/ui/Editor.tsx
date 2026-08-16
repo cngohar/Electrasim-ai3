@@ -250,7 +250,9 @@ export function Editor() {
           consoleOffset={dashboardOpen ? 'expanded' : tabletConsoleOffset}
         />
       )}
-      {showMiniMap && <MiniMap consoleOffset={dashboardOpen ? 'expanded' : tabletConsoleOffset} />}
+      {showMiniMap && !isPhone && (
+        <MiniMap consoleOffset={dashboardOpen ? 'expanded' : tabletConsoleOffset} />
+      )}
       <StatusPill
         simRunning={simRunning}
         components={components.length}

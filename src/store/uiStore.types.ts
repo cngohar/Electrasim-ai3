@@ -159,6 +159,13 @@ export interface UiState {
   templatesOpen: boolean;
   /** Loaded guided circuit whose checklist is currently shown. */
   activeGuideId: string | null;
+  /**
+   * The active guide's checklist is temporarily hidden so the canvas it
+   * overlays becomes reachable again. Distinct from `activeGuideId: null`
+   * (which ENDS the guide): hidden guides keep tracking progress and offer a
+   * floating "Show guide steps" pill to return.
+   */
+  guideHidden: boolean;
   /** First-visit welcome modal open state. */
   welcomeOpen: boolean;
   /** One-time phone advisory shown before the first-visit welcome. */
@@ -254,6 +261,7 @@ export interface UiState {
   setContactOpen: (open: boolean) => void;
   setTemplatesOpen: (open: boolean) => void;
   setActiveGuideId: (id: string | null) => void;
+  setGuideHidden: (hidden: boolean) => void;
   setWelcomeOpen: (open: boolean) => void;
   dismissMobileSuitability: () => void;
   setContextMenu: (menu: ContextMenuState | null) => void;

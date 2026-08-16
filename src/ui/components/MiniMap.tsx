@@ -87,7 +87,9 @@ export function MiniMap({ consoleOffset = 'none' }: Props) {
   const vpMaxY = vpMinY + vpH / zoom;
   const vpTL = worldToMiniMap(vpMinX, vpMinY, bounds);
   const vpBR = worldToMiniMap(vpMaxX, vpMaxY, bounds);
-  const rightClass = inspectorCollapsed ? 'right-14' : 'right-76 lg:right-84';
+  // Expanded inspector real width = drawer (w-64 md:w-72 lg:w-80) + icon rail
+  // (w-12); offsets add an 8 px gap so the panel never covers this control.
+  const rightClass = inspectorCollapsed ? 'right-14' : 'right-78 md:right-86 lg:right-94';
 
   const bottomClass =
     consoleOffset === 'expanded'

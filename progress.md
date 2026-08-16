@@ -2373,3 +2373,176 @@ Formula: 2 spinning icons × 13 steps/sec × 16 filter regions = ~416 filter rep
 - `ComponentLayer.tsx` 889 → 97 + `ComponentNode.tsx` + `ComponentTooltip.tsx`.
 - `ContextMenu.tsx` 728 → ~150 + `contextMenuItems.ts`.
 - `circuitValidation.ts` 889 → 835 + `circuitValidationTypes.ts` (the remainder is one cohesive `validateCircuit()` pass; intentionally left unsplit).
+
+---
+
+## Session 2026-08-15 (part 2) — Real-world data accuracy audit (web-verified)
+
+**Task (user request):** "have you actually checked that all info in this repo is accurate according to real world data? … if not then correct" — full fact-check of engineering/regulatory claims against authoritative web sources.
+
+**Method:** inventoried every factual surface — `simulation/tripCurves.ts` (ampacity table + MCB/RCD curves), component definitions, `componentHelp/` educational copy, `faults.ts` testing prose, validation rules, and astro-site blog regulatory claims — then web-verified the load-bearing numbers against BS 7671 / IEC 60898-1 / IEC 61008-1 references.
+
+**Corrections made** (branch `fix/bs7671-data-accuracy`):
+1. **Cable ampacity** was a mixed-method table masquerading as "BS 7671 Table 4D5": 1.0 mm² = 11 A and 1.5 mm² = 16 A are derated (Method A/B-territory) values; corrected to consistent Reference Method C: 16/20/27/37/47/64/85 A. Header now explicitly documents the Method C assumption + derating caveat.
+2. **MCB thermal curve** `t = 3600/(m²−1)` violated IEC 60898-1 Table 7: 2.55×In persisted ~654 s vs mandated 1–60 s. Replaced with power law `t = K/(m²−1)^α` (K = 4615.65876415, α = 2.5468325498) fitted exactly through both IEC anchors; also reproduces the published 0.1–45 s Type B response band at 3–5×In.
+3. **Magnetic trip threshold** modelled at the *lower* band edge (3×In) where IEC only specifies the *no-trip* test; now instantaneous at ≥ upper band edge (B 5×, C 10×, D 20×In).
+4. **RCD break times** were linearly interpolated (235 ms at 2×IΔn vs IEC 61008-1 limit 150 ms); now stepped 300/150/40 ms at 1×/2×/5×IΔn.
+5. **New `tripCurves.test.ts`** — 25 regression tests whose expectations are the published standard values themselves, locking the physics against future drift. 256/256 green, lint clean, build OK.
+
+**Verified accurate, no change required:** Amendment 4:2026 blog (dates, Orange Book, transition), AFDD 421.1.7 blog scope, EICR 5/10-year intervals, socket ≤32 A 30 mA RCD requirement, GFCI/UL 943 refs, immersion 3 kW ≈ 13 A, EV 7.36 kW @ 32 A, LED efficacy figures, insulation-resistance ≥1 MΩ test minimum, twin-socket 20 A combined rating.
+
+**Follow-up ideas surfaced by the audit (product features):** installation-method/derating selector, wire-length voltage-drop checks, Zs/disconnection checker, RCD type (AC/A/F/B) selection with DC-blinding fault scenario, AFDD component + arc-fault scenario, mini-EIC report export.
+
+---
+
+## Session 2026-08-15 (part 3) — Playwright verification & visual repair pass
+
+**Task (user request):** "have you actually tested that all features work as intended — use Playwright to test it visually and fix what doesn't work."
+
+**Method:** installed Playwright browsers + host deps in the sandbox, ran the full e2e suite (3 viewports: desktop chromium, mobile Pixel 7, iPad Pro), then drove the app headlessly with custom scripts — loading templates, running the sim, toggling switches, opening panels, right-clicking components — capturing screenshots + console/page errors at every step.
+
+**Baseline:** 15 passed / 12 failed (4 unique failures × 3 viewports). Browsers were never run against this code before (no CI; HEAD `140ed41` couldn't even boot).
+
+**Root causes found & fixed:**
+1. **Spec drift (app correct):** selection-click & touch specs used `.first()` on canvas nodes — but selection intentionally raises a component in SVG DOM order (z-order = document order), so the locator re-resolved to a *different* component. Pinned by `data-component-id`; transform now compared by position (no-op `rotate(0 …)` segment may be dropped). **Verified: no teleport bug exists.**
+2. **Spec drift (app correct):** two-way-staircase & RCBO guides asserted the old StatusPill text ("6 components • 6 wires • N active") and two `#facc15` glow circles — the redesigned pill reads "6 comps • 6 wires • N energized" and bulbs render one halo. Verified sim behaviour correct (L1/L1 on → off at L2/L1 → on at L2/L2 → off at L1/L2) before updating assertions.
+3. **Missing feature (app gap, now built):** the staircase spec asserted a "Close inspector and return to guide" affordance that never existed — selecting a component mid-challenge hid the guide with no discoverable way back. Implemented as an "Inspector / Guide paused" chip in `GuidedCircuitPanel` (desktop/tablet only; clears selection + collapses inspector). 
+4. **Phone-specific flow:** guide bottom-sheet overlays the lower canvas and intercepts component taps — intended remedy is the existing "Hide guide" button; specs now use it (flagged below as a future UX improvement).
+5. **Real layout bugs (fixed):** expanded Inspector (`fixed right-0 top-0` full height) covered the centered Toolbar's right end making **Menu unreachable**; minimap/tooldock/status-bar offsets ignored the 48 px icon rail so the panel overlapped them; the sub-header pill text **wrapped vertically** at tablet widths; the mini-map occluded ~40 % of phone canvases; status-bar Grid/Snap toggles sat **under** the collapsed icon rail. All repaired; dev preview hosts (`.e2b.app`) allowed in Vite config.
+
+**Result:** `27/27` e2e assertions pass on all three viewports (6 intentional skips: perf-gated + production specs), `256/256` unit tests, biome clean (261 files), production build OK, zero console/page errors across a 12-stop visual sweep (desktop/mobile/tablet). New tool: `scripts/visual-sweep.mjs`.
+
+---
+
+## Session 2026-08-15 (part 4) — Short-circuit faults now operate the guarding protection
+
+**Task (standing user instruction: "do all step by step as fix this as you progress"):** extend e2e coverage over unverified flows; first job from the Part 3 handover — probe4 showed a bolted short circuit never trips anything.
+
+**Findings (engine audit):**
+- `calculateMCBTrip` / `calculateRCDTrip` were exported but **never called internally** — short-circuit faults (both the topology-overlap L∩N pass and injected `short-circuit` faults) only pushed an error string; no `trippedComponents` entry was produced, so the circuit "ran" with a bolted fault and the MCB stayed closed.
+- Earth-leakage faults tripped **every** RCD/RCBO *on the whole canvas*, even devices on isolated networks sharing no wires with the fault.
+
+**Fix:**
+- New pure module `src/domain/simulation/faultPropagation.ts`: undirected BFS over the wire adjacency (`connectedNetworkComponents`) + `findProtectionDevicesInNetwork` filter on `isProtection` defs. Teaching simplification documented in the header: all in-network devices operate; nearest-upstream selectivity (BS 7671 §536) deferred to the Zs-checker roadmap item.
+- `simulate.ts` gained a `tripProtectionForFault(faultedId, kind, extraFilter?)` closure fed from a `trippedIds` set; hooked into the topology overlap loop, the injected short-circuit branch (via a new `faultAnchorId` resolving component/wire/port targets), and the earth-leakage branch (now network-scoped + RCD/RCBO-only filter). Bolted-fault diagnostic assumes a ≤0.5 Ω fault loop → 460 A prospective at 230 V, "<0.1 s per IEC 60898-1" — matching probe console output `⚡ MCB Type B (16A) TRIPPED: … prospective 460 A …`.
+- Tripped devices flow through the existing pipeline (`trippedComponents` → `isTripped` state → "⚡ CIRCUIT PROTECTION TRIPPED!" alert → Run blocked until reset).
+
+**Verification:** 4 new regression tests in `simulation.test.ts` (35/35 in that file, 260/260 overall); probe4 re-run shows the MCB trips and the sim stops. Full gates green: typecheck + biome lint + vitest + `vite build` + 27/27 e2e (6 intentional skips).
+
+**Known remaining gaps (next):** injected faults bypass Ctrl+Z history (faultActions make no history commits); post-trip UI flow (isTripped render, reset-breaker card) to be locked into a new `e2e/faults-and-editing.spec.ts`.
+
+---
+
+## Session 2026-08-15 (part 5) — Post-trip UI verification & guided-panel/inspector collision fixes
+
+**Method:** drove the full fault→trip→reset→recover loop headlessly (`scripts/probe5-post-trip.mjs`) against the dev server — inject short on the staircase bulb, run, dismiss alert, inspect MCB, reset, re-run into the fault, clear fault, reset, clean run. Zero console errors; every intermediate state screenshotted.
+
+**Bugs found at runtime & fixed (none visible from code reading alone):**
+1. **Tripped device had no canvas affordance.** Engine set `isTripped` and traversal respected it, but the canvas kept aria `", on"` + green status dot. Now: amber dashed frame + "!" badge (fault-marker grammar), amber switch dot, aria gains `", tripped"` — probe asserts all three.
+2. **Return-to-guide chip physically blocked the Inspector rail** (Playwright "subtree intercepts pointer events"). Root cause: chip pinned at `right-4 top-28 z-20` over the 48px collapsed rail; after expanding the drawer it followed the drawer offsets into mid-canvas and ate right-clicks on the bulb beneath it. Fix: chip only renders for the **collapsed** state, offset `right-14` (matching MiniMap/ToolDock); the expanded drawer now hosts an inline **Guide paused → Close inspector and return to guide** strip (`Inspector.tsx`), and `GuidedCircuitPanel` returns null for the expanded+selected state (which also removes a pre-existing overlap where the full panel rendered over the drawer's tab strip).
+3. **Resolve hint copy wrong for fault trips** — "lower load / upgrade rating" is overload advice; short-circuit/earth-leakage trips now get "clear the injected fault, then reset the breaker" (`useSimulation.ts`, reason-aware).
+
+**Verified flow (probe output):** trip → aria `…, on, tripped` + amber marker + "⚡ CIRCUIT PROTECTION TRIPPED!" modal → dismiss → inspector Manual Breaker Control RESET enabled → reset clears marker → re-running **into** the still-injected fault re-trips (correct realism — reclosing onto a bolted fault) → clear fault + reset → sim runs clean. Note: the Toolbar "blocked while tripped" path never binds because `simResult` nullls when the sim stops; re-running while faulted simply re-trips, which is the intended teaching behaviour.
+
+**Gates:** typecheck + biome + 260/260 vitest; 27/27 e2e ×3 viewports (existing chip assertions in `two-way-staircase.spec.ts` still hold against the collapsed-state chip).
+
+**Next:** encode the verified flow as `e2e/faults-and-editing.spec.ts` (+ delete/undo, copy/paste, export JSON); phone guide dead-end (re-show affordance); then the six-item feature roadmap.
+
+---
+
+## Session 2026-08-15 (part 6) — e2e faults-and-editing spec, ghost-fault undo fix, non-destructive Hide guide
+
+**Encoded the verified flows as `e2e/faults-and-editing.spec.ts`** (6 tests, desktop+tablet; phone skipped — fault injection is context-menu only). While building it, three more real defects surfaced and were fixed first:
+
+1. **Ghost faults after Ctrl+Z.** Theory: undo tracked `components`/`wires`/`globalVoltage` but not the `faults` array. `circuitStore.test.ts` now pins semantics (inject → undo → `faults` empty). **Mutation-proven deterministically**: new unit test fails pre-fix (1 of 17), passes post-fix; browser-level proof via a static pre-fix build (`vite build --base=/` + `vite preview :3001`) — the lamp never relights after undo+run (`#facc15` never appears) while the post-fix build runs clean. The partialize comment now explains why `faults` must be tracked.
+2. **"Hide guide" was a one-way dead-end** (the standing phone-guide task item, but it affected every viewport): X set `activeGuideId=null`, losing the challenge and its progress. Now `uiStore.guideHidden` toggles non-destructively; a floating **"Guide steps" pill** (Trophy + N/M counter) re-opens it; `setActiveGuideId` always un-hides. Tablet-safari test-1 failure (panel hides the staircase bulb at 834px) was the live proof of the occlusion class.
+3. **Spec timing trap found while mutation-checking**: the first version of the undo test asserted "alert hidden" immediately after Run — a transient that passes even when the bug exists (trip lands ~200–800 ms later). Gate on the lamp's `#facc15` halo instead; the Playwright retry makes the distinction deterministic.
+
+**Suite now:** 39 passed / 12 skipped (6 intentional + 6 new phone-skips) / 0 failed ×3 viewports; `npm run check` (typecheck+biome+261 vitest) green; prod build OK.
+
+**Remaining roadmap:** six product features (installation-method selector, wire-length Vd, RCD types, AFDD, mini-EIC, Zs checker) → then final gates, docs, bundle, push.
+
+---
+
+## Session 2026-08-15 (part 7) — Feature roadmap 1+2: installation methods & standards-grade voltage drop
+
+**Scope (from the accuracy audit backlog):** (a) installation-method selector on wires, (b) BS 7671 mV/A/m voltage drop. Found existing scaffolding (`lengthMeters`, `deratingFactor`, `material`, `customCableMm2` + a per-wire `ElectricalCalculation`) but the data behind it pre-dated the audit: `getStandardCableAmpacity` was still the OLD mixed-method table (1.5 mm² → 16 A) disagreeing with the corrected `tripCurves.getCableAmpacity` (20 A Method C), and voltage drop used 20 °C resistivity, understating drops ~20 % vs the tabulated 70 °C values.
+
+**Changes:**
+- `types.ts`: `InstallationMethod = 'C' | 'B1' | 'A'`; `WireInstance.installationMethod`.
+- `tripCurves.ts`: `getCableAmpacity(mm2, method='C')` backed by three Appendix-4 tables (C 16/20/27/37/47/64/85; B1 13.5/17.5/24/32/41/57/76; A 11/14/18.5/25/32/43/57) — values from the 2026-08 web-verified audit.
+- `electricalCalculations.ts`: `getStandardCableAmpacity` delegates to the tripCurves tables (single source of truth; Al stays the documented ×0.78 approximation); new `getMillivoltAmpMeter` (Table 4D5 44/29/18/11/7.3/4.4/2.8 mV/A/m for Cu T&E ≤16 mm²; ×1.2 70 °C resistivity fallback); `calculateElectricalValues` accepts `installationMethod` and derives resistance from the same mV/A/m it uses for the drop.
+- `simulate.ts`: melt/overload ampacity + per-wire calculation both take the wire's method.
+- `circuitStore.updateWireProperties`: whitelists `installationMethod` (validated enum) — **probe6 caught this silently dropping the field before the fix.**
+- `WireInspectorView`: "Installation Method (BS 7671)" picker (C/B1/A with one-line hints) + live "N A base × Cg = M A effective" readout.
+- Tests: updated the three audit-stale expectations (1.5 mm² = 20 A; Cu 2.5/10 m/5 A Vd = 0.9 V; Al ≈ 1.35 V), added B1/A ampacity it.each blocks (14 rows), calc-level method test, 3 %-limit warning test. **279 unit + 39 e2e green.**
+
+**Verified at runtime (scripts/probe6-wire-method.mjs):** force-click wire (SVG zero-bbox workaround documented in the script) → Method picker renders; C→27 A base, B1→24 A, effective readout correct; zero console errors. Note: wires are NOT clickable by Playwright's normal actionability because a straight SVG path's bbox has no area — `.click({ force: true })` centres on the line.
+
+**Remaining roadmap:** RCD type (AC/A/F/B) + DC-blinding fault, AFDD + arc-fault, mini-EIC report, Zs/disconnection checker; then full gates, docs, bundle/push (user holds push until all done).
+
+---
+
+## Session 2026-08-15 (part 8) — Feature 3: RCD types (AC/A/F/B) + smooth DC blinding fault
+
+**Scope:** audit roadmap item 3 — RCD residual-current type selection and the EV/PV/VFD "DC blinding" teaching scenario.
+
+**Web-verified data (BS EN 62423 / BS 7671 Reg 531.3.3):** Type AC = sine AC only (legacy); Type A adds pulsating DC, tolerates ≤6 mA superimposed *smooth* DC but does not detect it; Type F adds mixed frequency, ≤10 mA smooth DC; only Type B detects smooth DC residual current. Modern baseline for new installs is Type A.
+
+**Changes:**
+- `types.ts`: `RCDType = 'AC'|'A'|'F'|'B'`; `ComponentState.rcdType?` (read-time default `'A'`); `FaultType += 'smooth-dc-residual'`.
+- `faults.ts`: registry entry (earth category, critical severity, standards text + RDC-DD/IEC 62955 repair guidance).
+- `simulate.ts`: `tripProtectionForFault` filter gains the device itself (`(type, device)`); new `smooth-dc-residual` branch trips only Type B residual devices in the faulted network (reuses the faultPropagation network BFS), records 🚫 `Type X DID NOT TRIP` errors with per-type tolerance for blinded AC/A/F devices, and warns when no residual device guards the network at all.
+- `useSimulation.ts`: manual-fault modal switch gains a smooth-DC case — "🌊 SMOOTH DC RESIDUAL — RCD BLINDED!" with the saturation explanation and Type-B-first resolution steps (Type B trips take the normal trip-modal path because `trippedComponents` is checked first).
+- UI: `ComponentPropertiesView` 4-button picker with `Type X` badge + teaching note (RCD/RCBO only); `contextMenuItems` "Inject Smooth DC Residual (EV/PV fault)"; `ComponentNode` violet `#8b5cf6` fault frame; `protection.ts`/`templates.ts` descriptions updated (leakage IS modelled since part 6's engine — three stale legend-text test assertions were proven runtime-stale by the e2e suite and updated, not deleted).
+- **Bug found mid-feature:** ContextMenu only flipped right/bottom — the now-taller fault menu clipped off the TOP on mid-screen right-clicks (Playwright: "element outside of the viewport"). Fixed with flip + 8 px hard-clamp both axes + internal scroll (`max-h-[calc(100dvh-16px)] overflow-y-auto`). This same bug had been flaking the pre-existing earth-leakage e2e on chromium — that test is green again as mutation-proof.
+- Tests: 5 unit (AC/A/F blind + Type B trips + default-A fallback) — 284 unit total.
+
+**Gates:** `npm run check` (typecheck + biome + 284 unit) ✓, full Playwright suite 41 passed + 13 skipped (3 projects) ✓, `npx vite build` ✓.
+
+**Remaining roadmap:** AFDD + arc-fault (Feature 4 — web-verify BS EN 62606 / Reg 421.1.7 first), mini-EIC report (Feature 5, print-HTML no new dep), Zs/disconnection checker (Feature 6, Zs_max = 230×0.95/(band_upper×In)); then final gates, fresh bundle, push (user holds push until all done).
+
+
+---
+
+## Session 2026-08-15 (part 9) — Feature 4: AFDD component + arc-fault fault type
+
+**Scope:** audit roadmap item 4. **Web-verified (3 searches):** Reg 421.1.7 (BS 7671:2018+A2:2022) mandates BS EN 62606 AFDDs on single-phase ≤32 A socket final circuits in HRRB / HMO / student accommodation / care homes, recommended elsewhere; combined AFDD-RCBO units (BS EN 62606 + BS EN 61009-1, B curve, 30 mA Type A, 6–40 A, 1P+N) are the stock product form — mirrored in the component def.
+
+**Changes:** `protection.ts` new `afdd` def (rcbo 4-port topology, isProtection); `types.ts` `FaultType += 'arc-fault'`, `tripReason += 'arc-fault'`; `faults.ts` registry entry (category thermal, Reg citation, RDC-DD-style repair guidance); `simulate.ts` trip kind `'arc-fault'`, earth/smooth-DC residual predicates widened to `afdd`, new arc branch (trips in-network AFDDs only, else NO-AFDD diagnostic); `useSimulation.ts` reason cast widened + dedicated blind-spot manual-fault modal; `circuitFormat.ts` sanitizer accepts `arc-fault`/`manual-fault` trip reasons (they were silently dropped on re-import); picker gating + context-menu item + `#dc2626` fault frame.
+
+**Debugging story worth recording:** the first unit fixtures used a nonexistent `socket-single` type and then wired a 2-port MCB as a 4-port device; the engine's topology bolted-short detector (both rails visiting one port) correctly tripped on the invalid wiring — the "mystery regression" was the simulator catching real mis-wiring in my own fixture. Comment added to the fixture. AFDD filter mutation-proven (2 targeted failures).
+
+**Gates:** 290 unit ✓, full e2e 43 passed + 14 phone-skips ✓ (incl. new arc-modal test), `vite build` ✓.
+
+**Remaining roadmap:** mini-EIC report export (print-HTML, no new dep), Zs/disconnection checker (Zs_max = 230×0.95/(band_upper×In), R1+R2 from T&E mΩ/m — web-verify first); then final gates, fresh bundle, push (user holds push until all done).
+
+
+---
+
+## Session 2026-08-15 (part 10) — Feature 6: Zs / disconnection-time checker (Reg 411.3)
+
+**Scope:** last audit roadmap item. **Web-verified (2 searches, 6 sources):** BS 7671:2018+A4:2026 moved Tables 41.2–41.4 to Cmin-corrected values — one formula reproduces the whole table: `Zs_max = (230 × 0.95)/(band_upper × In)` (B6 7.28 / B32 1.37 / C32 0.68 / D32 0.34 all matched). OSG Table I1 R1+R2 20 °C T&E pairs verified independently (30.20 / 19.51 / 16.71 / 10.49 / 6.44 / 4.23 mΩ/m + GN3 ring table). GN3 0.8 cold-rule, TN-C-S 0.35 Ω / TN-S 0.8 Ω Ze defaults, TT exclusion (Table 41.5 @ 1667 Ω — documented as RCD-reliant).
+
+**Changes:** new `src/domain/zsCheck.ts` (formula + tables + weighted-Dijkstra furthest-point run over the device's connected network, with explicit `runLengthEstimated` when wires lack `lengthMeters`; conservative smallest-cable-in-run sizing that ignores endpoint `recommendedCableMm2` — that flag exists for device *tails* and would have dragged every run to 1.0 mm² through terminals). UI `ZsCheckPanel` mounted atop the *Circuit Safety & Validation* tab with Ze selector, per-device verdict badge rows (PASS cold ≤80% / PASS table / FAIL), Psvc, and simplification disclaimers. 22 unit tests + 1 e2e (panel on the RCBO template: `Max Zs (Type B 32A) = 1.37 Ω`, Ze reactivity).
+
+**First-draft failures and fixes (expected-then-proven):** my test fixtures/impl disagreements were resolved on the numbers — 2.73125 (not 2.7306), explicit-0 m wires treated as missing-length, and the recommendedCableMm2 pollution described above. Three biome `useNumberNamespace` fixes.
+
+**Gates:** `npm run check` (tsc + biome + 312 unit) ✓, full Playwright 45 passed + 15 phone-skips ✓, `vite build` ✓.
+
+**Remaining:** FINAL wrap — full gates on the tip, docs sweep, regenerate the git bundle (the saved one is stale since part 7), then push (user holds the token step until everything is done — that is now).
+
+
+---
+
+## Session 2026-08-15 (part 11) — Feature 5: mini-EIC report export (print-HTML)
+
+**Scope:** second-to-last audit item, delivered after Feature 6 since the certificate's Schedule of Circuit Results is the zsCheck engine's output. No new dependencies — `renderEicHtml` builds a self-contained print-stylesheet document; export rides the existing `downloadText` + filename-prompt flow in the Import/Export modal.
+
+**Contents:** Part 1 supply details (TN-C-S Ze 0.35 Ω default arrangement line), Part 2 schedule populated per protective device (B/C/D curve+rating, residual `30 mA Type X`, cable pair, run length with `~` estimated marker, R1+R2, Ze, Zs, max Zs, PFC, ≤0.4 s, three-tier verdict incl. the PASS* table-pass-but-not-80% tier), Part 3 signature blanks, educational-output banner + GN3-method note. All interpolated labels escaped (marked test: `<script>` autoLabel renders inert).
+
+**Tests:** +5 unit (numbers, FAIL propagation, estimated flag, structure, escaping) — +1 e2e (modal → download → artifact content). One test-side bug along the way: components/wires built from separate fixture calls (ids mismatched) — fixed to share one circuit.
+
+**Gates:** 317 unit ✓, e2e per-file + full suite pending final run, `vite build` ✓.
+
+**Remaining:** FINAL wrap — full gates on the tip, regenerate the git bundle, push (token step with the user).

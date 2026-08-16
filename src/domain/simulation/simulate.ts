@@ -18,6 +18,7 @@ import type {
 } from '../types';
 import { indexCircuit, portKey } from './indexing';
 import { traverseSources } from './traversal';
+import { findProtectionDevicesInNetwork } from './faultPropagation';
 import { getCableAmpacity } from './tripCurves';
 
 // ─── Public entry point ────────────────────────────────────────────────────
@@ -56,6 +57,68 @@ export function simulate(circuit: Circuit, options: SimulateOptions = {}): Simul
     capacityAmps: number;
     cableMm2: number;
   }[] = [];
+  const trippedIds = new Set<string>();
+
+  /**
+   * Fault-driven protection operation (all app modes — a bolted fault must
+   * operate protection regardless of the Pro-only stress-testing gate).
+   * Trips every protective device in the faulted component's connected
+   * network (see faultPropagation.ts for the selectivity caveat).
+   */
+  const tripProtectionForFault = (
+    faultedId: string,
+    kind: 'short-circuit' | 'ground-fault' | 'arc-fault',
+    extraFilter?: (type: string, device: (typeof circuit.components)[number]) => boolean,
+  ) => {
+    const devices = findProtectionDevicesInNetwork(faultedId, circuit, defs).filter(
+      (d) => !extraFilter || extraFilter(d.type, d),
+    );
+    for (const dev of devices) {
+      if (trippedIds.has(dev.id)) continue;
+      trippedIds.add(dev.id);
+      const devDef = defs[dev.type];
+      const label = devDef?.label ?? dev.type;
+      if (kind === 'short-circuit') {
+        const rating = dev.state.customMaxAmps ?? devDef?.maxAmps ?? 32;
+        // Bolted fault: supply over an assumed ≤0.5 Ω fault loop — hundreds of
+        // amps, deep in the instantaneous magnetic zone of any IEC 60898-1 curve.
+        const prospectiveAmps = Math.round(supplyVoltage / 0.5);
+        trippedComponents.push({
+          id: dev.id,
+          label,
+          reason: 'short-circuit',
+          currentAmps: prospectiveAmps,
+          ratingAmps: rating,
+        });
+        errors.push(
+          `⚡ ${label} TRIPPED: bolted short circuit — prospective ${prospectiveAmps} A ≫ magnetic zone (${rating} A device), cleared in <0.1 s per IEC 60898-1.`,
+        );
+      } else if (kind === 'ground-fault') {
+        trippedComponents.push({
+          id: dev.id,
+          label,
+          reason: 'ground-fault',
+          currentAmps: 0.045, // 45mA residual leakage
+          ratingAmps: 0.03, // 30mA threshold
+        });
+      } else {
+        // Arc fault: current floats around load level — far below the device
+        // rating, which is exactly why only the AFDD's waveform analysis sees it.
+        const rating = dev.state.customMaxAmps ?? devDef?.maxAmps ?? 32;
+        trippedComponents.push({
+          id: dev.id,
+          label,
+          reason: 'arc-fault',
+          currentAmps: 3,
+          ratingAmps: rating,
+        });
+        errors.push(
+          `🔥 ${label} TRIPPED (BS EN 62606): arc-fault signature detected — arcing interrupted before ignition temperatures developed.`,
+        );
+      }
+      errorComponents.add(dev.id);
+    }
+  };
   const errors: string[] = [];
   const warnings: string[] = [];
   const blownComponents: { id: string; reason: 'overvoltage' | 'overcurrent' | 'overload' }[] = [];
@@ -232,7 +295,7 @@ export function simulate(circuit: Circuit, options: SimulateOptions = {}): Simul
         const toCable = toComp.state.customCableMm2 ?? toDef?.recommendedCableMm2 ?? 2.5;
 
         const cableMm2 = Math.min(fromCable, toCable);
-        const cableCap = getCableAmpacity(cableMm2);
+        const cableCap = getCableAmpacity(cableMm2, wire.installationMethod ?? 'C');
         const heatRatio = totalCircuitAmps / cableCap;
         wireHeatRatios[wire.id] = heatRatio;
 
@@ -284,6 +347,7 @@ export function simulate(circuit: Circuit, options: SimulateOptions = {}): Simul
       cableMm2,
       lengthMeters: wire.lengthMeters,
       deratingFactor: wire.deratingFactor,
+      installationMethod: wire.installationMethod,
     });
     wireCalculations[wire.id] = calculation;
     if (options.appMode === 'pro' && calculation.status === 'warning') {
@@ -318,6 +382,8 @@ export function simulate(circuit: Circuit, options: SimulateOptions = {}): Simul
       if (!live.visitedPorts.has(key) || !neutral.visitedPorts.has(key)) continue;
       hasShortCircuit = true;
       errorComponents.add(c.id);
+      // Bolted L-N short trips the protective devices guarding this network
+      tripProtectionForFault(c.id, 'short-circuit');
       const wires = index.byPort.get(key);
       if (wires) for (const wire of wires) errorWires.add(wire.id);
     }
@@ -346,6 +412,14 @@ export function simulate(circuit: Circuit, options: SimulateOptions = {}): Simul
     const affectedComponents: string[] = [];
     const affectedWires: string[] = [];
     const affectedPorts: { componentId: string; portIndex: number }[] = [];
+    // Component the fault is anchored to — used to find the guarding
+    // protective devices in the same connected network.
+    const faultAnchorId =
+      fault.target.type === 'component'
+        ? fault.target.id
+        : fault.target.type === 'wire'
+          ? (index.wireById.get(fault.target.id)?.fromComponentId ?? null)
+          : fault.target.componentId;
 
     if (fault.target.type === 'component') {
       affectedComponents.push(fault.target.id);
@@ -381,6 +455,8 @@ export function simulate(circuit: Circuit, options: SimulateOptions = {}): Simul
     // Specific category behaviors and messages
     if (fault.type === 'short-circuit') {
       errors.push(`⚡ SHORT CIRCUIT FAULT: Direct short circuit detected on ${def.label}!`);
+      // Bolted short must operate the upstream protective device(s)
+      if (faultAnchorId) tripProtectionForFault(faultAnchorId, 'short-circuit');
     } else if (fault.type === 'open-circuit' || fault.type === 'open-live') {
       errors.push(`✂ OPEN CIRCUIT FAULT: Conductor break on ${def.label} — path interrupted.`);
     } else if (fault.type === 'open-neutral') {
@@ -399,17 +475,60 @@ export function simulate(circuit: Circuit, options: SimulateOptions = {}): Simul
       );
     } else if (fault.type === 'live-to-earth' || fault.type === 'earth-fault') {
       errors.push(`🔥 EARTH LEAKAGE / FAULT: Insulation breakdown to earth on ${def.label}!`);
-      // If RCD or RCBO is present in the circuit, trip it
-      for (const c of circuit.components) {
-        if (c.type.includes('rcd') || c.type.includes('rcbo')) {
-          trippedComponents.push({
-            id: c.id,
-            label: defs[c.type]?.label ?? c.type,
-            reason: 'ground-fault',
-            currentAmps: 0.045, // 45mA residual leakage
-            ratingAmps: 0.03, // 30mA threshold
-          });
-          errorComponents.add(c.id);
+      // Trip only the RCD/RCBO devices guarding the faulted network
+      // (previously tripped every RCD/RCBO on the canvas, even on isolated networks)
+      if (faultAnchorId) {
+        tripProtectionForFault(
+          faultAnchorId,
+          'ground-fault',
+          (t) => t.includes('rcd') || t.includes('rcbo') || t.includes('afdd'),
+        );
+      }
+    } else if (fault.type === 'smooth-dc-residual') {
+      errors.push(
+        `🌊 SMOOTH DC RESIDUAL: Power-electronic earth leakage on ${def.label} — only Type B residual devices can detect a smooth DC component (BS EN 62423, BS 7671 Reg 531.3.3).`,
+      );
+      if (faultAnchorId) {
+        const isResidual = (t: string) =>
+          t.includes('rcd') || t.includes('rcbo') || t.includes('afdd');
+        const residualDevices = findProtectionDevicesInNetwork(faultAnchorId, circuit, defs).filter(
+          (d) => isResidual(d.type),
+        );
+        // Type B trips (all-current-sensitive); AC/A/F are blind at this magnitude.
+        tripProtectionForFault(
+          faultAnchorId,
+          'ground-fault',
+          (t, dev) => isResidual(t) && (dev.state.rcdType ?? 'A') === 'B',
+        );
+        for (const dev of residualDevices) {
+          const rcdType = dev.state.rcdType ?? 'A';
+          if (rcdType === 'B') continue;
+          const devLabel = defs[dev.type]?.label ?? dev.type;
+          const tolerance = rcdType === 'F' ? '≤10 mA' : rcdType === 'A' ? '≤6 mA' : 'none';
+          errors.push(
+            `🚫 ${devLabel} (Type ${rcdType}) DID NOT TRIP: smooth DC residual current is outside Type ${rcdType} detection (superimposed-DC tolerance ${tolerance}) — this load needs a Type B device or 6 mA RDC-DD protection.`,
+          );
+          errorComponents.add(dev.id);
+        }
+        if (residualDevices.length === 0) {
+          warnings.push(
+            'No residual-current device guards this network — no RCD present to evaluate for DC blinding.',
+          );
+        }
+      }
+    } else if (fault.type === 'arc-fault') {
+      errors.push(
+        `🔥 ARC FAULT: Series/parallel arcing on ${def.label} — arc current rides at/below load current with no earth imbalance, so thermal-magnetic and residual-current devices cannot see it (BS EN 62606).`,
+      );
+      if (faultAnchorId) {
+        tripProtectionForFault(faultAnchorId, 'arc-fault', (t) => t.includes('afdd'));
+        const afdds = findProtectionDevicesInNetwork(faultAnchorId, circuit, defs).filter((d) =>
+          d.type.includes('afdd'),
+        );
+        if (afdds.length === 0) {
+          errors.push(
+            '🚫 NO AFDD IN THIS NETWORK: the arc keeps burning while MCB/RCD/RCBO stay closed. BS 7671 Reg 421.1.7 requires AFDDs on single-phase socket final circuits up to 32 A in higher-risk residential buildings, HMOs, student accommodation and care homes — and recommends them for all other premises.',
+          );
         }
       }
     } else if (fault.type === 'protection-bypass') {

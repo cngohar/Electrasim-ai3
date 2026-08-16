@@ -25,6 +25,7 @@ export type EditableWireProperties = Pick<
   | 'lengthMeters'
   | 'deratingFactor'
   | 'customCableMm2'
+  | 'installationMethod'
   | 'material'
   | 'gauge'
 >;

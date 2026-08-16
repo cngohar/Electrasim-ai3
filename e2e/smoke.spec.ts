@@ -112,7 +112,14 @@ test.describe('app shell', () => {
   test('keeps selection clicks stable and supports keyboard wire rerouting', async ({ page }) => {
     await page.goto('/');
 
-    const component = page.locator('[data-component-id]').first();
+    // Pin the component by ID: selecting a component intentionally raises it
+    // to the end of the SVG DOM (z-order = document order), so `.first()`
+    // would re-resolve to a different element after the click.
+    const componentId = await page
+      .locator('[data-component-id]')
+      .first()
+      .getAttribute('data-component-id');
+    const component = page.locator(`[data-component-id="${componentId}"]`);
     const componentBody = component.locator(':scope > g[role="button"]');
     const transformBefore = await component.getAttribute('transform');
     await componentBody.evaluate(async (node) => {
@@ -143,7 +150,11 @@ test.describe('app shell', () => {
       node.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
       await new Promise(requestAnimationFrame);
     });
-    await expect(component).toHaveAttribute('transform', transformBefore ?? '');
+    // A selection click must not move the component. Compare positions, not
+    // transform serializations — a no-op `rotate(0 …)` segment may be dropped.
+    await expect
+      .poll(async () => normalizeTransform(await component.getAttribute('transform')))
+      .toBe(normalizeTransform(transformBefore));
 
     const wire = page.getByRole('button', { name: /^Wire w-/ }).first();
     await wire.focus();
@@ -169,7 +180,13 @@ test.describe('app shell', () => {
   test('cleans up cancelled drags and pans with touch input', async ({ page }) => {
     await page.goto('/');
 
-    const component = page.locator('[data-component-id]').first();
+    // Pin by ID — pointerdown selects the component, which raises it to the
+    // end of the SVG DOM (see the selection-click test above).
+    const componentId = await page
+      .locator('[data-component-id]')
+      .first()
+      .getAttribute('data-component-id');
+    const component = page.locator(`[data-component-id="${componentId}"]`);
     const transformBefore = await component.getAttribute('transform');
     await component.locator(':scope > g[role="button"]').evaluate(async (node) => {
       const box = node.getBoundingClientRect();
@@ -206,7 +223,11 @@ test.describe('app shell', () => {
       );
       await new Promise(requestAnimationFrame);
     });
-    await expect(component).toHaveAttribute('transform', transformBefore ?? '');
+    // A cancelled drag must not move the component (position compare, not
+    // serialization — the no-op rotate segment may be dropped on commit).
+    await expect
+      .poll(async () => normalizeTransform(await component.getAttribute('transform')))
+      .toBe(normalizeTransform(transformBefore));
     expect(await component.evaluate((node) => (node as SVGElement).style.translate)).toBe('');
 
     const world = page.locator('[data-canvas-world]');
@@ -296,3 +317,16 @@ test.describe('app shell', () => {
     await expect(world).not.toHaveAttribute('transform', panBefore ?? '');
   });
 });
+
+/**
+ * Normalize an SVG `transform` attribute for position-only comparison:
+ * strips a no-op `rotate(0 …)` segment (dropped on some state commits) and
+ * collapses whitespace, so assertions check where the component *is*, not
+ * how the string happens to be serialized.
+ */
+function normalizeTransform(transform: string | null): string {
+  return (transform ?? '')
+    .replace(/\s*rotate\(0(?:\.0+)?\s+[^)]+\)/, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}

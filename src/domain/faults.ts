@@ -194,6 +194,42 @@ export const FAULT_REGISTRY: Record<FaultType, FaultDefinition> = {
       'Replace moisture-damaged, degraded, or pinched cable run.',
   },
 
+  'smooth-dc-residual': {
+    id: 'smooth-dc-residual',
+    label: 'Smooth DC Residual Leakage (EV/PV/VFD)',
+    category: 'earth',
+    targetType: 'component',
+    severity: 'critical',
+    standardReference: 'BS EN 62423 & BS 7671 Reg 531.3.3 (RCD type selection)',
+    icon: 'Waves',
+    description:
+      'Power-electronic loads (EV chargers, PV inverters, variable-speed drives) can leak smooth DC residual current that the toroidal core of Type AC/A/F RCDs cannot detect — the device stays closed on a live earth fault.',
+    simulationEffect:
+      'Injects >10 mA of smooth DC residual current. Only a Type B device in the same network trips; Type AC/A/F tolerate at most 6/10 mA exposed DC before their core saturates and never detect this magnitude.',
+    detectionBehavior:
+      'Type B RCD/RCBO trips instantly. Type AC/A/F devices show no response — a standard handheld RCD ramp test uses AC and would still PASS, which is why selection by load type matters.',
+    repairBehavior:
+      'Fit a Type B RCD/RCBO on circuits feeding EV charge points, PV inverters or VFDs, or use EVSE with built-in 6 mA DC detection (RDC-DD, IEC 62955) upstream of a Type A device.',
+  },
+
+  'arc-fault': {
+    id: 'arc-fault',
+    label: 'Arc Fault (Series / Parallel Arcing)',
+    category: 'thermal',
+    targetType: 'component',
+    severity: 'critical',
+    standardReference: 'BS EN 62606 & BS 7671 Reg 421.1.7 (AFDD requirements)',
+    icon: 'Flame',
+    description:
+      'A damaged conductor, loose terminal or crushed cable arcs in series with the load (or across insulation in parallel). Arc current sits at or below load current and creates no earth imbalance, so MCBs and RCDs stay closed while the arc reaches ignition temperatures.',
+    simulationEffect:
+      'Injects an arc-fault signature on the component. Only an AFDD in the same connected network recognises the waveform and trips; a network with no AFDD keeps feeding the arc.',
+    detectionBehavior:
+      'AFDD trips on the arc signature. MCB/RCD/RCBO give no response — their thermal/magnetic elements and residual-current toroid are blind to this fault by design.',
+    repairBehavior:
+      'Fit an AFDD (BS EN 62606) at the origin of the circuit — mandatory on ≤32 A socket final circuits in HRRBs, HMOs, student accommodation and care homes (BS 7671 Reg 421.1.7) — and repair the damaged conductor or terminal.',
+  },
+
   // ── 4. Protection Faults ──────────────────────────────────────────────────
   'protection-forced-open': {
     id: 'protection-forced-open',

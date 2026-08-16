@@ -11,6 +11,86 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — Session 2026-08-15 (part 11): Mini EIC report export
+- **Mini Electrical Installation Certificate export** (Import/Export modal → "Mini EIC", or Ctrl+E): a self-contained printable HTML document styled on the BS 7671 Appendix 6 model form — Part 1 installation/supply details (earthing arrangement + Ze), Part 2 a Schedule of Circuit Results populated from the Zs checker (device & rating, RCD type, cable pair, run length, R1+R2, Ze, Zs, max Zs, prospective fault current, ≤0.4 s disconnection, PASS / PASS* / FAIL verdict with the GN3 80 % rule explained), Part 3 signature/test-instrument blanks — plus the on-face "EDUCATIONAL SIMULATION OUTPUT — NOT A CERTIFICATE" banner and an estimated-lengths warning when wires lack lengths. Print/Save-as-PDF via the in-document button.
+- `src/lib/export/eicReport.ts` is dependency-free string rendering over `runZsChecks`; all user-influenced labels are HTML-escaped.
+- **Unit:** `eicReport.test.ts` (+5) — row values vs zsCheck, FAIL verdict propagation, estimated-length flagging, certificate structure, and markup-injection escaping. **e2e:** download-through-filename-prompt flow asserting the artifact content (+1).
+
+
+### Added — Session 2026-08-15 (part 10): Zs / disconnection checker
+- **Earth-fault loop impedance checker** (Inspector → *Circuit Safety & Validation* tab header): every protective device with an overcurrent curve (MCB/RCBO/AFDD, Types B/C/D) gets a live verdict row — `Zs = Ze + (R1+R2)` against the Cmin-corrected table maximum, with a three-way verdict badge (**PASS (cold ≤80%)** / **PASS (table)** / **FAIL**), prospective fault current, and the furthest-point reference.
+- **Standards data (web-verified 2026-08):** BS 7671:2018+A4:2026 Tables 41.2–41.4 are applied as `Zs_max = 230 V × 0.95 (Cmin) ÷ (band × In)` (B 5×, C 10×, D 20×In → B32 = 1.37 Ω, C32 = 0.68 Ω); R1+R2 uses OSG Table I1 20 °C T&E figures (2.5/1.5 mm² = 19.51 mΩ/m etc.); TN-C-S / TN-S Ze selector (0.35 / 0.80 Ω); GN3 80 % cold-measurement rule drives the stricter badge tier. Plain RCDs are noted as relying on upstream overcurrent disconnection; TT/RCD disconnection is documented out of scope.
+- `src/domain/zsCheck.ts` (`getMaxZsOhms`, `getR1R2MilliOhmPerMetre`, `checkDeviceDisconnection`, `runZsChecks`) uses weighted Dijkstra over each device's connected network for the furthest-point run length (wires without a length assume 10 m and are flagged "assumed — set wire lengths!"), and deliberately ignores component *recommendedCableMm2* (tail guidance, not run size).
+- **Unit:** `zsCheck.test.ts` — 22 tests locking the R1+R2 table (7 sizes), the Cmin max-Zs formula (8 curve/rating points vs tabulated values), pass/cold/fail verdict boundaries, custom ratings, run-length estimation, and per-device row coverage. **e2e:** `zs-check.spec.ts` asserts the panel renders the RCBO template's Type B 32 A 1.37 Ω limit and reacts to the Ze selector.
+
+
+### Added — Session 2026-08-15 (part 9): AFDD + arc-fault fault type
+- **AFDD-RCBO component** (32 A, 30 mA, Type A, B curve — the combined units real consumer units ship) in the Protection palette. It is a full protective device: trips on bolted short, overload, 30 mA+ earth leakage, **smooth DC residual faults when set to Type B** (the RCD-type picker now shows on it), and — uniquely — on **arc faults**. Descriptions cite BS EN 62606 / BS EN 61009-1.
+- **New fault: Arc Fault (series/parallel arcing)**, injectable from the context menu (flame-framed component). Simulation semantics per BS EN 62606 / Reg 421.1.7: only AFDDs in the faulted network trip (reason `arc-fault`); networks without an AFDD raise a "NO AFDD IN THIS NETWORK" diagnostic and stop the sim with a dedicated "🔥 ARC FAULT — NO AFDD PROTECTION!" modal that teaches why MCBs/RCDs are blind (arc current ≤ load current, no earth imbalance) and where AFDDs are mandatory (≤32 A socket circuits in HRRBs, HMOs, student accommodation, care homes).
+- **Unit coverage** — 5 AFDD tests (AFDD trips with reason `arc-fault`; MCB-only and RCBO-only networks stay closed + Reg 421.1.7 diagnostic; AFDD still trips earth leakage as a 30 mA device; AFDD honours its RCD type for smooth DC). Filter mutation-proven (opening the filter trips every device → exactly the two "stays closed" tests fail).
+- **e2e coverage** — "an arc fault with no AFDD in the network stops the sim with the Reg 421.1.7 blind-spot modal" (desktop/tablet).
+- Import/export sanitizer now accepts the `arc-fault` and `manual-fault` trip reasons (both are produced at runtime; previously dropped as unrecognised on JSON re-import).
+
+### Fixed — Session 2026-08-15 (part 9)
+- Nothing user-facing; two of my new unit fixtures initially mis-wired a 2-port MCB as a 4-port device — the engine correctly reported the resulting bolted short (live bridged into neutral), which read as a test failure until the fixture matched real device topology. Kept as a comment in the test: the simulator caught genuinely wrong wiring.
+
+
+
+### Added — Session 2026-08-15 (part 8): RCD types & smooth DC blinding
+- **RCD residual-current type model (AC / A / F / B)** — every RCD/RCBO now carries an `rcdType` in component state (default `'A'`, the modern baseline) with a four-way picker in the Inspector ("Residual Current Type": AC sine-only legacy, A + pulsating DC, F + mixed frequency, B all-current-sensitive) plus a live `Type X` badge and a one-line teaching note (BS EN 62423, BS 7671 Reg 531.3.3).
+- **New fault: Smooth DC Residual Leakage (EV/PV/VFD)** — injectable from the component context menu or unit tests. Simulation semantics: only a **Type B** residual device in the faulted network trips; blinded Type AC/A/F devices stay closed and raise a per-device `DID NOT TRIP` diagnostic (with their superimposed-DC tolerance — none / ≤6 mA / ≤10 mA), and the sim stops with a dedicated "🌊 SMOOTH DC RESIDUAL — RCD BLINDED!" modal whose resolution hint walks through re-specifying the guarding device to Type B. A same-network Type B device trips with the standard trip modal + reset flow instead. Fault registry entry carries BS EN 62423 / Reg 531.3.3 references; faulted component renders a violet frame.
+- **e2e coverage** — `faults-and-editing.spec.ts` gains "smooth DC residual leakage blinds a Type A RCBO but trips it once set to Type B" (desktop/tablet, phone-skipped): Type A blinded (manual-fault modal, no trip marker) → re-spec to Type B in the Inspector → same fault trips the RCBO → clear/reset/clean-run recovery.
+- **Unit coverage** — 5 new `simulate` tests: Types AC/A/F stay closed with a blinded warning, Type B trips (reason `ground-fault`), and unset `rcdType` defaults to Type A. Stale legend-text assertions updated (descriptions no longer claim leakage "is not modelled" — it is, since the fault-propagation engine landed).
+
+### Fixed — Session 2026-08-15 (part 8)
+- **Context menu could clip off the top of the viewport** — the overflow logic only flipped right/bottom; a tall faulted-component menu (now one row taller with the smooth-DC item) opened by right-clicking a mid-screen component rendered its first rows above the viewport ("element is outside of the viewport" to Playwright, unreachable to users). The menu now flips *and* hard-clamps to an 8 px margin on both axes and scrolls internally (`max-h-[calc(100dvh-16px)] overflow-y-auto`), so every entry is always reachable.
+
+
+### Added
+- **Installation Reference Method selector (BS 7671 Appendix 4)** — every wire now carries an `installationMethod` (C clipped direct / B1 conduit on wall / A in thermal insulation) with a picker in the wire Inspector and a live "base ampacity × Cg = effective A" readout. `getCableAmpacity(mm2, method)` now exposes the three 70 °C PVC copper tables (Method C 16/20/27/37/47/64/85 A, B1 13.5/17.5/24/32/41/57/76 A, A 11/14/18.5/25/32/43/57 A); the melt/overload engine and the per-wire electrical calculation both honour the chosen method. Default stays Method C (back-compat).
+- **BS 7671 mV/A/m voltage-drop model** — the per-wire calculation replaces the 20 °C resistivity estimate with the tabulated Table 4D5 figures (T&E 70 °C copper: 44/29/18/11/7.3/4.4/2.8 mV/A/m for 1–16 mm²), falling back to a 70 °C-corrected (×1.2) resistivity model for aluminum and non-standard/AWG-derived sizes. Reported cable resistance is derived from the same mV/A/m so the Inspector's R figure always reconciles with the displayed drop. (The pre-existing 3 %-guidance warning for long/undersized runs is unchanged.)
+- **`e2e/faults-and-editing.spec.ts`** (+6 tests × desktop/tablet, phone-skipped) — locks the flows verified live by `scripts/probe5-post-trip.mjs`: bolted short trips the guarding MCB (amber marker + `, tripped` aria + trip modal, reset → re-trip → clear → clean run), earth leakage trips the guarding RCBO, delete→confirm→Ctrl+Z restores, **Ctrl+Z removes an injected fault for good** (no ghost trips), copy/paste duplicates + undo removes, and JSON export downloads through the filename prompt. Also exercises the phone/tablet "Hide guide" hand-off and the "Show guide steps" pill return.
+- **Non-destructive "Hide guide"** — hiding the guide panel/sheet (which can overlay canvas components on every viewport, not just phones) no longer ends the challenge: `uiStore.guideHidden` keeps `activeGuideId` alive, progress keeps tracking, and a floating **"Guide steps" pill** (with the objective counter) brings the checklist back. Loading or switching guides always re-reveals the panel.
+
+### Fixed
+- **Ctrl+Z left "ghost faults" running** — undo history (`zundo` partialize) tracked `components` (including the mirrored `state.fault` marker) but NOT the `faults` scenario array, so undoing an injection restored the marker while the stale fault kept tripping protection on the next run — invisibly, since nothing in the UI showed it. `faults` is now part of the history/equality slices, with `circuitStore` unit coverage (mutation-proven: fails pre-fix at both unit and browser level).
+- **Tripped breakers were invisible on the canvas** — a tripped MCB/RCBO kept aria `", on"` and the green switch-status dot, with no marker that the device had interrupted. Tripped devices now render an amber dashed frame + amber "!" badge (same visual grammar as the fault marker), the switch dot turns amber, and the aria-label gains `", tripped"`.
+- **Return-to-guide chip dead-ended the Inspector** — the floating chip was pinned over the Inspector's collapsed icon rail (both `right-4`, z-20), so mid-challenge you could not expand the Inspector without first leaving the guide; and when the drawer was manually expanded the chip slid mid-canvas and swallowed right-clicks on components beneath it. The chip now clears the rail like the other floating controls, is suppressed while the drawer is expanded, and the drawer itself carries an inline *Guide paused → Close inspector and return to guide* strip so the affordance never disappears.
+- **Fault-occulted full guide panel** — the expanded-Inspector + no-selection state let the full guide panel render over the drawer's tab strip; it now yields entirely whenever a selection drives the Inspector.
+- **Trip-resolve hint gave overload advice for faults** — the "⚡ CIRCUIT PROTECTION TRIPPED!" modal always suggested lowering load power / upgrading the breaker rating even for short-circuit and earth-leakage trips. The hint is now reason-aware: overloads keep the load/rating advice; fault trips direct the user to clear the injected fault and reset the breaker.
+- **Short-circuit faults operated no protection** — a bolted L–N short (topology overlap or injected fault) only logged an error while the sim kept "running" the defective circuit; `calculateMCBTrip`/`calculateRCDTrip` were exported but never called by the engine, so no device ever tripped on a fault. Now every short circuit trips the protective devices (MCB/RCBO/fuse/MCCB) guarding the faulted network, with a prospective-current diagnostic (`230 V / 0.5 Ω ≈ 460 A ≫ magnetic zone, cleared <0.1 s per IEC 60898-1`) and the standard tripped-breaker reset flow.
+- **Earth-leakage faults tripped every RCD/RCBO on the canvas** — including devices on completely isolated, unconnected networks. Trips are now scoped to the RCD/RCBO devices guarding the faulted network.
+
+### Added
+- **`src/domain/simulation/faultPropagation.ts`** — pure wire-graph BFS (`connectedNetworkComponents`, `findProtectionDevicesInNetwork`) mapping a fault to the protective devices sharing its connected network. Header documents the teaching simplification (all in-network devices operate rather than only the nearest upstream device — real selectivity, BS 7671 §536, is flagged for the Zs-checker roadmap item).
+- **Fault-propagation regression tests** (+4, 260 total) in `simulation.test.ts`: topology short trips the guarding MCB, injected short trips the guarding MCB, isolated-network devices stay closed, earth leakage trips only the same-network RCD.
+
+### Added
+- **Return-to-guide chip** — selecting a component mid-challenge now shows an "Inspector / Guide paused" card with a *Close inspector and return to guide* button (implements the behaviour the two-way-staircase e2e always asserted but the app never shipped).
+- **`scripts/visual-sweep.mjs`** — 12-stop Playwright screenshot/console-error sweep across desktop, phone and tablet for visual regression hunting.
+
+### Fixed
+- **e2e suite: 12 → 0 failures (27/27 on desktop/mobile/tablet).** Root causes: two pointer-gesture smoke specs re-resolved `.first()` after selection-induced SVG z-order raise (pinned by id; position-only transform compare); guided-circuit specs asserted the pre-redesign StatusPill text ("N active") and a two-circle bulb glow (now one halo); phone flows now hide the guide sheet before tapping canvas components, matching the intended mobile interaction.
+- **Expanded Inspector covered the header Toolbar's right end** — `Menu` (and theme toggle) were unclickable while inspecting. Panel now insets below the toolbar (`top-16`).
+- **Floating-control collisions** — minimap/ToolDock/StatusPill offsets ignored the 48 px inspector icon rail; StatusPill's Snap/Grid toggles also sat *under* the collapsed rail. Offsets now computed from the true drawer+rail widths per breakpoint.
+- **Sub-header pill text wrapped vertically** at tablet widths (nowrap + internal scroll now).
+- **Mini-map occluded ~40 % of phone canvases** — hidden below the phone breakpoint.
+- Dev-server accepts `.e2b.app` sandbox preview hosts.
+
+### Fixed
+- **Standards audit — trip-curve & ampacity data corrected against published references (web-verified 2026-08):**
+  - `getCableAmpacity` claimed "BS 7671 Table 4D5" but mixed installation methods: 1.0 mm² and 1.5 mm² returned derated Method-A-ish values (11 A / 16 A) while the rest of the table was Method C. Now consistently Reference Method C (clipped direct): 1.0 → 16 A, 1.5 → 20 A, 2.5 → 27 A, 4 → 37 A, 6 → 47 A, 10 → 64 A, 16 → 85 A, with a header note that Methods A/B and grouping/ambient factors derate further.
+  - `calculateMCBTrip` thermal model `t = 3600/(m²−1)` let a 2.55×In overload persist ~654 s — IEC 60898-1 Table 7 mandates trip between 1 s and 60 s. Replaced with a power law fitted exactly through the two IEC anchors (1.45×In → 3600 s, 2.55×In → 60 s), reproducing the published 0.1–45 s Type B response band at 3–5×In.
+  - MCB instantaneous trip previously fired from the *lower* band edge (3×In for Type B), where IEC 60898-1 only demands the *no-trip* test; guaranteed magnetic trip is now modelled at ≥ the upper edge (5/10/20×In for B/C/D).
+  - `calculateRCDTrip` interpolated linearly from 300 ms → 40 ms, giving 235 ms at 2×IΔn vs the IEC 61008-1 / BS 7671 Table 3A limit of 150 ms. Now a stepped curve: 300 ms @ 1×, 150 ms @ 2×, 40 ms @ 5×IΔn.
+- Branch `fix/bs7671-data-accuracy`.
+
+### Added
+- **`tripCurves.test.ts` standards-locking regression suite** (+25 tests, 256 total) — every expectation is a published objective value (BS 7671 Table 4D5 ampacities; IEC 60898-1 Inf/If/2.55×In anchors and instantaneous band edges; IEC 61008-1 break times), so the protection physics can no longer silently drift.
+
+### Content verified accurate (no change)
+- Blog: BS 7671 Amendment 4:2026 dates (published 15 Apr 2026, Orange Book, A3 withdrawal 15 Oct 2026), AFDD Reg 421.1.7 scope (A2:2022, ≤32 A socket circuits in HRRB/HMO/PBSA/care homes), EICR intervals (5-year statutory PRS England / 10-year owner-occupier recommendation), socket 30 mA RCD requirement, immersion 13 A, EV 7.36 kW @ 32 A.
+
 ### Added
 - **Component variant imagery** — generated studio-style product photos for the ten component variants referenced by `componentImages.ts` but never committed: RCBO, MCB Type C / Type D, industrial MCCB, SPD, USB / GFCI sockets, cooker switch, dimmer switch, and PIR sensor. The production build no longer fails on unresolved image imports.
 - **`ConnectionValidationResult.warnings`** — the connection validator now exposes non-blocking diagnostics as an optional array, matching what the canvas interaction layer expected when logging wire-creation warnings.

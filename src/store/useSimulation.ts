@@ -111,7 +111,12 @@ export function useSimulation() {
               if (comp && !comp.state.isTripped) {
                 cs.updateComponentState(trip.id, {
                   isTripped: true,
-                  tripReason: trip.reason as 'overload' | 'short-circuit' | 'ground-fault',
+                  tripReason: trip.reason as
+                    | 'overload'
+                    | 'short-circuit'
+                    | 'ground-fault'
+                    | 'arc-fault'
+                    | 'manual-fault',
                 });
               }
             }
@@ -127,7 +132,9 @@ export function useSimulation() {
               currentAmps: trip.currentAmps,
               limitAmps: trip.ratingAmps,
               resolutionHint:
-                'Lower load power/current in the Inspector panel or upgrade breaker rating before resuming simulation.',
+                trip.reason === 'overload'
+                  ? 'Lower load power/current in the Inspector panel or upgrade breaker rating before resuming simulation.'
+                  : 'Clear the injected fault (right-click the faulted component or wire → Clear fault), then reset the tripped breaker in the Inspector before resuming simulation.',
               timestamp: Date.now(),
             };
             ui.setFaultAlert(faultAlert);
@@ -211,6 +218,16 @@ export function useSimulation() {
                 faultReason = `A manual earth leakage / missing ground fault was injected on ${compLabel}.`;
                 resolution =
                   'Fault Clearing Instructions:\n1. Click "Clear Fault" in the Inspector panel.\n2. Ensure continuous CPC protective bonding.';
+              } else if (fType === 'smooth-dc-residual') {
+                faultTitle = '🌊 SMOOTH DC RESIDUAL — RCD BLINDED!';
+                faultReason = `A smooth DC residual fault (EV/PV/VFD earth leakage) was injected on ${compLabel}. Type AC/A/F residual devices cannot detect smooth DC — the sensing toroid saturates and the device stays closed on a live earth fault (BS EN 62423, BS 7671 Reg 531.3.3). Only a Type B device trips on it.`;
+                resolution =
+                  'Fault Clearing Instructions:\n1. Select the guarding RCD/RCBO and set its Residual Current Type to B in the Inspector (EV/PV/VFD circuits need Type B or 6 mA RDC-DD protection).\n2. Click "Clear Fault" on the faulted component.\n3. Restart simulation and confirm the Type B device trips.';
+              } else if (fType === 'arc-fault') {
+                faultTitle = '🔥 ARC FAULT — NO AFDD PROTECTION!';
+                faultReason = `An arc fault (series/parallel arcing) was injected on ${compLabel}. No AFDD guards this network, so nothing tripped: arc current rides at/below load current with no earth imbalance, leaving MCBs and RCDs blind while the arc reaches ignition temperatures. Only an AFDD (BS EN 62606) detects the waveform.`;
+                resolution =
+                  'Fault Clearing Instructions:\n1. Add an AFDD (BS EN 62606) at the origin of this circuit — Reg 421.1.7 requires it on socket circuits up to 32 A in higher-risk residential buildings, HMOs, student accommodation and care homes.\n2. Click "Clear Fault" on the faulted component and repair the damaged conductor/terminal.\n3. Restart simulation and confirm the AFDD trips on a reinjected arc.';
               }
 
               const faultAlert = {

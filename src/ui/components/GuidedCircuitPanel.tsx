@@ -1,6 +1,17 @@
-import { Check, ChevronRight, Circle, Lightbulb, RotateCcw, Trophy, X } from 'lucide-react';
+import {
+  Check,
+  ChevronLeft,
+  ChevronRight,
+  Circle,
+  Lightbulb,
+  MousePointerClick,
+  RotateCcw,
+  Trophy,
+  X,
+} from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { getChallengeProgress } from '../../domain/challengeProgress';
+import { COMPONENT_DEFS } from '../../domain/components';
 import { cloneTemplateCircuit, getGuidedCircuitTemplate } from '../../domain/templates';
 import { markChallengeCompleted } from '../../lib/challengeProgressPersistence';
 import { useCircuitStore, useUiStore } from '../../store';
@@ -13,9 +24,18 @@ export function GuidedCircuitPanel({ isPhone }: Props) {
   const activeGuideId = useUiStore((s) => s.activeGuideId);
   const simRunning = useUiStore((s) => s.simRunning);
   const simResult = useUiStore((s) => s.simResult);
+  const inspectorCollapsed = useUiStore((s) => s.inspectorCollapsed);
+  const guideHidden = useUiStore((s) => s.guideHidden);
+  const setGuideHidden = useUiStore((s) => s.setGuideHidden);
+  // Keep clear of the Inspector's collapsed icon rail (48px at right-0) —
+  // same offset as MiniMap/ToolDock/StatusPill use in the collapsed state.
+  // (When the drawer is expanded the chip is suppressed entirely and the
+  // return-to-guide action lives inline in the drawer header instead.)
+  const rightClass = 'right-14';
   const components = useCircuitStore((s) => s.components);
   const wires = useCircuitStore((s) => s.wires);
-  const inspectorVisible = useCircuitStore((s) => s.selectedComponentId !== null);
+  const selectedComponentId = useCircuitStore((s) => s.selectedComponentId);
+  const inspectorVisible = selectedComponentId !== null;
   const [showHint, setShowHint] = useState(false);
   const template = activeGuideId ? getGuidedCircuitTemplate(activeGuideId) : undefined;
   const progress = useMemo(
@@ -30,7 +50,86 @@ export function GuidedCircuitPanel({ isPhone }: Props) {
     if (template && progress?.completed) markChallengeCompleted(template.id);
   }, [template, progress?.completed]);
 
-  if (!template || (!isPhone && inspectorVisible) || !progress) return null;
+  if (!template || !progress) return null;
+
+  // Hidden guide: the panel/sheet always has a Hide affordance because it can
+  // overlay canvas components (phone bottom-sheet always, tablet/desktop panel
+  // on narrower viewports). Hiding must NOT end the challenge — progress keeps
+  // tracking and this floating pill is the way back.
+  if (guideHidden) {
+    return (
+      <button
+        type="button"
+        onClick={() => setGuideHidden(false)}
+        aria-label="Show guide steps"
+        title={`${template.title} — show guide steps`}
+        className={[
+          'absolute z-20 flex items-center gap-2 rounded-full border border-white/80 bg-white/95 px-3 py-2 shadow-xl shadow-slate-900/10 ring-1 ring-slate-900/5 backdrop-blur-xl transition hover:bg-blue-50 dark:border-slate-700/80 dark:bg-slate-900/95 dark:ring-slate-700/50 dark:hover:bg-slate-800',
+          isPhone ? 'bottom-20 right-3' : 'right-14 top-24',
+        ].join(' ')}
+      >
+        <span className="grid size-6 place-items-center rounded-lg bg-blue-600 text-white shadow-sm shadow-blue-600/30">
+          <Trophy className="size-3.5" />
+        </span>
+        <span className="text-[11px] font-semibold text-slate-700 dark:text-slate-200">
+          Guide steps
+        </span>
+        <span className="rounded-full bg-blue-100 px-1.5 py-0.5 text-[10px] font-bold text-blue-700 dark:bg-blue-950 dark:text-blue-300">
+          {progress.completedIds.length}/{progress.objectives.length}
+        </span>
+      </button>
+    );
+  }
+
+  // Guided hand-off (desktop/tablet): selecting a component hides the step
+  // checklist so the Inspector can take over. Offer an explicit, discoverable
+  // way back — previously the only return path was clicking empty canvas to
+  // deselect, which stranded users mid-challenge.
+  if (!isPhone && inspectorVisible && inspectorCollapsed) {
+    const selected = components.find((c) => c.id === selectedComponentId);
+    const selectedLabel = selected ? (COMPONENT_DEFS[selected.type]?.label ?? null) : null;
+    return (
+      <aside
+        className={`absolute ${rightClass} top-28 z-20 w-56 overflow-hidden rounded-2xl border border-white/80 bg-white/95 shadow-xl shadow-slate-900/10 ring-1 ring-slate-900/5 backdrop-blur-xl lg:w-[340px] dark:border-slate-700/80 dark:bg-slate-900/95 dark:ring-slate-700/50`}
+      >
+        <div className="flex items-start gap-3 border-b border-slate-100 px-4 py-3 dark:border-slate-700/60">
+          <div className="mt-0.5 grid size-8 flex-shrink-0 place-items-center rounded-xl bg-indigo-600 text-white shadow-sm shadow-indigo-600/30">
+            <MousePointerClick className="size-4" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <h2 className="text-sm font-semibold leading-tight text-slate-900 dark:text-slate-100">
+              Inspector
+            </h2>
+            <p className="mt-0.5 text-[10px] font-medium uppercase tracking-wider text-indigo-600 dark:text-indigo-300">
+              Guide paused
+            </p>
+          </div>
+        </div>
+        <div className="space-y-3 px-4 py-3">
+          <p className="text-xs leading-relaxed text-slate-600 dark:text-slate-300">
+            {selectedLabel
+              ? `${selectedLabel} is selected. The challenge steps are hidden while you inspect it.`
+              : 'A component is selected. The challenge steps are hidden while you inspect it.'}
+          </p>
+          <button
+            type="button"
+            onClick={() => {
+              useCircuitStore.getState().clearSelection();
+              useUiStore.getState().setInspectorCollapsed(true);
+            }}
+            className="flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-3 py-2 text-xs font-semibold text-white shadow-sm shadow-blue-600/30 transition hover:bg-blue-700"
+          >
+            <ChevronLeft className="size-3.5" />
+            Close inspector and return to guide
+          </button>
+        </div>
+      </aside>
+    );
+  }
+
+  // Expanded drawer + active selection: the guide panel yields entirely —
+  // the Inspector drawer carries an inline "return to guide" strip.
+  if (!isPhone && inspectorVisible && !inspectorCollapsed) return null;
 
   const restart = () => {
     useCircuitStore.getState().setCircuit(cloneTemplateCircuit(template));
@@ -46,7 +145,7 @@ export function GuidedCircuitPanel({ isPhone }: Props) {
         'absolute z-20 overflow-hidden rounded-2xl border border-white/80 bg-white/95 shadow-xl shadow-slate-900/10 ring-1 ring-slate-900/5 backdrop-blur-xl dark:border-slate-700/80 dark:bg-slate-900/95 dark:ring-slate-700/50',
         isPhone
           ? 'bottom-20 left-3 right-3 max-h-[52vh]'
-          : 'right-4 top-24 w-56 max-h-[calc(100vh-8rem)] lg:w-[340px]',
+          : `${rightClass} top-24 w-56 max-h-[calc(100vh-8rem)] lg:w-[340px]`,
       ].join(' ')}
     >
       <div className="flex items-start gap-3 border-b border-slate-100 px-4 py-3 dark:border-slate-700/60">
@@ -65,7 +164,7 @@ export function GuidedCircuitPanel({ isPhone }: Props) {
             </div>
             <button
               type="button"
-              onClick={() => useUiStore.getState().setActiveGuideId(null)}
+              onClick={() => setGuideHidden(true)}
               className="rounded-full p-1 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
               aria-label="Hide guide"
             >

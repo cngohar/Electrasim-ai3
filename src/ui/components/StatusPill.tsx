@@ -43,7 +43,9 @@ export function StatusPill({
   }
 
   const leftClass = paletteOpen ? 'left-64' : 'left-0';
-  const rightClass = !inspectorCollapsed ? 'right-72 lg:right-80' : 'right-0';
+  // Collapsed: clear the w-12 icon rail (right-14 = 48 px + 8 px gap).
+  // Expanded: drawer (w-64 md:w-72 lg:w-80) + rail.
+  const rightClass = !inspectorCollapsed ? 'right-76 md:right-84 lg:right-92' : 'right-14';
 
   return (
     <div

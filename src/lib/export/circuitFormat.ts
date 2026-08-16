@@ -66,7 +66,13 @@ function isComponentState(value: unknown): boolean {
     } else if (key === 'blownReason') {
       if (field !== 'overvoltage' && field !== 'overcurrent' && field !== 'overload') return false;
     } else if (key === 'tripReason') {
-      if (field !== 'overload' && field !== 'short-circuit' && field !== 'ground-fault') {
+      if (
+        field !== 'overload' &&
+        field !== 'short-circuit' &&
+        field !== 'ground-fault' &&
+        field !== 'arc-fault' &&
+        field !== 'manual-fault'
+      ) {
         return false;
       }
     } else {

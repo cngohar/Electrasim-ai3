@@ -133,6 +133,10 @@ export default defineConfig(({ command }) => {
     server: {
       // HMR can be disabled in constrained development environments.
       hmr: process.env.DISABLE_HMR !== 'true',
+      // Sandboxed/cloud preview proxies (e2b, gitpod-style) forward under a
+      // generated per-port hostname; ".e2b.app" keeps the strict default for
+      // everything else while letting those previews load.
+      allowedHosts: ['.e2b.app'],
       watch: {
         // Builds and test reports are generated inside the repo and must not
         // trigger full-page reload storms while the dev server is running.

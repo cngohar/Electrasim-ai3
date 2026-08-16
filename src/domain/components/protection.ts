@@ -87,7 +87,7 @@ export const PROTECTION_DEFS: Record<string, ComponentDef> = {
   rcd: {
     label: 'RCD / RCCB (80A 30mA)',
     description:
-      'Residual Current Device represented as a two-pole manual control. The simulator does not calculate leakage current, mA trip thresholds, or trip timing.',
+      'Residual Current Device (two-pole). Trips on >30 mA earth leakage and on smooth DC residual faults only when set to Type B; select the residual type in the Inspector.',
     category: 'protection',
     isSwitch: true,
     isPassThrough: true,
@@ -107,7 +107,7 @@ export const PROTECTION_DEFS: Record<string, ComponentDef> = {
   rcbo: {
     label: 'RCBO (32A 30mA)',
     description:
-      'Combined overcurrent and residual-current device. Pro mode provides an educational overload estimate, but does not calculate leakage or standards-compliant trip thresholds and timing.',
+      'Combined overcurrent and residual-current device (Type B MCB curve, 32 A). Trips on bolted short and 30 mA+ earth leakage; RCD type AC/A/F/B selectable — only Type B sees smooth DC.',
     category: 'protection',
     isSwitch: true,
     isPassThrough: true,
@@ -123,6 +123,28 @@ export const PROTECTION_DEFS: Record<string, ComponentDef> = {
       { type: 'neutral', relX: 1, relY: 0.65, label: 'N-out' },
     ],
     icon: '🛡️',
+  },
+
+  afdd: {
+    label: 'AFDD-RCBO (32A 30mA Type A)',
+    description:
+      'Combined arc-fault, overcurrent and residual-current device (BS EN 62606 / BS EN 61009-1, B curve, 32 A, Type A). The only protective device that detects series/parallel arcing — the fire risk that MCBs and RCDs stay blind to; also trips on bolted short, overload and 30 mA+ earth leakage. BS 7671 Reg 421.1.7 requires AFDDs on single-phase socket-outlet final circuits up to 32 A in higher-risk residential buildings, HMOs, student accommodation and care homes (recommended elsewhere).',
+    category: 'protection',
+    isSwitch: true,
+    isPassThrough: true,
+    isProtection: true,
+    defaultOn: true,
+    tier: 'pro',
+    maxAmps: 32,
+    mcbType: 'B',
+    ratedLeakage_mA: 30,
+    ports: [
+      { type: 'live', relX: 0, relY: 0.35, label: 'L-in' },
+      { type: 'neutral', relX: 0, relY: 0.65, label: 'N-in' },
+      { type: 'live', relX: 1, relY: 0.35, label: 'L-out' },
+      { type: 'neutral', relX: 1, relY: 0.65, label: 'N-out' },
+    ],
+    icon: '🔥',
   },
 
   fuse: {

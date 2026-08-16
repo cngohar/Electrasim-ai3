@@ -503,3 +503,248 @@ describe('simulate — invariants', () => {
     expect(elapsed).toBeLessThan(50);
   });
 });
+
+// ─── Fault → protection device operation ─────────────────────────────────────
+
+describe('simulate — faults operate upstream protection', () => {
+  it('trips the inline MCB on a topology-level bolted Live–Neutral short', () => {
+    const l = C('live-terminal');
+    const n = C('neutral-terminal');
+    const mcb = C('mcb', { on: true });
+    // Live → MCB in, MCB out → Neutral output port ⇒ both rails meet at n:0
+    const w1 = W({ c: l, p: 0 }, { c: mcb, p: 0 });
+    const w2 = W({ c: mcb, p: 1 }, { c: n, p: 0 });
+
+    const result = simulate(circuit([l, n, mcb], [w1, w2]));
+
+    const trips = result.trippedComponents ?? [];
+    expect(trips.map((t) => t.id)).toContain(mcb.id);
+    expect(trips.find((t) => t.id === mcb.id)?.reason).toBe('short-circuit');
+    expect(result.errors.some((e) => e.includes('TRIPPED'))).toBe(true);
+  });
+
+  it('trips the MCB guarding a component with an injected short-circuit fault', () => {
+    const l = C('live-terminal');
+    const n = C('neutral-terminal');
+    const mcb = C('mcb', { on: true });
+    const bulb = C('bulb', { fault: 'short-circuit' });
+    const w1 = W({ c: l, p: 0 }, { c: mcb, p: 0 });
+    const w2 = W({ c: mcb, p: 1 }, { c: bulb, p: 0 });
+    const w3 = W({ c: n, p: 0 }, { c: bulb, p: 1 });
+
+    const result = simulate(circuit([l, n, mcb, bulb], [w1, w2, w3]));
+
+    const trips = result.trippedComponents ?? [];
+    expect(trips.map((t) => t.id)).toContain(mcb.id);
+  });
+
+  it('does not trip protective devices on an isolated, separate network', () => {
+    // Network A: live, mcbA, shorted bulb, neutral.
+    const la = C('live-terminal');
+    const na = C('neutral-terminal');
+    const mcbA = C('mcb');
+    const bulbA = C('bulb', { fault: 'short-circuit' });
+    // Network B: completely separate healthy circuit with its own MCB + RCD.
+    const lb = C('live-terminal');
+    const nb = C('neutral-terminal');
+    const mcbB = C('mcb');
+    const rcdB = C('rcd');
+    const bulbB = C('bulb');
+    const wires = [
+      W({ c: la, p: 0 }, { c: mcbA, p: 0 }),
+      W({ c: mcbA, p: 1 }, { c: bulbA, p: 0 }),
+      W({ c: na, p: 0 }, { c: bulbA, p: 1 }),
+      W({ c: lb, p: 0 }, { c: mcbB, p: 0 }),
+      W({ c: mcbB, p: 1 }, { c: bulbB, p: 0 }),
+      W({ c: nb, p: 0 }, { c: rcdB, p: 1 }),
+      W({ c: rcdB, p: 3 }, { c: bulbB, p: 1 }),
+    ];
+
+    const result = simulate(circuit([la, na, mcbA, bulbA, lb, nb, mcbB, rcdB, bulbB], wires));
+
+    const tripIds = (result.trippedComponents ?? []).map((t) => t.id);
+    expect(tripIds).toContain(mcbA.id);
+    expect(tripIds).not.toContain(mcbB.id);
+    expect(tripIds).not.toContain(rcdB.id);
+  });
+
+  it('earth leakage trips only the RCD/RCBO in the same network', () => {
+    const la = C('live-terminal');
+    const na = C('neutral-terminal');
+    const rcd = C('rcd');
+    const bulbA = C('bulb', { fault: 'live-to-earth' });
+    const lb = C('live-terminal');
+    const nb = C('neutral-terminal');
+    const rcdIsolated = C('rcd');
+    const bulbB = C('bulb');
+    const wires = [
+      W({ c: la, p: 0 }, { c: rcd, p: 0 }),
+      W({ c: na, p: 0 }, { c: rcd, p: 1 }),
+      W({ c: rcd, p: 2 }, { c: bulbA, p: 0 }),
+      W({ c: rcd, p: 3 }, { c: bulbA, p: 1 }),
+      W({ c: lb, p: 0 }, { c: bulbB, p: 0 }),
+      W({ c: nb, p: 0 }, { c: rcdIsolated, p: 1 }),
+      W({ c: rcdIsolated, p: 3 }, { c: bulbB, p: 1 }),
+    ];
+
+    const result = simulate(circuit([la, na, rcd, bulbA, lb, nb, rcdIsolated, bulbB], wires));
+
+    const tripIds = (result.trippedComponents ?? []).map((t) => t.id);
+    expect(tripIds).toContain(rcd.id);
+    expect(tripIds).not.toContain(rcdIsolated.id);
+  });
+});
+
+describe('simulate — smooth DC residual blinding (RCD type selection)', () => {
+  /** live → rcbo → bulb(+fault) with neutral → rcbo → bulb. */
+  const dcCircuit = (rcdType: 'AC' | 'A' | 'F' | 'B') => {
+    const l = C('live-terminal');
+    const n = C('neutral-terminal');
+    const rcbo = C('rcbo', { on: true, rcdType });
+    const bulb = C('bulb', { fault: 'smooth-dc-residual' });
+    const wires = [
+      W({ c: l, p: 0 }, { c: rcbo, p: 0 }),
+      W({ c: n, p: 0 }, { c: rcbo, p: 1 }),
+      W({ c: rcbo, p: 2 }, { c: bulb, p: 0 }),
+      W({ c: rcbo, p: 3 }, { c: bulb, p: 1 }),
+    ];
+    return { rcbo, result: simulate(circuit([l, n, rcbo, bulb], wires)) };
+  };
+
+  it.each(['AC', 'A', 'F'] as const)('Type %s stays closed on smooth DC — with a blinded warning', (rcdType) => {
+    const { rcbo, result } = dcCircuit(rcdType);
+
+    expect((result.trippedComponents ?? []).map((t) => t.id)).not.toContain(rcbo.id);
+    expect(
+      result.errors.some(
+        (e) => e.includes(`Type ${rcdType}`) && e.includes('DID NOT TRIP'),
+      ),
+    ).toBe(true);
+  });
+
+  it('Type B detects the smooth DC residual and trips (BS EN 62423)', () => {
+    const { rcbo, result } = dcCircuit('B');
+
+    const trips = result.trippedComponents ?? [];
+    expect(trips.map((t) => t.id)).toContain(rcbo.id);
+    expect(trips.find((t) => t.id === rcbo.id)?.reason).toBe('ground-fault');
+    expect(result.errors.some((e) => e.includes('DID NOT TRIP'))).toBe(false);
+  });
+
+  it('smooth DC residual defaults to Type A when rcdType is unset', () => {
+    const l = C('live-terminal');
+    const n = C('neutral-terminal');
+    const rcbo = C('rcbo', { on: true }); // no rcdType → legacy state
+    const bulb = C('bulb', { fault: 'smooth-dc-residual' });
+    const wires = [
+      W({ c: l, p: 0 }, { c: rcbo, p: 0 }),
+      W({ c: n, p: 0 }, { c: rcbo, p: 1 }),
+      W({ c: rcbo, p: 2 }, { c: bulb, p: 0 }),
+      W({ c: rcbo, p: 3 }, { c: bulb, p: 1 }),
+    ];
+
+    const result = simulate(circuit([l, n, rcbo, bulb], wires));
+
+    expect((result.trippedComponents ?? []).map((t) => t.id)).not.toContain(rcbo.id);
+    expect(result.errors.some((e) => e.includes('Type A') && e.includes('DID NOT TRIP'))).toBe(true);
+  });
+});
+
+describe('simulate — arc fault detection (BS EN 62606 / Reg 421.1.7)', () => {
+  /** live → [protection] → bulb(+fault) with neutral return. */
+  const arcCircuit = (protectionType: 'afdd' | 'mcb' | 'rcbo', rcdType?: 'A' | 'B') => {
+    const l = C('live-terminal');
+    const n = C('neutral-terminal');
+    const prot = C(protectionType, { on: true, ...(rcdType ? { rcdType } : {}) });
+    const bulb = C('bulb', { fault: 'arc-fault' });
+    // Two-pole devices guard L and N; a 2-port MCB interrupts the live leg
+    // only (wiring it as 4-pole would bridge live into neutral — a REAL
+    // bolted short, which is exactly what the engine reported before).
+    const wires =
+      protectionType === 'mcb'
+        ? [
+            W({ c: l, p: 0 }, { c: prot, p: 0 }),
+            W({ c: prot, p: 1 }, { c: bulb, p: 0 }),
+            W({ c: n, p: 0 }, { c: bulb, p: 1 }),
+          ]
+        : [
+            W({ c: l, p: 0 }, { c: prot, p: 0 }),
+            W({ c: n, p: 0 }, { c: prot, p: 1 }),
+            W({ c: prot, p: 2 }, { c: bulb, p: 0 }),
+            W({ c: prot, p: 3 }, { c: bulb, p: 1 }),
+          ];
+    return { prot, result: simulate(circuit([l, n, prot, bulb], wires)) };
+  };
+
+  it('an AFDD trips on an arc fault in its network', () => {
+    const { prot, result } = arcCircuit('afdd');
+
+    const trips = result.trippedComponents ?? [];
+    expect(trips.map((t) => t.id)).toContain(prot.id);
+    expect(trips.find((t) => t.id === prot.id)?.reason).toBe('arc-fault');
+    expect(result.errors.some((e) => e.includes('BS EN 62606'))).toBe(true);
+  });
+
+  it('an MCB-only network stays closed on an arc and reports the missing AFDD', () => {
+    const { prot, result } = arcCircuit('mcb');
+
+    expect((result.trippedComponents ?? []).map((t) => t.id)).not.toContain(prot.id);
+    expect(result.errors.some((e) => e.includes('NO AFDD'))).toBe(true);
+    expect(result.errors.some((e) => e.includes('421.1.7'))).toBe(true);
+  });
+
+  it('an RCBO (no arc detection) also stays closed on an arc', () => {
+    const { prot, result } = arcCircuit('rcbo');
+
+    expect((result.trippedComponents ?? []).map((t) => t.id)).not.toContain(prot.id);
+    expect(result.errors.some((e) => e.includes('NO AFDD'))).toBe(true);
+  });
+
+  it('an AFDD still trips on earth leakage, like any 30 mA residual device', () => {
+    const l = C('live-terminal');
+    const n = C('neutral-terminal');
+    const afdd = C('afdd', { on: true });
+    const bulb = C('bulb', { fault: 'earth-fault' });
+    const wires = [
+      W({ c: l, p: 0 }, { c: afdd, p: 0 }),
+      W({ c: n, p: 0 }, { c: afdd, p: 1 }),
+      W({ c: afdd, p: 2 }, { c: bulb, p: 0 }),
+      W({ c: afdd, p: 3 }, { c: bulb, p: 1 }),
+    ];
+
+    const result = simulate(circuit([l, n, afdd, bulb], wires));
+
+    const trips = result.trippedComponents ?? [];
+    expect(trips.map((t) => t.id)).toContain(afdd.id);
+    expect(trips.find((t) => t.id === afdd.id)?.reason).toBe('ground-fault');
+  });
+
+  it('an AFDD honours its RCD type — Type A blinded by smooth DC, Type B trips', () => {
+    const blinded = arcCircuitRcdd('A');
+    expect((blinded.result.trippedComponents ?? []).map((t) => t.id)).not.toContain(
+      blinded.prot.id,
+    );
+    expect(blinded.result.errors.some((e) => e.includes('Type A') && e.includes('DID NOT TRIP'))).toBe(
+      true,
+    );
+
+    const sensitive = arcCircuitRcdd('B');
+    expect((sensitive.result.trippedComponents ?? []).map((t) => t.id)).toContain(
+      sensitive.prot.id,
+    );
+  });
+
+  function arcCircuitRcdd(rcdType: 'A' | 'B') {
+    const l = C('live-terminal');
+    const n = C('neutral-terminal');
+    const prot = C('afdd', { on: true, rcdType });
+    const bulb = C('bulb', { fault: 'smooth-dc-residual' });
+    const wires = [
+      W({ c: l, p: 0 }, { c: prot, p: 0 }),
+      W({ c: n, p: 0 }, { c: prot, p: 1 }),
+      W({ c: prot, p: 2 }, { c: bulb, p: 0 }),
+      W({ c: prot, p: 3 }, { c: bulb, p: 1 }),
+    ];
+    return { prot, result: simulate(circuit([l, n, prot, bulb], wires)) };
+  }
+});

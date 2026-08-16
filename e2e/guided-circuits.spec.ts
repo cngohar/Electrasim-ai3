@@ -29,6 +29,7 @@ test.describe('new Guided Circuits', () => {
   });
 
   test('loads the RCBO-Protected Socket and opens both load rails', async ({ page }) => {
+    const isPhone = (page.viewportSize()?.width ?? 0) < 640;
     await loadGuide(page, 'rcbo-protected-socket', 'RCBO-Protected Socket');
 
     const rcbo = page
@@ -37,7 +38,14 @@ test.describe('new Guided Circuits', () => {
     const lamp = page.locator('[data-component-id="rcbo-protected-socket-test-lamp"]');
 
     await page.getByRole('button', { name: /^Run Simulation$/ }).click();
-    await expect(lamp.locator('circle[fill="#facc15"]')).toHaveCount(2);
+    // Energised lamp renders one #facc15 outer glow halo per the current design.
+    await expect(lamp.locator('circle[fill="#facc15"]')).toHaveCount(1);
+
+    if (isPhone) {
+      // On phones the guide sheet overlays the lower canvas; "Hide guide" is
+      // the intended way to free the canvas for component interaction.
+      await page.getByRole('button', { name: 'Hide guide' }).click();
+    }
 
     await rcbo.dblclick();
     await expect(rcbo).toHaveAttribute('aria-pressed', 'false');

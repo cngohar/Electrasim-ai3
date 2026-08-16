@@ -142,8 +142,20 @@ export type FaultType =
   | 'terminal-disconnect'
   | 'switched-neutral'
   | 'live-to-earth'
+  | 'smooth-dc-residual'
+  | 'arc-fault'
   | 'protection-forced-open'
   | 'protection-bypass';
+
+/**
+ * Residual-current device classification (BS 7671 Reg 531.3.3 selects by
+ * the fault-current waveforms the load may produce):
+ * - `'AC'` sinusoidal AC residual only (legacy — not for new installs)
+ * - `'A'`  AC + pulsating DC; tolerates ≤6 mA smooth DC, does not detect it
+ * - `'F'`  Type A + mixed/high frequency; tolerates ≤10 mA smooth DC
+ * - `'B'`  all-current-sensitive — also detects smooth DC (BS EN 62423)
+ */
+export type RCDType = 'AC' | 'A' | 'F' | 'B';
 
 /**
  * Fault kinds that can be mirrored onto the legacy per-wire `fault` field.
@@ -238,7 +250,14 @@ export interface ComponentState {
 
   /** Protection device tripped status (for breakers/fuses). */
   isTripped?: boolean;
-  tripReason?: 'overload' | 'short-circuit' | 'ground-fault' | 'manual-fault';
+  tripReason?: 'overload' | 'short-circuit' | 'ground-fault' | 'arc-fault' | 'manual-fault';
+
+  /**
+   * Residual-current classification on RCD/RCBO devices (default `'A'`).
+   * Only `'B'` trips on `smooth-dc-residual` faults; AC/A/F are blind to the
+   * DC component (BS EN 62423 tolerance 6 mA for A, 10 mA for F).
+   */
+  rcdType?: RCDType;
 
   /** Battery chemistry affecting internal resistance and discharge curve. */
   batteryChemistry?: 'alkaline' | 'li-ion' | 'lead-acid';
@@ -273,6 +292,15 @@ export interface ComponentInstance {
  */
 export type WirePathKind = 'bezier' | 'orthogonal';
 
+/**
+ * BS 7671 Appendix 4 installation Reference Methods supported by the sim:
+ * - `'C'`  clipped direct to a surface (best case, the default)
+ * - `'B1'` enclosed in conduit on a wall
+ * - `'A'`  enclosed in conduit inside thermal insulation (worst case)
+ * Lower methods carry less current for the same conductor size.
+ */
+export type InstallationMethod = 'C' | 'B1' | 'A';
+
 export interface WireInstance {
   id: string;
   fromComponentId: string;
@@ -306,6 +334,11 @@ export interface WireInstance {
   deratingFactor?: number;
   /** Optional custom cross-section gauge in mm² (e.g. 1.0, 1.5, 2.5, 4.0, 6.0, 10.0, 16.0). */
   customCableMm2?: number;
+  /**
+   * BS 7671 installation Reference Method for base ampacity (default `'C'`).
+   * Multiplied with {@link deratingFactor} (Cg grouping/ambient) by callers.
+   */
+  installationMethod?: InstallationMethod;
   /** True if wire was melted/busted due to severe current overload without protection. */
   isBusted?: boolean;
   bustedReason?: string;

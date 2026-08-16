@@ -48,19 +48,24 @@ export function ContextMenu() {
     return () => window.removeEventListener('mousedown', handler, true);
   }, [contextMenu]);
 
-  // Reposition to stay within viewport
+  // Reposition to stay FULLY within the viewport: flip on right/bottom
+  // overflow, then hard-clamp so a tall menu (faulted-component lists grew
+  // past the space above mid-screen clicks AND below) can never clip off the
+  // top/left edges — the internal scroll takes over instead.
   useEffect(() => {
     if (!contextMenu || !ref.current) return;
     const el = ref.current;
     const rect = el.getBoundingClientRect();
     const vw = window.innerWidth;
     const vh = window.innerHeight;
-    if (rect.right > vw) {
-      el.style.left = `${contextMenu.x - rect.width}px`;
-    }
-    if (rect.bottom > vh) {
-      el.style.top = `${contextMenu.y - rect.height}px`;
-    }
+    let left = contextMenu.x;
+    let top = contextMenu.y;
+    if (rect.right > vw) left = contextMenu.x - rect.width;
+    if (rect.bottom > vh) top = contextMenu.y - rect.height;
+    left = Math.max(8, Math.min(left, Math.max(8, vw - rect.width - 8)));
+    top = Math.max(8, Math.min(top, Math.max(8, vh - rect.height - 8)));
+    el.style.left = `${left}px`;
+    el.style.top = `${top}px`;
   }, [contextMenu]);
 
   if (!contextMenu) return null;
@@ -70,7 +75,7 @@ export function ContextMenu() {
   return (
     <div
       ref={ref}
-      className="fixed z-[60] min-w-[180px] overflow-hidden rounded-xl border border-slate-200 bg-white/95 py-1 shadow-xl shadow-slate-900/10 backdrop-blur-xl dark:border-slate-700 dark:bg-slate-900/95 dark:shadow-black/30"
+      className="fixed z-[60] min-w-[180px] max-h-[calc(100dvh-16px)] overflow-y-auto rounded-xl border border-slate-200 bg-white/95 py-1 shadow-xl shadow-slate-900/10 backdrop-blur-xl dark:border-slate-700 dark:bg-slate-900/95 dark:shadow-black/30"
       style={{ left: contextMenu.x, top: contextMenu.y }}
     >
       {items.map((entry, i) => {

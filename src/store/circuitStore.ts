@@ -578,6 +578,15 @@ export const useCircuitStore = create<CircuitState>()(
           ) {
             w.customCableMm2 = updates.customCableMm2;
           }
+          if (
+            'installationMethod' in updates &&
+            (updates.installationMethod === undefined ||
+              updates.installationMethod === 'C' ||
+              updates.installationMethod === 'B1' ||
+              updates.installationMethod === 'A')
+          ) {
+            w.installationMethod = updates.installationMethod;
+          }
           if (updates.material === 'copper' || updates.material === 'aluminum') {
             w.material = updates.material;
           }
@@ -711,17 +720,25 @@ export const useCircuitStore = create<CircuitState>()(
         }),
     })),
     {
-      // Only the *graph* is undoable. Selection clicks are not.
+      // Only the *graph + fault scenario* is undoable. Selection clicks are
+      // not. `faults` must be tracked: injectFault also stamps a mirrored
+      // `state.fault` marker on the target component (which IS in history),
+      // so without this slice an undo would restore the marker while the
+      // stale fault kept affecting the sim — an invisible ghost fault.
       partialize: (state) => ({
         components: componentsForHistory(state.components),
         wires: state.wires,
         globalVoltage: state.globalVoltage,
+        faults: state.faults,
       }),
       // Immer preserves array identity when no element changed, so a simple
       // reference equality on the tracked slices is enough to skip the entry
       // — selection-only updates won't grow the history.
       equality: (a, b) =>
-        a.components === b.components && a.wires === b.wires && a.globalVoltage === b.globalVoltage,
+        a.components === b.components &&
+        a.wires === b.wires &&
+        a.globalVoltage === b.globalVoltage &&
+        a.faults === b.faults,
       limit: 100,
     },
   ),
