@@ -1,5 +1,8 @@
+import { runComplianceChecks } from './compliance';
 import { COMPONENT_DEFS } from './components';
 import { getStandardCableAmpacity } from './electricalCalculations';
+import { getStandard } from './standards';
+import type { StandardId } from './standards';
 import type { Circuit, ComponentInstance, SimulationResult, WireInstance } from './types';
 
 import type {
@@ -28,6 +31,7 @@ export type {
 export function validateCircuit(
   circuit: Circuit,
   simResult?: SimulationResult | null,
+  standard: StandardId = 'uk',
 ): ValidationReport {
   const issues: ValidationIssue[] = [];
   const passedChecks: PassedCheck[] = [];
@@ -772,6 +776,22 @@ export function validateCircuit(
     }
   }
 
+  // 8.5 STANDARD-AWARE COMPLIANCE (UK / US / EU)
+  // Voltage drop, RCD/GFCI on sockets, motor MCB curve. These are merged
+  // into the same report so the existing UI surfaces them.
+  const nominalVoltage = circuit.globalVoltage ?? getStandard(standard).nominalVoltage;
+  const compliance = runComplianceChecks(circuit, standard, nominalVoltage);
+  for (const c of compliance.issues) {
+    issues.push({ ...c, blocking: c.blocking });
+  }
+  if (compliance.errorCount === 0) {
+    passedChecks.push({
+      id: 'pass_compliance',
+      title: `${getStandard(standard).shortLabel} Regulation Compliance`,
+      description: `Voltage drop, residual protection and breaker-curve rules pass under ${getStandard(standard).citation}.`,
+    });
+  }
+
   // 9. SIMULATION ACTIVE FAULT
   if (simResult?.errors && simResult.errors.length > 0) {
     issues.push({
@@ -812,6 +832,9 @@ export function validateCircuit(
   const errorsCount = issues.filter((i) => i.severity === 'error').length;
   const warningsCount = issues.filter((i) => i.severity === 'warning').length;
   const infoCount = issues.filter((i) => i.severity === 'info').length;
+  // Issues flagged `blocking` prevent the simulation from starting until
+  // they are resolved. Error-level compliance violations block by design.
+  const blockingCount = issues.filter((i) => i.blocking && i.severity === 'error').length;
 
   let score = 100 - errorsCount * 30 - warningsCount * 15;
   if (score < 0) score = 0;
@@ -831,5 +854,7 @@ export function validateCircuit(
     },
     issues,
     passedChecks,
+    blockingErrorsCount: blockingCount,
+    standard,
   };
 }

@@ -90,7 +90,9 @@ export interface EventHistoryEntry {
     | 'component_blown'
     | 'wire_melted'
     | 'fault_cleared'
-    | 'component_repaired';
+    | 'component_repaired'
+    | 'regulatory_violation'
+    | 'manual_intervention';
   componentName?: string;
   componentType?: string;
   componentId?: string;
@@ -103,6 +105,10 @@ export interface EventHistoryEntry {
     cableMm2?: number;
     reason?: string;
     faultType?: string;
+    /** Validation issue id (regulatory violations in the audit history). */
+    issueId?: string;
+    /** Regulation standard under which a violation was detected. */
+    standard?: string;
   };
 }
 
@@ -197,14 +203,15 @@ export interface UiState {
   /** Selected validation issue for the 'View Details' modal. */
   activeValidationIssueModal: ValidationIssue | null;
 
-  /** Active tab in Inspector panel ('properties' | 'connections' | 'simulation' | 'analytics' | 'validation' | 'logs'). */
+  /** Active tab in Inspector panel ('properties' | 'connections' | 'simulation' | 'analytics' | 'validation' | 'logs' | 'history'). */
   activeInspectorTab:
     | 'properties'
     | 'connections'
     | 'simulation'
     | 'analytics'
     | 'validation'
-    | 'logs';
+    | 'logs'
+    | 'history';
 
   /** Visual feedback mode: when true and a wire/component is selected, dims all unselected parts and highlights the traced path. */
   tracePathMode: boolean;
@@ -236,7 +243,14 @@ export interface UiState {
   runCircuitValidation: () => void;
   setActiveValidationIssueModal: (issue: ValidationIssue | null) => void;
   setActiveInspectorTab: (
-    tab: 'properties' | 'connections' | 'simulation' | 'analytics' | 'validation' | 'logs',
+    tab:
+      | 'properties'
+      | 'connections'
+      | 'simulation'
+      | 'analytics'
+      | 'validation'
+      | 'logs'
+      | 'history',
   ) => void;
   setTracePathMode: (active: boolean) => void;
   toggleTracePathMode: () => void;

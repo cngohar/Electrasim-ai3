@@ -41,6 +41,7 @@ const WelcomeModal = lazy(() =>
 import type { PendingDeletion } from '../store/uiStore';
 import { cancelPendingDeletion, confirmPendingDeletion } from './canvas-actions';
 import { AlignmentBar } from './components/AlignmentBar';
+import { ComponentInfoModal } from './components/ComponentInfoModal';
 import { ConfirmDialog } from './components/ConfirmDialog';
 import { ContextMenu } from './components/ContextMenu';
 import { EventHistoryPanel } from './components/EventHistoryPanel';
@@ -58,7 +59,6 @@ import { ToolDock } from './components/ToolDock';
 import { Toolbar } from './components/Toolbar';
 import { ValidationDetailsModal } from './components/ValidationDetailsModal';
 import { WhatHappenedModal } from './components/WhatHappenedModal';
-import { ComponentInfoModal } from './components/ComponentInfoModal';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 import { useResolvedTheme } from './hooks/useResolvedTheme';
 import {
@@ -148,11 +148,12 @@ export function Editor() {
   const showGrid = useSettingsStore((s) => s.showGrid);
   const canvasPreset = useSettingsStore((s) => s.canvasPreset);
   const wireColorStandard = useSettingsStore((s) => s.wireColorStandard);
+  const regulationStandard = useSettingsStore((s) => s.regulationStandard);
   const showMiniMap = useSettingsStore((s) => s.showMiniMap);
   const baseTheme = isDark ? labGlassDark : labGlassLight;
   const canvasTheme = applyCanvasPreset(
     baseTheme,
-    { showGrid, canvasPreset, wireColorStandard },
+    { showGrid, canvasPreset, wireColorStandard, regulationStandard },
     isDark,
   );
   const bgGradient = isDark ? editorBackgroundDark : editorBackground;

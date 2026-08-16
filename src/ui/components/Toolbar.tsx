@@ -5,6 +5,7 @@
 
 import {
   BookOpen,
+  Flame,
   FlaskConical,
   GraduationCap,
   Moon,
@@ -35,6 +36,7 @@ interface Props {
 export function Toolbar({ isPhone, simRunning, dashboardOpen, onToggleDashboard }: Props) {
   const appMode = useSettingsStore((s) => s.appMode);
   const setSetting = useSettingsStore((s) => s.setSetting);
+  const stressZonesEnabled = useSettingsStore((s) => s.stressZonesEnabled);
   const resolvedTheme = useResolvedTheme();
   const isDark = resolvedTheme === 'dark';
   const simResult = useUiStore((s) => s.simResult);
@@ -140,6 +142,24 @@ export function Toolbar({ isPhone, simRunning, dashboardOpen, onToggleDashboard 
         >
           <Sparkles className="size-3.5" />
           Analyze Circuit
+        </button>
+      )}
+      {appMode === 'pro' && (
+        <button
+          type="button"
+          onClick={() => setSetting('stressZonesEnabled', !stressZonesEnabled)}
+          title="Overlay a heatmap highlighting components and wiring with high heat dissipation or voltage drop under the current regulation standard"
+          aria-pressed={stressZonesEnabled}
+          className={[
+            'flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold shadow-sm transition',
+            stressZonesEnabled
+              ? 'border-orange-500 bg-orange-600 text-white shadow-orange-500/20'
+              : 'border-orange-200 bg-orange-50 text-orange-700 hover:bg-orange-100 dark:border-orange-800 dark:bg-orange-950/60 dark:text-orange-300 dark:hover:bg-orange-900/70',
+            isPhone ? 'px-2' : '',
+          ].join(' ')}
+        >
+          <Flame className="size-3.5" />
+          {!isPhone && 'Stress Zones'}
         </button>
       )}
       <button

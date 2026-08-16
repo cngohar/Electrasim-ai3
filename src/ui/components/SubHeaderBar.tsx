@@ -1,4 +1,5 @@
 import {
+  Bug,
   ChevronDown,
   ChevronRight,
   Edit2,
@@ -10,7 +11,9 @@ import {
 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { COMPONENT_DEFS } from '../../domain/components';
-import { useCircuitStore, useUiStore } from '../../store';
+import { getStandard } from '../../domain/standards';
+import { useCircuitStore, useSettingsStore, useUiStore } from '../../store';
+import { StandardSelector } from './StandardSelector';
 
 const VOLTAGE_PRESETS = [
   { label: '12V DC', val: 12 },
@@ -26,6 +29,17 @@ export function SubHeaderBar() {
   const globalVoltage = useCircuitStore((s) => s.globalVoltage);
   const setGlobalSupplyVoltage = useCircuitStore((s) => s.setGlobalSupplyVoltage);
   const simResult = useUiStore((s) => s.simResult);
+
+  // Pro-mode feature flags: manual fault injection and the regulatory standard
+  // selector only surface when the user is in Pro Electrician Mode. In Student
+  // Mode all manual fault controls are hidden regardless of the toggle.
+  const appMode = useSettingsStore((s) => s.appMode);
+  const manualFaultInjection = useSettingsStore((s) => s.manualFaultInjection);
+  const regulationStandard = useSettingsStore((s) => s.regulationStandard);
+  const setSetting = useSettingsStore((s) => s.setSetting);
+  const isPro = appMode === 'pro';
+  const faultsArmed = isPro && manualFaultInjection;
+  const standard = getStandard(regulationStandard);
 
   const selectedComponentIds = useCircuitStore((s) => s.selectedComponentIds);
   const selectedWireIds = useCircuitStore((s) => s.selectedWireIds);
@@ -101,7 +115,7 @@ export function SubHeaderBar() {
           <span className="size-2 rounded-full bg-emerald-500 shadow-[0_0_6px] shadow-emerald-400" />
           <span className="text-slate-500 dark:text-slate-400">Supply:</span>
           <span className="font-mono font-semibold text-slate-800 dark:text-slate-200">
-            {effectiveVoltage} V {isAc ? '50 Hz' : 'DC'}
+            {effectiveVoltage} V {isAc ? `${standard.frequencyHz} Hz` : 'DC'}
           </span>
           <ChevronDown
             className={`size-3 text-slate-400 transition-transform ${showVoltagePicker ? 'rotate-180' : ''}`}
@@ -120,7 +134,8 @@ export function SubHeaderBar() {
             </div>
 
             <div className="mb-2 text-[10px] text-slate-500 dark:text-slate-400">
-              Select global supply voltage level. Synchronizes with real-time checks and load calculations.
+              Select global supply voltage level. Synchronizes with real-time checks and load
+              calculations.
             </div>
 
             {/* Voltage presets */}
@@ -215,14 +230,6 @@ export function SubHeaderBar() {
               </button>
               <button
                 type="button"
-                onClick={() => useUiStore.getState().setActiveComponentInfoType(selectedComponent.type)}
-                className="flex items-center gap-0.5 rounded px-1 text-[10px] font-bold text-sky-600 hover:bg-sky-100 dark:text-sky-400 dark:hover:bg-sky-950/60"
-                title="View Technical Specifications"
-              >
-                <span>? Specs</span>
-              </button>
-              <button
-                type="button"
                 onClick={clearSelection}
                 className="rounded-full p-0.5 hover:bg-purple-200/60 dark:hover:bg-purple-900/60 text-purple-600 dark:text-purple-300 transition"
                 title="Deselect"
@@ -314,6 +321,48 @@ export function SubHeaderBar() {
 
       <div className="h-3 w-px bg-slate-200 dark:bg-slate-700" />
 
+      {isPro && (
+        <>
+          {/* Regulation template quick-switch (UK / US / EU) */}
+          <StandardSelector />
+
+          {/* Manual fault injection master toggle.
+              Fault controls in the Inspector / right-click menu only render
+              while this is armed. Student mode never shows it at all. */}
+          <button
+            type="button"
+            onClick={() => setSetting('manualFaultInjection', !manualFaultInjection)}
+            className={`flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-semibold shadow-sm transition ${
+              faultsArmed
+                ? 'border-red-300 bg-red-600 text-white hover:bg-red-500'
+                : 'border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700'
+            }`}
+            title={
+              faultsArmed
+                ? 'Manual fault injection ON — fault controls visible in Inspector & context menu'
+                : 'Manual fault injection OFF — fault controls hidden in Inspector & context menu'
+            }
+            aria-pressed={faultsArmed}
+          >
+            <Bug className="size-3.5" />
+            <span className="hidden sm:inline">Faults</span>
+            <span
+              className={`flex h-3.5 w-6 items-center rounded-full p-0.5 transition ${
+                faultsArmed ? 'bg-white/30' : 'bg-slate-300 dark:bg-slate-600'
+              }`}
+            >
+              <span
+                className={`size-2.5 rounded-full bg-white transition-transform ${
+                  faultsArmed ? 'translate-x-2.5' : 'translate-x-0'
+                }`}
+              />
+            </span>
+          </button>
+
+          <div className="h-3 w-px bg-slate-200 dark:bg-slate-700" />
+        </>
+      )}
+
       {/* Simulation Running status indicator */}
       <div className="flex items-center gap-1.5">
         <span className="font-medium text-slate-500 dark:text-slate-400">Sim:</span>
@@ -335,4 +384,3 @@ export function SubHeaderBar() {
     </div>
   );
 }
-

@@ -16,6 +16,7 @@ import { immer } from 'zustand/middleware/immer';
 import { COMPONENT_DEFS, type ComponentInstance, type WireInstance } from '../domain';
 import { validateCircuit } from '../domain/circuitValidation';
 import { useCircuitStore } from './circuitStore';
+import { useSettingsStore } from './settingsStore';
 import {
   createComponent,
   createWire,
@@ -113,6 +114,36 @@ export const useUiStore = create<UiState>()(
             };
             return;
           }
+          // Compliance gate: the active regulation standard's blocking
+          // errors (voltage drop, missing RCD, wrong MCB curve) must be
+          // resolved before simulation can run. We validate on the fly so
+          // this is always in sync with the latest graph + standard.
+          const standard = useSettingsStore.getState().regulationStandard;
+          const report = validateCircuit(
+            { components: cs.components, wires: cs.wires, globalVoltage: cs.globalVoltage },
+            s.simResult,
+            standard,
+          );
+          if ((report.blockingErrorsCount ?? 0) > 0) {
+            s.simRunning = false;
+            s.validationReport = report;
+            s.inspectorOpen = true;
+            s.inspectorCollapsed = false;
+            s.activeInspectorTab = 'validation';
+            const firstBlocking = report.issues.find((i) => i.blocking && i.severity === 'error');
+            s.faultAlert = {
+              title: '⛔ COMPLIANCE CHECK FAILED',
+              kind: 'trip',
+              reason: firstBlocking
+                ? `Simulation blocked: ${firstBlocking.title}`
+                : 'Simulation blocked by regulatory compliance violations.',
+              currentAmps: 0,
+              limitAmps: 0,
+              resolutionHint:
+                'Open the Validation tab to review and fix the highlighted violations, then run the simulation again.',
+            };
+            return;
+          }
         }
         s.simRunning = v;
       }),
@@ -136,6 +167,32 @@ export const useUiStore = create<UiState>()(
               limitAmps: 0,
               resolutionHint:
                 'Adjust power (W) or current (A) in the Inspector panel or increase cable gauge, then click "Repair & Reset Circuit" to resume.',
+            };
+            return;
+          }
+          const standard = useSettingsStore.getState().regulationStandard;
+          const report = validateCircuit(
+            { components: cs.components, wires: cs.wires, globalVoltage: cs.globalVoltage },
+            s.simResult,
+            standard,
+          );
+          if ((report.blockingErrorsCount ?? 0) > 0) {
+            s.simRunning = false;
+            s.validationReport = report;
+            s.inspectorOpen = true;
+            s.inspectorCollapsed = false;
+            s.activeInspectorTab = 'validation';
+            const firstBlocking = report.issues.find((i) => i.blocking && i.severity === 'error');
+            s.faultAlert = {
+              title: '⛔ COMPLIANCE CHECK FAILED',
+              kind: 'trip',
+              reason: firstBlocking
+                ? `Simulation blocked: ${firstBlocking.title}`
+                : 'Simulation blocked by regulatory compliance violations.',
+              currentAmps: 0,
+              limitAmps: 0,
+              resolutionHint:
+                'Open the Validation tab to review and fix the highlighted violations, then run the simulation again.',
             };
             return;
           }
@@ -236,9 +293,13 @@ export const useUiStore = create<UiState>()(
 
         const cs = useCircuitStore.getState();
         const currentUi = useUiStore.getState();
+        // Read the active regulation standard lazily so a template switch
+        // immediately re-validates against the new rule set.
+        const standard = useSettingsStore.getState().regulationStandard;
         const report = validateCircuit(
           { components: cs.components, wires: cs.wires, globalVoltage: cs.globalVoltage },
           currentUi.simResult,
+          standard,
         );
         const summaryText = `Circuit Validation: ${report.summary.errorsCount} error(s), ${report.summary.warningsCount} warning(s), ${report.summary.passedCount} check(s) passed.`;
 
@@ -257,6 +318,39 @@ export const useUiStore = create<UiState>()(
             message: summaryText,
           });
           if (s.logs.length > MAX_LOGS) s.logs.length = MAX_LOGS;
+          // Audit trail: record every blocking compliance violation in the
+          // Pro Simulation History log. We only record errors so the log
+          // doesn't fill with duplicate warnings on each edit.
+          if (report.issues) {
+            const blocking = report.issues.filter((i) => i.blocking && i.severity === 'error');
+            const now = Date.now();
+            for (const issue of blocking) {
+              // Avoid duplicate entries for the same issue within 5 s.
+              const recent = s.eventHistory.find(
+                (e) =>
+                  e.eventType === 'regulatory_violation' &&
+                  e.details?.issueId === issue.id &&
+                  now - e.timestamp < 5000,
+              );
+              if (!recent) {
+                s.eventHistory.unshift({
+                  id: `event-${now}-${Math.random().toString(36).slice(2, 7)}`,
+                  timestamp: now,
+                  eventType: 'regulatory_violation',
+                  description: issue.title,
+                  severity: 'critical',
+                  componentId: issue.componentId,
+                  wireId: issue.wireId,
+                  details: {
+                    issueId: issue.id,
+                    reason: issue.description,
+                    standard: report.standard,
+                  },
+                });
+              }
+            }
+            if (s.eventHistory.length > 100) s.eventHistory.length = 100;
+          }
         });
       }, 350);
     },

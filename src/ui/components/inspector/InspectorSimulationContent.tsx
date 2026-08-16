@@ -3,14 +3,14 @@
  * verbatim from the previous monolithic `Inspector.tsx`.
  */
 
-import { AlertTriangle, OctagonAlert, Zap } from 'lucide-react';
+import { AlertTriangle, Lock, OctagonAlert, Zap } from 'lucide-react';
 import {
   COMPONENT_DEFS,
   type ComponentInstance,
   type SimulationResult,
   type WireInstance,
 } from '../../../domain';
-import { useCircuitStore, useUiStore } from '../../../store';
+import { useCircuitStore, useSettingsStore, useUiStore } from '../../../store';
 import type { InspectorSelectionState } from './useInspectorSelectionState';
 
 export function InspectorSimulationContent({
@@ -21,6 +21,12 @@ export function InspectorSimulationContent({
   simResult: SimulationResult | null;
 }) {
   const simRunning = useUiStore((s) => s.simRunning);
+  const appMode = useSettingsStore((s) => s.appMode);
+  const manualFaultInjection = useSettingsStore((s) => s.manualFaultInjection);
+  const isPro = appMode === 'pro';
+  // Manual fault injection is Pro-only and gated behind the SubHeaderBar
+  // master toggle. Student Mode never exposes the fault buttons.
+  const faultsArmed = isPro && manualFaultInjection;
 
   if (selectionState.kind === 'wire') {
     const wire: WireInstance = selectionState.wire;
@@ -73,70 +79,82 @@ export function InspectorSimulationContent({
           </div>
         </div>
 
-        {/* Fault Injection Section */}
-        <div className="rounded-xl border border-slate-200 bg-white p-3 dark:border-slate-800 dark:bg-slate-900 space-y-2">
-          <div className="font-bold text-slate-800 dark:text-slate-200 text-[11px] uppercase tracking-wider flex items-center gap-1.5">
-            <AlertTriangle className="size-3.5 text-amber-500" /> Fault Injection Testing
+        {/* Fault Injection Section — Pro Mode + master toggle only. */}
+        {faultsArmed && (
+          <div className="rounded-xl border border-slate-200 bg-white p-3 dark:border-slate-800 dark:bg-slate-900 space-y-2">
+            <div className="font-bold text-slate-800 dark:text-slate-200 text-[11px] uppercase tracking-wider flex items-center gap-1.5">
+              <AlertTriangle className="size-3.5 text-amber-500" /> Fault Injection Testing
+            </div>
+
+            <div className="grid grid-cols-3 gap-1 pt-1">
+              <button
+                type="button"
+                onClick={() => useCircuitStore.getState().setWireFault(wire.id, 'open-circuit')}
+                className={`rounded border py-1.5 text-[10px] font-bold transition ${
+                  wire.fault === 'open-circuit'
+                    ? 'border-red-500 bg-red-600 text-white'
+                    : 'border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100 dark:border-slate-800 dark:bg-slate-800 dark:text-slate-300'
+                }`}
+              >
+                Open Circuit
+              </button>
+
+              <button
+                type="button"
+                onClick={() => useCircuitStore.getState().setWireFault(wire.id, 'open-neutral')}
+                className={`rounded border py-1.5 text-[10px] font-bold transition ${
+                  wire.fault === 'open-neutral'
+                    ? 'border-red-500 bg-red-600 text-white'
+                    : 'border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100 dark:border-slate-800 dark:bg-slate-800 dark:text-slate-300'
+                }`}
+              >
+                Broken Neutral
+              </button>
+
+              <button
+                type="button"
+                onClick={() => useCircuitStore.getState().setWireFault(wire.id, 'short-circuit')}
+                className={`rounded border py-1.5 text-[10px] font-bold transition ${
+                  wire.fault === 'short-circuit'
+                    ? 'border-red-500 bg-red-600 text-white'
+                    : 'border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100 dark:border-slate-800 dark:bg-slate-800 dark:text-slate-300'
+                }`}
+              >
+                Short Circuit
+              </button>
+
+              <button
+                type="button"
+                onClick={() => useCircuitStore.getState().setWireFault(wire.id, 'live-to-earth')}
+                className={`col-span-2 rounded border py-1.5 text-[10px] font-bold transition ${
+                  wire.fault === 'live-to-earth'
+                    ? 'border-red-500 bg-red-600 text-white'
+                    : 'border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100 dark:border-slate-800 dark:bg-slate-800 dark:text-slate-300'
+                }`}
+              >
+                Live-to-Earth Breakdown
+              </button>
+
+              <button
+                type="button"
+                onClick={() => useCircuitStore.getState().setWireFault(wire.id, undefined)}
+                className="rounded border border-emerald-300 bg-emerald-50 py-1.5 text-[10px] font-bold text-emerald-800 hover:bg-emerald-100 dark:border-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 transition"
+              >
+                Clear Fault
+              </button>
+            </div>
           </div>
+        )}
 
-          <div className="grid grid-cols-3 gap-1 pt-1">
-            <button
-              type="button"
-              onClick={() => useCircuitStore.getState().setWireFault(wire.id, 'open-circuit')}
-              className={`rounded border py-1.5 text-[10px] font-bold transition ${
-                wire.fault === 'open-circuit'
-                  ? 'border-red-500 bg-red-600 text-white'
-                  : 'border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100 dark:border-slate-800 dark:bg-slate-800 dark:text-slate-300'
-              }`}
-            >
-              Open Circuit
-            </button>
-
-            <button
-              type="button"
-              onClick={() => useCircuitStore.getState().setWireFault(wire.id, 'open-neutral')}
-              className={`rounded border py-1.5 text-[10px] font-bold transition ${
-                wire.fault === 'open-neutral'
-                  ? 'border-red-500 bg-red-600 text-white'
-                  : 'border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100 dark:border-slate-800 dark:bg-slate-800 dark:text-slate-300'
-              }`}
-            >
-              Broken Neutral
-            </button>
-
-            <button
-              type="button"
-              onClick={() => useCircuitStore.getState().setWireFault(wire.id, 'short-circuit')}
-              className={`rounded border py-1.5 text-[10px] font-bold transition ${
-                wire.fault === 'short-circuit'
-                  ? 'border-red-500 bg-red-600 text-white'
-                  : 'border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100 dark:border-slate-800 dark:bg-slate-800 dark:text-slate-300'
-              }`}
-            >
-              Short Circuit
-            </button>
-
-            <button
-              type="button"
-              onClick={() => useCircuitStore.getState().setWireFault(wire.id, 'live-to-earth')}
-              className={`col-span-2 rounded border py-1.5 text-[10px] font-bold transition ${
-                wire.fault === 'live-to-earth'
-                  ? 'border-red-500 bg-red-600 text-white'
-                  : 'border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100 dark:border-slate-800 dark:bg-slate-800 dark:text-slate-300'
-              }`}
-            >
-              Live-to-Earth Breakdown
-            </button>
-
-            <button
-              type="button"
-              onClick={() => useCircuitStore.getState().setWireFault(wire.id, undefined)}
-              className="rounded border border-emerald-300 bg-emerald-50 py-1.5 text-[10px] font-bold text-emerald-800 hover:bg-emerald-100 dark:border-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 transition"
-            >
-              Clear Fault
-            </button>
+        {!faultsArmed && isPro && (
+          <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-center dark:border-slate-800 dark:bg-slate-900/60">
+            <Lock className="mx-auto mb-1 size-4 text-slate-400" />
+            <p className="text-[10px] text-slate-500 dark:text-slate-400">
+              Fault injection is off. Toggle <strong>Faults</strong> in the SubHeaderBar to inject
+              open/short/earth faults.
+            </p>
           </div>
-        </div>
+        )}
       </div>
     );
   }
@@ -170,8 +188,10 @@ export function InspectorSimulationContent({
           </span>
         </div>
 
-        {/* Manual MCB Trip Toggle for Protection Devices */}
-        {isProtectionComponent && (
+        {/* Manual MCB Trip Toggle for Protection Devices.
+            Gated by the Pro-mode master fault toggle — Student Mode
+            never shows manual breaker fault injection. */}
+        {isProtectionComponent && faultsArmed && (
           <div className="rounded-xl border border-orange-200 bg-orange-50/80 p-3 dark:border-orange-800 dark:bg-orange-950/40 space-y-2">
             <div className="font-bold text-orange-900 dark:text-orange-200 text-[11px] uppercase tracking-wider flex items-center gap-1.5">
               <OctagonAlert className="size-3.5 text-orange-600" />

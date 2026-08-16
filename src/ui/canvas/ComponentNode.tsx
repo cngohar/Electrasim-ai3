@@ -204,6 +204,7 @@ export function ComponentNode({
       <g
         role="button"
         data-component-hitbox
+        data-component-type={component.type}
         tabIndex={0}
         aria-label={`${definition.label} ${component.id}${selected ? ', selected' : ''}${
           definition.isSwitch
@@ -361,7 +362,9 @@ export function ComponentNode({
               isTripped
                 ? '#f59e0b'
                 : definition.changeover
-                  ? (isOn ? '#3b82f6' : '#f59e0b')
+                  ? isOn
+                    ? '#3b82f6'
+                    : '#f59e0b'
                   : isOn
                     ? '#22c55e'
                     : '#ef4444'

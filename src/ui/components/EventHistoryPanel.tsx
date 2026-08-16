@@ -3,6 +3,7 @@ import {
   CheckCircle,
   Clock,
   OctagonAlert,
+  ShieldAlert,
   Thermometer,
   Wrench,
   X,
@@ -28,6 +29,10 @@ export function EventHistoryPanel({ isOpen, onClose }: { isOpen: boolean; onClos
         return <CheckCircle className="size-3 text-emerald-500" />;
       case 'component_repaired':
         return <Wrench className="size-3 text-blue-500" />;
+      case 'regulatory_violation':
+        return <ShieldAlert className="size-3 text-red-500" />;
+      case 'manual_intervention':
+        return <Wrench className="size-3 text-indigo-500" />;
       default:
         return <Zap className="size-3 text-yellow-500" />;
     }

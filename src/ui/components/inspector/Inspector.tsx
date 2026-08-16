@@ -10,6 +10,7 @@
 import {
   ChevronLeft,
   ChevronRight,
+  Clock,
   Layers,
   Route,
   ShieldCheck,
@@ -24,10 +25,11 @@ import {
   type SimulationResult,
   type WireInstance,
 } from '../../../domain';
-import { useCircuitStore, useUiStore } from '../../../store';
+import { useCircuitStore, useSettingsStore, useUiStore } from '../../../store';
 import { ValidationReportView } from '../ValidationReportView';
 import { InspectorAnalyticsView } from './InspectorAnalyticsView';
 import { InspectorConnectionsContent } from './InspectorConnectionsContent';
+import { InspectorHistoryView } from './InspectorHistoryView';
 import { InspectorLogsView } from './InspectorLogsView';
 import { InspectorPropertiesContent } from './InspectorPropertiesContent';
 import { InspectorSimulationContent } from './InspectorSimulationContent';
@@ -60,6 +62,9 @@ export function Inspector({
   const activeInspectorTab = useUiStore((s) => s.activeInspectorTab);
   const setActiveInspectorTab = useUiStore((s) => s.setActiveInspectorTab);
   const activeGuideId = useUiStore((s) => s.activeGuideId);
+  const eventHistory = useUiStore((s) => s.eventHistory);
+  const appMode = useSettingsStore((s) => s.appMode);
+  const isPro = appMode === 'pro';
 
   const validationReport = useUiStore((s) => s.validationReport);
   const runCircuitValidation = useUiStore((s) => s.runCircuitValidation);
@@ -190,6 +195,29 @@ export function Inspector({
             >
               <Terminal className="size-4" />
             </button>
+
+            {isPro && (
+              <button
+                type="button"
+                onClick={() => {
+                  setIsCollapsed(false);
+                  setActiveInspectorTab('history');
+                }}
+                className={`relative p-2 rounded-xl transition ${
+                  activeInspectorTab === 'history'
+                    ? 'bg-indigo-600 text-white shadow-xs'
+                    : 'text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
+                }`}
+                title="Simulation History (audit log)"
+              >
+                <Clock className="size-4" />
+                {eventHistory.length > 0 && (
+                  <span className="absolute -top-1 -right-1 flex size-3.5 items-center justify-center rounded-full bg-indigo-500 text-[8px] font-bold text-white">
+                    {eventHistory.length > 9 ? '9+' : eventHistory.length}
+                  </span>
+                )}
+              </button>
+            )}
           </div>
         </div>
       </aside>
@@ -319,6 +347,8 @@ export function Inspector({
           )}
 
           {activeInspectorTab === 'logs' && <InspectorLogsView />}
+
+          {activeInspectorTab === 'history' && isPro && <InspectorHistoryView />}
         </div>
       </div>
 
@@ -433,6 +463,29 @@ export function Inspector({
               <span className="absolute -left-1 top-1/2 -translate-y-1/2 w-1 h-3 bg-blue-600 rounded-r" />
             )}
           </button>
+
+          {isPro && (
+            <button
+              type="button"
+              onClick={() => setActiveInspectorTab('history')}
+              className={`p-2 rounded-xl transition relative ${
+                activeInspectorTab === 'history'
+                  ? 'bg-indigo-600 text-white shadow-md'
+                  : 'text-slate-500 hover:bg-slate-200/60 hover:text-slate-800 dark:text-slate-400 dark:hover:bg-slate-800'
+              }`}
+              title="Simulation History (audit log)"
+            >
+              <Clock className="size-4" />
+              {activeInspectorTab === 'history' && (
+                <span className="absolute -left-1 top-1/2 -translate-y-1/2 w-1 h-3 bg-indigo-600 rounded-r" />
+              )}
+              {eventHistory.length > 0 && activeInspectorTab !== 'history' && (
+                <span className="absolute -top-1 -right-1 flex size-3.5 items-center justify-center rounded-full bg-indigo-500 text-[8px] font-bold text-white">
+                  {eventHistory.length > 9 ? '9+' : eventHistory.length}
+                </span>
+              )}
+            </button>
+          )}
         </div>
 
         {/* Collapse Button */}

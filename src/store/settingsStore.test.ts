@@ -82,6 +82,9 @@ describe('settingsStore — Phase 6.1', () => {
       wireColorStandard: 'uk_eu',
       automaticComponentLabels: true,
       thermalOverlayEnabled: false,
+      regulationStandard: 'uk',
+      manualFaultInjection: true,
+      stressZonesEnabled: false,
     });
 
     expect(parsed).not.toHaveProperty('injected');
@@ -101,8 +104,13 @@ describe('settingsStore — Phase 6.1', () => {
     });
 
     expect(parsed).toEqual({ ...__SETTINGS_DEFAULTS, showGrid: false });
-    expect(__parsePersistedSettings({ version: 2, settings: {} })).toBeNull();
-    expect(__parsePersistedSettings({ version: 1, settings: [] })).toBeNull();
+    // v1 blobs still hydrate (forward-compat onto v2 defaults); unknown
+    // versions are rejected; malformed payloads are rejected.
+    expect(__parsePersistedSettings({ version: 1, settings: {} })).toEqual(
+      __SETTINGS_DEFAULTS,
+    );
+    expect(__parsePersistedSettings({ version: 99, settings: {} })).toBeNull();
+    expect(__parsePersistedSettings({ version: 2, settings: [] })).toBeNull();
   });
 
   it('debounce-saves toggled values to IDB', async () => {
@@ -115,7 +123,7 @@ describe('settingsStore — Phase 6.1', () => {
       | { version: number; settings: Record<string, boolean> }
       | undefined;
     expect(saved).toBeDefined();
-    expect(saved?.version).toBe(1);
+    expect(saved?.version).toBe(2);
     expect(saved?.settings.confirmDelete).toBe(false);
     expect(saved?.settings.showTooltips).toBe(false);
     expect(saved?.settings.currentFlowAnimation).toBe(true);

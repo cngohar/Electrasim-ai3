@@ -51,9 +51,16 @@ export interface ValidationIssue {
     | 'continuity'
     | 'short_circuit'
     | 'polarity'
-    | 'configuration';
+    | 'configuration'
+    | 'compliance';
   quickFix?: QuickFixAction;
   detailedBreakdown?: DetailedBreakdown;
+  /**
+   * When true, the issue is severe enough that the simulator must refuse
+   * to start until it is resolved. Driven by the active regulation
+   * standard's compliance engine.
+   */
+  blocking?: boolean;
 }
 
 export interface PassedCheck {
@@ -76,6 +83,13 @@ export interface ValidationReport {
   };
   issues: ValidationIssue[];
   passedChecks: PassedCheck[];
+  /**
+   * Number of error-level issues flagged as `blocking` by the compliance
+   * engine. When > 0 the simulator refuses to run until fixed.
+   */
+  blockingErrorsCount?: number;
+  /** Regulation standard the report was validated against. */
+  standard?: 'uk' | 'us' | 'eu';
 }
 
 /**

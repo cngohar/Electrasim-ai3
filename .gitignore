@@ -60,3 +60,6 @@ Thumbs.db
 # Testing
 .mypy_cache/
 .pytest_cache/
+# Playwright test output
+test-results/
+playwright-report/

@@ -17,6 +17,7 @@ import {
 } from './canvas-actions';
 import { ComponentLayer, ComponentTooltip } from './canvas/ComponentLayer';
 import { CanvasOverlayLayer } from './canvas/OverlayLayer';
+import { StressZoneOverlay } from './canvas/StressZoneOverlay';
 import { WireLayer } from './canvas/WireLayer';
 import { buildOrthogonalPath, screenToSvg, svgToWorld } from './canvas/geometry';
 import type { CanvasTheme, PortLoc } from './canvas/types';
@@ -550,6 +551,10 @@ export function CircuitCanvas({
               }}
             />
           </CanvasOverlayLayer>
+
+          {/* Pro-only heatmap overlay. Sits above wires and components so
+              the stress halos are always visible; pointer-events disabled. */}
+          <StressZoneOverlay circuit={circuit} simulation={simResult ?? null} />
         </g>
 
         {/* Tooltip — drawn outside the world transform so size stays

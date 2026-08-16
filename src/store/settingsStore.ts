@@ -23,8 +23,9 @@
 import { get, set } from 'idb-keyval';
 import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
+import type { StandardId } from '../domain/standards';
 
-const SCHEMA_VERSION = 1 as const;
+const SCHEMA_VERSION = 2 as const;
 const STORAGE_KEY = `electrasim:settings:v${SCHEMA_VERSION}`;
 const DEBOUNCE_MS = 150;
 
@@ -111,6 +112,25 @@ export interface UserSettings {
    * Default false. Color-codes components from green (normal) to red (danger).
    */
   thermalOverlayEnabled: boolean;
+  /**
+   * Active international regulatory template (UK BS 7671, US NEC, EU IEC 60364).
+   * Drives nominal voltage, wire colours, voltage-drop limits and MCB-curve
+   * recommendations in the Pro compliance engine.
+   */
+  regulationStandard: StandardId;
+  /**
+   * Pro-mode only. When true the Inspector exposes manual fault-injection
+   * buttons (open circuit, short, reverse polarity, earth fault, etc.).
+   * Student mode always hides these regardless of this flag; pro users can
+   * flip it off to keep the canvas clean while designing.
+   */
+  manualFaultInjection: boolean;
+  /**
+   * Pro-mode only. Overlays a heatmap on the canvas colouring components and
+   * wiring that are dissipating excess heat or exceeding voltage-drop limits
+   * for the currently selected regulation standard.
+   */
+  stressZonesEnabled: boolean;
 }
 
 const DEFAULTS: UserSettings = {
@@ -130,6 +150,9 @@ const DEFAULTS: UserSettings = {
   wireColorStandard: 'uk_eu',
   automaticComponentLabels: true,
   thermalOverlayEnabled: false,
+  regulationStandard: 'uk',
+  manualFaultInjection: true,
+  stressZonesEnabled: false,
 };
 
 interface SettingsState extends UserSettings {
@@ -148,6 +171,7 @@ const COLOR_SCHEMES = ['light', 'dark', 'system'] as const;
 const ROUTING_STYLES = ['orthogonal', 'bezier'] as const;
 const CANVAS_PRESETS = ['default', 'high-contrast', 'deuteranopia'] as const;
 const WIRE_COLOR_STANDARDS = ['uk_eu', 'us'] as const;
+const REGULATION_STANDARDS = ['uk', 'us', 'eu'] as const;
 
 const APP_MODES = ['basic', 'pro'] as const;
 
@@ -163,7 +187,9 @@ function enumOrDefault<T extends string>(value: unknown, allowed: readonly T[], 
 function parsePersistedSettings(value: unknown): UserSettings | null {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
   const payload = value as Record<string, unknown>;
-  if (payload.version !== SCHEMA_VERSION) return null;
+  // v1 blobs (pre-standards feature) hydrate onto the v2 defaults so existing
+  // users aren't logged out of their saved preferences when we ship new flags.
+  if (payload.version !== 1 && payload.version !== SCHEMA_VERSION) return null;
   if (
     !payload.settings ||
     typeof payload.settings !== 'object' ||
@@ -203,6 +229,16 @@ function parsePersistedSettings(value: unknown): UserSettings | null {
       stored.thermalOverlayEnabled,
       DEFAULTS.thermalOverlayEnabled,
     ),
+    regulationStandard: enumOrDefault(
+      stored.regulationStandard,
+      REGULATION_STANDARDS,
+      DEFAULTS.regulationStandard,
+    ),
+    manualFaultInjection: booleanOrDefault(
+      stored.manualFaultInjection,
+      DEFAULTS.manualFaultInjection,
+    ),
+    stressZonesEnabled: booleanOrDefault(stored.stressZonesEnabled, DEFAULTS.stressZonesEnabled),
   };
 }
 
@@ -273,6 +309,9 @@ function snapshot(state: SettingsState): UserSettings {
     wireColorStandard: state.wireColorStandard,
     automaticComponentLabels: state.automaticComponentLabels,
     thermalOverlayEnabled: state.thermalOverlayEnabled,
+    regulationStandard: state.regulationStandard,
+    manualFaultInjection: state.manualFaultInjection,
+    stressZonesEnabled: state.stressZonesEnabled,
   };
 }
 
@@ -312,7 +351,10 @@ export async function startSettingsPersistence(): Promise<void> {
       state.canvasPreset === prev.canvasPreset &&
       state.wireColorStandard === prev.wireColorStandard &&
       state.automaticComponentLabels === prev.automaticComponentLabels &&
-      state.thermalOverlayEnabled === prev.thermalOverlayEnabled
+      state.thermalOverlayEnabled === prev.thermalOverlayEnabled &&
+      state.regulationStandard === prev.regulationStandard &&
+      state.manualFaultInjection === prev.manualFaultInjection &&
+      state.stressZonesEnabled === prev.stressZonesEnabled
     ) {
       return;
     }

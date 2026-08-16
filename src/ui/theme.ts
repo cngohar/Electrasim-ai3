@@ -3,6 +3,7 @@
  * the canvas + UI panels. Locked in Phase 0b (ADR 0001).
  */
 
+import { getStandard } from '../domain/standards';
 import type { UserSettings } from '../store/settingsStore';
 import type { CanvasTheme } from './CircuitCanvas';
 
@@ -111,7 +112,10 @@ const DEUTERANOPIA_DARK_OVERRIDES: Partial<CanvasTheme> = {
  */
 export function applyCanvasPreset(
   base: CanvasTheme,
-  settings: Pick<UserSettings, 'showGrid' | 'canvasPreset' | 'wireColorStandard'>,
+  settings: Pick<
+    UserSettings,
+    'showGrid' | 'canvasPreset' | 'wireColorStandard' | 'regulationStandard'
+  >,
   isDark: boolean,
 ): CanvasTheme {
   let preset: Partial<CanvasTheme> = {};
@@ -125,16 +129,27 @@ export function applyCanvasPreset(
     };
   }
 
-  // Regional Wire Color Standard overrides (unless high-contrast/deuteranopia actively overrides)
+  // Regional wire colours. The regulatory standard (UK/US/EU) is the primary
+  // source; the legacy `wireColorStandard` toggle still applies as an override
+  // for users who want US colours on a UK standard and vice-versa.
   let wireColors = preset.wire ?? base.wire;
-  if (settings.wireColorStandard === 'us' && settings.canvasPreset === 'default') {
-    wireColors = isDark
-      ? { live: '#38bdf8', neutral: '#f1f5f9', earth: '#4ade80' }
-      : { live: '#1e293b', neutral: '#64748b', earth: '#15803d' };
-  } else if (settings.wireColorStandard === 'uk_eu' && settings.canvasPreset === 'default') {
-    wireColors = isDark
-      ? { live: '#f87171', neutral: '#60a5fa', earth: '#34d399' }
-      : { live: '#b45309', neutral: '#2563eb', earth: '#16a34a' };
+  if (settings.canvasPreset === 'default') {
+    const standardColors = isDark
+      ? getStandard(settings.regulationStandard).wireColorsDark
+      : getStandard(settings.regulationStandard).wireColors;
+    let live = standardColors.live;
+    let neutral = standardColors.neutral;
+    const earth = standardColors.earth;
+    // Legacy two-way regional toggle still overrides live/neutral if it
+    // disagrees with the standard, preserving the pre-standards behaviour.
+    if (settings.wireColorStandard === 'us' && settings.regulationStandard !== 'us') {
+      live = isDark ? '#38bdf8' : '#1e293b';
+      neutral = isDark ? '#f1f5f9' : '#64748b';
+    } else if (settings.wireColorStandard === 'uk_eu' && settings.regulationStandard === 'us') {
+      live = isDark ? '#f87171' : '#b45309';
+      neutral = isDark ? '#60a5fa' : '#2563eb';
+    }
+    wireColors = { live, neutral, earth };
   }
 
   return {

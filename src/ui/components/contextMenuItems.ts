@@ -34,6 +34,7 @@ import {
   type ContextMenuState,
   setMomentarySwitchState,
   useCircuitStore,
+  useSettingsStore,
   useUiStore,
 } from '../../store';
 import {
@@ -70,6 +71,12 @@ export function buildItems(target: ContextMenuState['target']): MenuEntry[] {
   const items: MenuEntry[] = [];
   const close = () => useUiStore.getState().setContextMenu(null);
   const simRunning = useUiStore.getState().simRunning;
+
+  // Manual fault-injection menu items only appear in Pro Electrician Mode
+  // and while the master "Faults" toggle is armed. Student Mode keeps the
+  // context menu free of fault controls to avoid dangerous confusion.
+  const { appMode, manualFaultInjection } = useSettingsStore.getState();
+  const faultsArmed = appMode === 'pro' && manualFaultInjection;
 
   // ── Cancel wiring (shown whenever a wire is in progress) ───────────────
   const ui = useUiStore.getState();
@@ -221,146 +228,150 @@ export function buildItems(target: ContextMenuState['target']): MenuEntry[] {
       },
     });
 
-    // ── Fault Simulation Injection ──────────────────────────────────
-    items.push({ separator: true });
+    // ── Fault Simulation Injection (Pro + master toggle only) ──────
+    if (faultsArmed) {
+      items.push({ separator: true });
 
-    if (comp?.state.fault) {
+      if (comp?.state.fault) {
+        items.push({
+          icon: ShieldCheck,
+          label: 'Clear Injected Fault',
+          action: () => {
+            useCircuitStore.getState().setComponentFault(target.id, undefined);
+            useUiStore
+              .getState()
+              .addLog(`Cleared fault on ${def?.label ?? 'component'}`, 'success');
+            close();
+          },
+        });
+      }
+
       items.push({
-        icon: ShieldCheck,
-        label: 'Clear Injected Fault',
+        icon: Scissors,
+        label: 'Inject Open Circuit (Break)',
+        disabled: comp?.state.fault === 'open-circuit',
         action: () => {
-          useCircuitStore.getState().setComponentFault(target.id, undefined);
-          useUiStore.getState().addLog(`Cleared fault on ${def?.label ?? 'component'}`, 'success');
-          close();
-        },
-      });
-    }
-
-    items.push({
-      icon: Scissors,
-      label: 'Inject Open Circuit (Break)',
-      disabled: comp?.state.fault === 'open-circuit',
-      action: () => {
-        useCircuitStore.getState().setComponentFault(target.id, 'open-circuit');
-        useUiStore
-          .getState()
-          .addLog(`Injected Open Circuit fault on ${def?.label ?? 'component'}`, 'warning');
-        close();
-      },
-    });
-
-    items.push({
-      icon: Flame,
-      label: 'Inject Short Circuit',
-      disabled: comp?.state.fault === 'short-circuit',
-      action: () => {
-        useCircuitStore.getState().setComponentFault(target.id, 'short-circuit');
-        useUiStore
-          .getState()
-          .addLog(`Injected Short Circuit fault on ${def?.label ?? 'component'}`, 'error');
-        close();
-      },
-    });
-
-    items.push({
-      icon: RefreshCcw,
-      label: 'Inject Reverse Polarity (L↔N Swap)',
-      disabled: comp?.state.fault === 'reverse-polarity',
-      action: () => {
-        useCircuitStore.getState().setComponentFault(target.id, 'reverse-polarity');
-        useUiStore
-          .getState()
-          .addLog(`Injected Reverse Polarity fault on ${def?.label ?? 'component'}`, 'warning');
-        close();
-      },
-    });
-
-    if (def?.isSwitch) {
-      items.push({
-        icon: AlertTriangle,
-        label: 'Inject Switched Neutral (BS 7671 Reg 132.14 Hazard)',
-        disabled: comp?.state.fault === 'switched-neutral',
-        action: () => {
-          useCircuitStore.getState().setComponentFault(target.id, 'switched-neutral');
+          useCircuitStore.getState().setComponentFault(target.id, 'open-circuit');
           useUiStore
             .getState()
-            .addLog(`Injected Switched Neutral Hazard on ${def?.label ?? 'switch'}`, 'error');
+            .addLog(`Injected Open Circuit fault on ${def?.label ?? 'component'}`, 'warning');
           close();
         },
       });
-    }
 
-    if (def?.isProtection) {
       items.push({
-        icon: Zap,
-        label: 'Inject Protection Bypass (Bridged)',
-        disabled: comp?.state.fault === 'protection-bypass',
+        icon: Flame,
+        label: 'Inject Short Circuit',
+        disabled: comp?.state.fault === 'short-circuit',
         action: () => {
-          useCircuitStore.getState().setComponentFault(target.id, 'protection-bypass');
+          useCircuitStore.getState().setComponentFault(target.id, 'short-circuit');
           useUiStore
             .getState()
-            .addLog(`Injected Protection Bypass on ${def?.label ?? 'breaker'}`, 'warning');
+            .addLog(`Injected Short Circuit fault on ${def?.label ?? 'component'}`, 'error');
           close();
         },
       });
+
       items.push({
-        icon: Sliders,
-        label: 'Inject Breaker Jammed Open',
-        disabled: comp?.state.fault === 'protection-forced-open',
+        icon: RefreshCcw,
+        label: 'Inject Reverse Polarity (L↔N Swap)',
+        disabled: comp?.state.fault === 'reverse-polarity',
         action: () => {
-          useCircuitStore.getState().setComponentFault(target.id, 'protection-forced-open');
+          useCircuitStore.getState().setComponentFault(target.id, 'reverse-polarity');
           useUiStore
             .getState()
-            .addLog(`Injected Mechanism Jam on ${def?.label ?? 'breaker'}`, 'warning');
+            .addLog(`Injected Reverse Polarity fault on ${def?.label ?? 'component'}`, 'warning');
           close();
         },
       });
-    }
 
-    items.push({
-      icon: Unlink,
-      label: 'Inject Earth Leakage / Earth Fault',
-      disabled: comp?.state.fault === 'earth-fault' || comp?.state.fault === 'live-to-earth',
-      action: () => {
-        useCircuitStore.getState().setComponentFault(target.id, 'earth-fault');
-        useUiStore
-          .getState()
-          .addLog(`Injected Earth Fault on ${def?.label ?? 'component'}`, 'warning');
-        close();
-      },
-    });
+      if (def?.isSwitch) {
+        items.push({
+          icon: AlertTriangle,
+          label: 'Inject Switched Neutral (BS 7671 Reg 132.14 Hazard)',
+          disabled: comp?.state.fault === 'switched-neutral',
+          action: () => {
+            useCircuitStore.getState().setComponentFault(target.id, 'switched-neutral');
+            useUiStore
+              .getState()
+              .addLog(`Injected Switched Neutral Hazard on ${def?.label ?? 'switch'}`, 'error');
+            close();
+          },
+        });
+      }
 
-    items.push({
-      icon: Unlink,
-      label: 'Inject Smooth DC Residual (EV/PV fault)',
-      disabled: comp?.state.fault === 'smooth-dc-residual',
-      action: () => {
-        useCircuitStore.getState().setComponentFault(target.id, 'smooth-dc-residual');
-        useUiStore
-          .getState()
-          .addLog(
-            `Injected Smooth DC Residual fault on ${def?.label ?? 'component'} — only Type B RCD/RCBOs detect it`,
-            'warning',
-          );
-        close();
-      },
-    });
+      if (def?.isProtection) {
+        items.push({
+          icon: Zap,
+          label: 'Inject Protection Bypass (Bridged)',
+          disabled: comp?.state.fault === 'protection-bypass',
+          action: () => {
+            useCircuitStore.getState().setComponentFault(target.id, 'protection-bypass');
+            useUiStore
+              .getState()
+              .addLog(`Injected Protection Bypass on ${def?.label ?? 'breaker'}`, 'warning');
+            close();
+          },
+        });
+        items.push({
+          icon: Sliders,
+          label: 'Inject Breaker Jammed Open',
+          disabled: comp?.state.fault === 'protection-forced-open',
+          action: () => {
+            useCircuitStore.getState().setComponentFault(target.id, 'protection-forced-open');
+            useUiStore
+              .getState()
+              .addLog(`Injected Mechanism Jam on ${def?.label ?? 'breaker'}`, 'warning');
+            close();
+          },
+        });
+      }
 
-    items.push({
-      icon: Flame,
-      label: 'Inject Arc Fault (series/parallel)',
-      disabled: comp?.state.fault === 'arc-fault',
-      action: () => {
-        useCircuitStore.getState().setComponentFault(target.id, 'arc-fault');
-        useUiStore
-          .getState()
-          .addLog(
-            `Injected Arc Fault on ${def?.label ?? 'component'} — only an AFDD (BS EN 62606) detects arcing`,
-            'warning',
-          );
-        close();
-      },
-    });
+      items.push({
+        icon: Unlink,
+        label: 'Inject Earth Leakage / Earth Fault',
+        disabled: comp?.state.fault === 'earth-fault' || comp?.state.fault === 'live-to-earth',
+        action: () => {
+          useCircuitStore.getState().setComponentFault(target.id, 'earth-fault');
+          useUiStore
+            .getState()
+            .addLog(`Injected Earth Fault on ${def?.label ?? 'component'}`, 'warning');
+          close();
+        },
+      });
+
+      items.push({
+        icon: Unlink,
+        label: 'Inject Smooth DC Residual (EV/PV fault)',
+        disabled: comp?.state.fault === 'smooth-dc-residual',
+        action: () => {
+          useCircuitStore.getState().setComponentFault(target.id, 'smooth-dc-residual');
+          useUiStore
+            .getState()
+            .addLog(
+              `Injected Smooth DC Residual fault on ${def?.label ?? 'component'} — only Type B RCD/RCBOs detect it`,
+              'warning',
+            );
+          close();
+        },
+      });
+
+      items.push({
+        icon: Flame,
+        label: 'Inject Arc Fault (series/parallel)',
+        disabled: comp?.state.fault === 'arc-fault',
+        action: () => {
+          useCircuitStore.getState().setComponentFault(target.id, 'arc-fault');
+          useUiStore
+            .getState()
+            .addLog(
+              `Injected Arc Fault on ${def?.label ?? 'component'} — only an AFDD (BS EN 62606) detects arcing`,
+              'warning',
+            );
+          close();
+        },
+      });
+    } // end faultsArmed (component)
 
     items.push({ separator: true });
 
@@ -415,64 +426,66 @@ export function buildItems(target: ContextMenuState['target']): MenuEntry[] {
       },
     });
 
-    // ── Wire Fault Simulation Options ─────────────────────────────
-    items.push({ separator: true });
+    // ── Wire Fault Simulation Options (Pro + master toggle only) ──
+    if (faultsArmed) {
+      items.push({ separator: true });
 
-    if (wire?.fault) {
+      if (wire?.fault) {
+        items.push({
+          icon: ShieldCheck,
+          label: 'Clear Wire Fault',
+          action: () => {
+            useCircuitStore.getState().setWireFault(target.id, undefined);
+            useUiStore.getState().addLog('Cleared fault from wire', 'success');
+            close();
+          },
+        });
+      }
+
       items.push({
-        icon: ShieldCheck,
-        label: 'Clear Wire Fault',
+        icon: Scissors,
+        label: 'Inject Open Circuit (Break Wire)',
+        disabled: wire?.fault === 'open-circuit',
         action: () => {
-          useCircuitStore.getState().setWireFault(target.id, undefined);
-          useUiStore.getState().addLog('Cleared fault from wire', 'success');
+          useCircuitStore.getState().setWireFault(target.id, 'open-circuit');
+          useUiStore.getState().addLog('Injected Open Circuit break on wire', 'warning');
           close();
         },
       });
-    }
 
-    items.push({
-      icon: Scissors,
-      label: 'Inject Open Circuit (Break Wire)',
-      disabled: wire?.fault === 'open-circuit',
-      action: () => {
-        useCircuitStore.getState().setWireFault(target.id, 'open-circuit');
-        useUiStore.getState().addLog('Injected Open Circuit break on wire', 'warning');
-        close();
-      },
-    });
+      items.push({
+        icon: Scissors,
+        label: 'Inject Broken Neutral Return',
+        disabled: wire?.fault === 'open-neutral',
+        action: () => {
+          useCircuitStore.getState().setWireFault(target.id, 'open-neutral');
+          useUiStore.getState().addLog('Injected Floating/Broken Neutral on wire', 'warning');
+          close();
+        },
+      });
 
-    items.push({
-      icon: Scissors,
-      label: 'Inject Broken Neutral Return',
-      disabled: wire?.fault === 'open-neutral',
-      action: () => {
-        useCircuitStore.getState().setWireFault(target.id, 'open-neutral');
-        useUiStore.getState().addLog('Injected Floating/Broken Neutral on wire', 'warning');
-        close();
-      },
-    });
+      items.push({
+        icon: Flame,
+        label: 'Inject Short Circuit (L-N Fault)',
+        disabled: wire?.fault === 'short-circuit',
+        action: () => {
+          useCircuitStore.getState().setWireFault(target.id, 'short-circuit');
+          useUiStore.getState().addLog('Injected Short Circuit fault on wire', 'error');
+          close();
+        },
+      });
 
-    items.push({
-      icon: Flame,
-      label: 'Inject Short Circuit (L-N Fault)',
-      disabled: wire?.fault === 'short-circuit',
-      action: () => {
-        useCircuitStore.getState().setWireFault(target.id, 'short-circuit');
-        useUiStore.getState().addLog('Injected Short Circuit fault on wire', 'error');
-        close();
-      },
-    });
-
-    items.push({
-      icon: Unlink,
-      label: 'Inject Live-to-Earth Insulation Breakdown',
-      disabled: wire?.fault === 'live-to-earth',
-      action: () => {
-        useCircuitStore.getState().setWireFault(target.id, 'live-to-earth');
-        useUiStore.getState().addLog('Injected Live-to-Earth fault on wire', 'error');
-        close();
-      },
-    });
+      items.push({
+        icon: Unlink,
+        label: 'Inject Live-to-Earth Insulation Breakdown',
+        disabled: wire?.fault === 'live-to-earth',
+        action: () => {
+          useCircuitStore.getState().setWireFault(target.id, 'live-to-earth');
+          useUiStore.getState().addLog('Injected Live-to-Earth fault on wire', 'error');
+          close();
+        },
+      });
+    } // end faultsArmed (wire)
 
     items.push({ separator: true });
 
