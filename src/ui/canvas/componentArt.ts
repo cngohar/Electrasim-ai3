@@ -510,20 +510,25 @@ const ART: Record<string, string> = {
   'bulb-cfl': S(`
     <defs>
       <linearGradient id="${T('bulbcfl')}tube" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0" stop-color="#bae6fd"/><stop offset="1" stop-color="#38bdf8"/>
+        <stop offset="0" stop-color="#e0f2fe"/><stop offset="1" stop-color="#38bdf8"/>
       </linearGradient>
     </defs>
-    <!-- Spiral tube -->
-    <path d="M22 12 C22 6 28 6 28 12 L28 34 M28 12 C28 6 36 6 36 12 L36 34 M36 12 C36 6 42 6 42 12 L42 34"
-      fill="none" stroke="url(#${T('bulbcfl')}tube)" stroke-width="4.5" stroke-linecap="round"/>
+    <!-- Spiral tube: four vertical runs connected by bends (zig-zag) -->
+    <path
+      d="M20 32 v-16 a4 4 0 0 1 8 0 v16 a4 4 0 0 1 8 0 v-16 a4 4 0 0 1 8 0 v16"
+      fill="none" stroke="url(#${T('bulbcfl')}tube)" stroke-width="4" stroke-linecap="round"/>
+    <!-- Inner glow line for depth -->
+    <path
+      d="M20 32 v-16 a4 4 0 0 1 8 0 v16 a4 4 0 0 1 8 0 v-16 a4 4 0 0 1 8 0 v16"
+      fill="none" stroke="#f0f9ff" stroke-width="1.2" stroke-linecap="round" opacity="0.6"/>
     <!-- Ballast base -->
-    <rect x="20" y="34" width="24" height="9" rx="3" fill="#e2e8f0" stroke="#94a3b8" stroke-width="1.2"/>
-    <line x1="24" y1="38" x2="40" y2="38" stroke="#cbd5e1" stroke-width="0.8"/>
-    <rect x="24" y="43" width="16" height="8" rx="2" fill="#cbd5e1" stroke="#94a3b8" stroke-width="1"/>
-    <!-- Screw base ridges -->
-    <line x1="27" y1="45" x2="37" y2="45" stroke="#94a3b8" stroke-width="0.8"/>
-    <line x1="27" y1="47" x2="37" y2="47" stroke="#94a3b8" stroke-width="0.8"/>
-    <line x1="27" y1="49" x2="37" y2="49" stroke="#94a3b8" stroke-width="0.8"/>
+    <rect x="18" y="34" width="28" height="10" rx="3" fill="#e2e8f0" stroke="#94a3b8" stroke-width="1.2"/>
+    <line x1="22" y1="39" x2="42" y2="39" stroke="#cbd5e1" stroke-width="0.8"/>
+    <!-- Screw base -->
+    <rect x="22" y="44" width="20" height="9" rx="2" fill="#cbd5e1" stroke="#94a3b8" stroke-width="1"/>
+    <line x1="25" y1="46.5" x2="39" y2="46.5" stroke="#94a3b8" stroke-width="0.8"/>
+    <line x1="25" y1="49" x2="39" y2="49" stroke="#94a3b8" stroke-width="0.8"/>
+    <line x1="25" y1="51.5" x2="39" y2="51.5" stroke="#94a3b8" stroke-width="0.8"/>
   `),
 
   // ─── Smart RGB bulb ────────────────────────────────────────────────────

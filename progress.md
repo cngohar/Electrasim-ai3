@@ -17,6 +17,16 @@ Format per entry:
 
 ---
 
+## 2026-08-17 (follow-up 8) — CFL zig-zag fix + realistic motor animation
+
+Two review fixes:
+1. **CFL lamp** — the art used straight vertical lines bottom-to-top; a real CFL is a spiral/zig-zag. Rewrote the tube as a proper zig-zag path (4 vertical runs connected by bends at alternating ends: (20,32)→(20,16)→(28,16)→(28,32)→(36,32)→(36,16)→(44,16)→(44,32)) plus an inner glow line. Verified the SVG path decodes to the correct alternating-y zig-zag.
+2. **Motor animation** — previously the whole motor icon rotated 360°; a real motor's body is stationary, only the shaft spins. Replaced the rotating `<image>` with an inline `MotorGlyph` in `ComponentNode.tsx`: static finned body, end caps, terminal box and feet, with a **rotor on the shaft** that spins via `electrasim-motor-spin`. Verified via DOM: the body rect has no spin class, only the rotor group animates.
+
+Gates: typecheck clean, chromium e2e 39 passed, 317 unit pass, no console errors. Committed.
+
+---
+
 ## 2026-08-17 (follow-up 7) — Bulb category, palette sync, label overflow, fault-button de-dupe
 
 Four issues from review, all fixed:

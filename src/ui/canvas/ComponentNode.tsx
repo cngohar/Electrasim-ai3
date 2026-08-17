@@ -33,6 +33,109 @@ function fitLabel(label: string, fontSize: number): string {
   return `${label.slice(0, Math.max(1, maxChars - 1))}…`;
 }
 
+/**
+ * MotorGlyph — near-realistic inline motor. Unlike the old behaviour (the whole
+ * icon spun 360°), a real electric motor's BODY is stationary: only the shaft
+ * rotor spins. Here the static body, fins, terminal box and feet never move,
+ * while the rotor on the shaft rotates via `electrasim-motor-spin`.
+ */
+function MotorGlyph({ spinning, suffix }: { spinning: boolean; suffix: string }) {
+  const uid = `motor-${suffix}`;
+  return (
+    <svg
+      viewBox="0 0 64 64"
+      width="24"
+      height="24"
+      style={{ display: 'block', pointerEvents: 'none' }}
+      aria-hidden="true"
+    >
+      <defs>
+        <linearGradient id={`${uid}body`} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#cbd5e1" />
+          <stop offset="0.5" stopColor="#94a3b8" />
+          <stop offset="1" stopColor="#64748b" />
+        </linearGradient>
+        <linearGradient id={`${uid}endcap`} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#f1f5f9" />
+          <stop offset="1" stopColor="#94a3b8" />
+        </linearGradient>
+        <linearGradient id={`${uid}tbox`} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#e2e8f0" />
+          <stop offset="1" stopColor="#64748b" />
+        </linearGradient>
+      </defs>
+
+      {/* Static cylindrical body (fins) */}
+      <rect
+        x="12"
+        y="24"
+        width="36"
+        height="22"
+        rx="4"
+        fill={`url(#${uid}body)`}
+        stroke="#475569"
+        strokeWidth="1.5"
+      />
+      <g stroke="#64748b" strokeWidth="1.2">
+        <line x1="20" y1="24" x2="20" y2="46" />
+        <line x1="25" y1="24" x2="25" y2="46" />
+        <line x1="30" y1="24" x2="30" y2="46" />
+        <line x1="35" y1="24" x2="35" y2="46" />
+        <line x1="40" y1="24" x2="40" y2="46" />
+        <line x1="45" y1="24" x2="45" y2="46" />
+      </g>
+      {/* Left end cap */}
+      <rect
+        x="8"
+        y="24"
+        width="6"
+        height="22"
+        rx="2"
+        fill={`url(#${uid}endcap)`}
+        stroke="#64748b"
+        strokeWidth="1.2"
+      />
+      {/* Terminal box on top */}
+      <rect
+        x="25"
+        y="15"
+        width="14"
+        height="10"
+        rx="2"
+        fill={`url(#${uid}tbox)`}
+        stroke="#475569"
+        strokeWidth="1.2"
+      />
+      <rect x="28" y="17" width="8" height="6" rx="1" fill="#0f172a" />
+      <circle cx="32" cy="20" r="1" fill="#38bdf8" />
+      {/* Feet */}
+      <path d="M14 46 h32 v3 h-32 Z" fill="#64748b" />
+
+      {/* Shaft */}
+      <rect
+        x="48"
+        y="31"
+        width="8"
+        height="7"
+        rx="1"
+        fill="#94a3b8"
+        stroke="#64748b"
+        strokeWidth="1"
+      />
+
+      {/* SPINNING rotor on the shaft — the only moving part */}
+      <g className={spinning ? 'electrasim-motor-spin' : undefined}>
+        <circle cx="50" cy="34.5" r="6.5" fill="none" stroke="#334155" strokeWidth="2" />
+        <g stroke="#e0f2fe" strokeWidth="2" strokeLinecap="round">
+          <line x1="50" y1="29" x2="50" y2="40" />
+          <line x1="45" y1="34.5" x2="55" y2="34.5" />
+        </g>
+        <circle cx="50" cy="34.5" r="1.6" fill="#f59e0b" />
+      </g>
+    </svg>
+  );
+}
+
 export interface ComponentNodeProps {
   component: ComponentInstance;
   componentsById: ReadonlyMap<string, ComponentInstance>;
@@ -587,6 +690,15 @@ export function ComponentNode({
               const art = getDefaultArt(component.type);
 
               if (art) {
+                // The motor uses an inline glyph so only its shaft rotor spins
+                // (the body stays stationary — realistic), not the whole icon.
+                if (component.type === 'motor') {
+                  return (
+                    <g transform={`translate(${COMP_W / 2 - 12} 16)`}>
+                      <MotorGlyph spinning={showMotorSpin} suffix={component.id} />
+                    </g>
+                  );
+                }
                 const isLit =
                   isLightingBulb &&
                   energized &&
@@ -608,11 +720,9 @@ export function ComponentNode({
                           ? 'drop-shadow-[0_0_8px_rgba(250,204,21,0.85)] filter'
                           : showFanSpin
                             ? 'electrasim-fan-spin'
-                            : showMotorSpin
-                              ? 'electrasim-motor-spin'
-                              : showBellPulse
-                                ? 'electrasim-bell-pulse'
-                                : undefined
+                            : showBellPulse
+                              ? 'electrasim-bell-pulse'
+                              : undefined
                       }
                       style={{ pointerEvents: 'none' }}
                     />

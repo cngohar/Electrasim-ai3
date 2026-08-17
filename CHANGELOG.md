@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — Session 2026-08-17 (follow-up 8): CFL zig-zag fix + realistic motor animation
+- **CFL bulb art fixed** — the spiral is now a proper **zig-zag** (four vertical tubes connected by bends at alternating ends) instead of straight lines running bottom-to-top. Added an inner glow line for depth.
+- **Motor animation made realistic** — the old behaviour spun the *entire* motor icon 360°; a real motor's body is stationary and only the **shaft rotor** spins. Replaced the rotating image with an inline `MotorGlyph` (static finned body, end caps, terminal box, feet + a rotor on the shaft that rotates via `electrasim-motor-spin`). Verified: body has no spin class, only the rotor group animates.
+
 ### Changed — Session 2026-08-17 (follow-up 7): Bulb category art, palette consistency, label overflow, fault-button de-dupe
 - **Entire Bulb category upgraded** to near-realistic inline SVG art: Edison incandescent (zig-zag filament), halogen GU10 (reflector + pins), CFL spiral (tube + ballast + screw base), smart RGB (RGB chip row), LED downlight (recessed trim + lens), and fluorescent tube (glass + end caps + pins) — in addition to the existing LED A60.
 - **Palette now matches the upgraded canvas art.** The left component palette shows the new near-realistic SVG art for every upgraded default component (previously it still showed the legacy photo thumbnails / emoji). Lighting category included.
