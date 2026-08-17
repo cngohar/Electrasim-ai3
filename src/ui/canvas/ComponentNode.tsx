@@ -17,6 +17,7 @@ import {
 } from '../../domain';
 import { useSettingsStore, useUiStore } from '../../store';
 import { getComponentIcon, getComponentImage } from '../components/componentImages';
+import { getDefaultArt } from './componentArt';
 import type { CanvasTheme, PortLoc } from './types';
 
 const PORT_R = 5;
@@ -570,6 +571,43 @@ export function ComponentNode({
                 component.type.startsWith('bulb') ||
                 component.type === 'led-downlight' ||
                 component.type === 'tube-light';
+
+              // Near-realistic SVG art upgrade (default components only).
+              const art = getDefaultArt(component.type);
+
+              if (art) {
+                const isLit =
+                  isLightingBulb &&
+                  energized &&
+                  !component.state.isBlown &&
+                  fault !== 'open-circuit';
+                return (
+                  <g
+                    transform={`translate(${COMP_W / 2 - (isLightingBulb ? 13 : 12)} ${
+                      isLightingBulb ? 13 : 16
+                    })`}
+                  >
+                    <image
+                      href={art}
+                      width={isLightingBulb ? 26 : 24}
+                      height={isLightingBulb ? 26 : 24}
+                      preserveAspectRatio="xMidYMid meet"
+                      className={
+                        isLit
+                          ? 'drop-shadow-[0_0_8px_rgba(250,204,21,0.85)] filter'
+                          : showFanSpin
+                            ? 'electrasim-fan-spin'
+                            : showMotorSpin
+                              ? 'electrasim-motor-spin'
+                              : showBellPulse
+                                ? 'electrasim-bell-pulse'
+                                : undefined
+                      }
+                      style={{ pointerEvents: 'none' }}
+                    />
+                  </g>
+                );
+              }
 
               if (isLightingBulb) {
                 const bulbImg = getComponentImage(component.type, definition.category);

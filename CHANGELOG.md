@@ -11,6 +11,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — Session 2026-08-17 (follow-up 5): Near-realistic SVG art for default components (experimental)
+- New `src/ui/canvas/componentArt.ts` with hand-drawn **near-realistic lightweight SVG** art for the 20 default seed-circuit component types: DIN-rail MCB (B16), RCD (30mA), fuse carrier, UK 3-pin socket faceplate, wall rocker switch, two-way switch, push button, ceiling fan, motor, rotary dimmer/fan-speed, distribution board/consumer unit, junction box, live/neutral/earth terminals (L/N/E with green-yellow earth stripe), contactor, timer switch, bell, and LED bulb.
+- Wired into `ComponentNode.tsx` **only for default components** — the upgraded bulbs now use inline SVG instead of photo thumbnails (the "lightweight vector, not raster" goal). All other components keep their existing renderer, so the two can be compared side by side.
+- Zero network weight (inline data-URI, no raster assets), crisp at any zoom, namespaced gradient ids to avoid SVG-id collisions. No console errors; simulation/glow/fault visuals unaffected.
+
 ### Changed — Command palette fully searchable (Ctrl+K)
 - The command palette now indexes the **entire component registry** ("Add <component>" for every component) instead of a hardcoded subset, so Ctrl+K is a real search tool across all actions and all ~80 components.
 - Added **↑/↓ arrow-key navigation** with a highlighted active row, Enter-to-run, and multi-token matching (e.g. "add mcb type c"). Still dispatches only existing store actions; no new state.

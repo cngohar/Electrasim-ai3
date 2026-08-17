@@ -17,6 +17,19 @@ Format per entry:
 
 ---
 
+## 2026-08-17 (follow-up 5) — Near-realistic SVG component art (default only, experimental)
+
+Per improvement-review #4, upgraded the **default seed-circuit components** to hand-drawn near-realistic lightweight SVG art so the user can preview before extending to the whole catalogue.
+
+**Done:**
+- New `src/ui/canvas/componentArt.ts` — detailed vector art (with gradients/3D shading) for the 20 default types: MCB (B16), RCD (30mA), fuse, UK 3-pin socket, rocker switch, two-way switch, push button, ceiling fan, motor, dimmer/fan-dimmer, distribution board, junction box, L/N/E terminals (green-yellow earth stripe), contactor, timer switch, bell, LED bulb.
+- Wired into `ComponentNode.tsx` **gated to `DEFAULT_ART_TYPES` only** — upgraded bulbs now use inline SVG instead of photo thumbnails; all non-default components keep their existing renderer for side-by-side comparison.
+- All inline data-URI (zero raster), gradient ids namespaced per type to avoid SVG-id collisions, no console errors, e2e 39 passed + 317 unit pass.
+
+**Status:** experimental — awaiting user visual review (screenshot `uploads/svg_art_default.png`). If approved, extend to the remaining catalogue.
+
+---
+
 ## 2026-08-17 (follow-up 4) — Command palette fully searchable
 
 Extended the Ctrl+K command palette from the "quick win" suggestion: it now indexes the whole component registry ("Add <component>" for every component) rather than a hardcoded 9, adds ↑/↓ arrow-key navigation with a highlighted active row, Enter-to-run, and multi-token matching. All commands still dispatch existing store actions — no new state. The palette test was tightened to `.first()` now that searching "MCB" returns Type B/C/D variants.
