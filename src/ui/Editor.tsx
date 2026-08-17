@@ -48,6 +48,7 @@ import { ConfirmDialog } from './components/ConfirmDialog';
 import { ContextMenu } from './components/ContextMenu';
 import { EventHistoryPanel } from './components/EventHistoryPanel';
 import { FaultAlertModal } from './components/FaultAlertModal';
+import { FaultLabPanel } from './components/FaultLabPanel';
 import { Inspector } from './components/Inspector';
 import { LazySurface } from './components/LazySurface';
 import { LogPanel } from './components/LogPanel';
@@ -325,6 +326,7 @@ export function Editor() {
       )}
       <FaultAlertModal />
       <CommandPalette />
+      <FaultLabPanel />
       <WhatHappenedModal />
       <ValidationDetailsModal />
       <ComponentInfoModal />

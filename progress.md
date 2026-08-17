@@ -17,6 +17,23 @@ Format per entry:
 
 ---
 
+## 2026-08-17 (follow-up 2) — Dedicated Fault Lab panel
+
+Built the top-recommendation from the improvement review: a real, dedicated **Fault Lab** panel instead of a shortcut to the telemetry tab.
+
+**Done:**
+- `FaultLabPanel.tsx` — compact amber panel (Pro-only) operating on the currently selected component, with grouped fault buttons: Open Circuit, Short Circuit, Reverse Polarity, Earth Fault, Switched Neutral (switches), Smooth DC (EV/PV), Arc Fault, Bypass Breaker + Jam Breaker (protection devices). "Clear all" and "Clear fault on selection".
+- Reuses the existing circuit-store fault actions (`setComponentFault` / `clearAllFaults`); no new fault behaviour.
+- Toolbar Fault Lab button toggles the panel (amber "Active" state) and is Pro-only; panel closes with Escape. Added `faultLabOpen` + actions to `uiStore`.
+- Repositioned the panel to the left (near the palette) so it doesn't cover the right-side canvas components; it no longer forces the inspector open.
+- **e2e:** +2 tests in `workbench-ui.spec.ts` (panel open/close, inject + clear on selection).
+
+**Note on a recurring gotcha:** the Fault Lab button's `title` initially contained "fault injection", which re-triggered Playwright's strict-mode duplicate match against the Pro fault-toggle selector (same class of bug as the earlier toolbar pass) and it also leaked into Student mode. Fixed by making the button Pro-only and rewording the title to "manual fault controls".
+
+**Gates:** chromium e2e 39 passed, unit/typecheck clean. Committed.
+
+---
+
 ## 2026-08-17 (follow-up) — Fix global supply voltage picker hidden under palette
 
 **Bug:** user reported the global supply voltage presets on the sub-header bar were unclickable. Root cause: in the new workbench layout the context bar (`z-20`) and the full-height left palette (`z-20`) tie in stacking order, and the palette renders later, so the voltage dropdown (which opens downward into the palette's area) was covered and its preset buttons intercepted pointer events.

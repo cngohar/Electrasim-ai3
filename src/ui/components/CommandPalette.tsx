@@ -75,9 +75,9 @@ export function CommandPalette() {
         icon: FlaskConical,
         keywords: 'fault short open circuit injection',
         run: () => {
-          useUiStore.getState().setInspectorCollapsed(false);
-          useUiStore.getState().setActiveInspectorTab('simulation');
-          useUiStore.getState().addLog('Fault Lab opened — manual fault controls armed.', 'info');
+          const ui = useUiStore.getState();
+          ui.setFaultLabOpen(true);
+          ui.addLog('Fault Lab opened — manual fault controls armed.', 'info');
           setOpen(false);
         },
       },

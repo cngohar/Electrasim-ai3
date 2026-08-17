@@ -11,6 +11,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — Session 2026-08-17 (follow-up 2): Dedicated Fault Lab panel
+- **Fault Lab** is now a real, dedicated fault-injection panel (`FaultLabPanel.tsx`) rather than a shortcut to the telemetry tab. The Pro-mode toolbar button opens a compact amber panel that operates on the currently selected component, with grouped, scannable fault buttons — Open Circuit, Short Circuit, Reverse Polarity, Earth Fault, Switched Neutral (switches), Smooth DC (EV/PV), Arc Fault, Bypass Breaker + Jam Breaker (protection devices) — plus "Clear all" and "Clear fault on selection". It reuses the exact existing circuit-store fault actions (`setComponentFault` / `clearAllFaults`); no fault behaviour is invented.
+- Fault Lab is **Pro-only** (matches the "student mode never shows fault UI" rule); the toolbar button shows an amber "Active" state while open and the panel closes with Escape. Added `faultLabOpen` state + actions to the UI store.
+- **e2e:** Fault Lab panel open/close and inject-and-clear-on-selection tests added to `e2e/workbench-ui.spec.ts` (+2).
+
 ### Added — Session 2026-08-17: Professional Electrical Workbench UI experiment
 - **Full-width top application bar** (`Toolbar.tsx`): ElectraSim brand, Undo/Redo, Guides, Student/Pro mode, Validate, primary Run Simulation, new **Fault Lab** button (arms manual fault controls + opens telemetry), Pro Analyze/Stress Zones, command-palette hint, theme toggle, Settings, and the MCB-lever Menu.
 - **Simulation context bar** (`SubHeaderBar.tsx`): full-width slim strip under the app bar showing Supply / Components / Wires / Simulation state, preserving the voltage picker, project-name edit, UK/US/EU standard selector, and manual-fault toggle.

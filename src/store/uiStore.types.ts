@@ -226,6 +226,8 @@ export interface UiState {
   inspectorCollapsed: boolean;
   /** Workbench experiment: command palette (Ctrl+K) open flag. */
   commandPaletteOpen: boolean;
+  /** Workbench experiment: dedicated Fault Lab panel open flag. */
+  faultLabOpen: boolean;
 
   // Actions ───────────────────────────────────────────────────────────────
   setSimRunning: (v: boolean) => void;
@@ -264,6 +266,8 @@ export interface UiState {
   toggleInspector: () => void;
   setCommandPaletteOpen: (open: boolean) => void;
   toggleCommandPalette: () => void;
+  setFaultLabOpen: (open: boolean) => void;
+  toggleFaultLab: () => void;
   setInspectorOpen: (open: boolean) => void;
   setInspectorCollapsed: (collapsed: boolean) => void;
   setPendingWireFrom: (p: PortRef | null) => void;

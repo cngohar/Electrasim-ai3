@@ -92,6 +92,7 @@ export const useUiStore = create<UiState>()(
     inspectorOpen: true,
     inspectorCollapsed: true,
     commandPaletteOpen: false,
+    faultLabOpen: false,
 
     setSimRunning: (v) =>
       set((s) => {
@@ -559,6 +560,14 @@ export const useUiStore = create<UiState>()(
     toggleCommandPalette: () =>
       set((s) => {
         s.commandPaletteOpen = !s.commandPaletteOpen;
+      }),
+    setFaultLabOpen: (open) =>
+      set((s) => {
+        s.faultLabOpen = open;
+      }),
+    toggleFaultLab: () =>
+      set((s) => {
+        s.faultLabOpen = !s.faultLabOpen;
       }),
     setInspectorOpen: (open) =>
       set((s) => {

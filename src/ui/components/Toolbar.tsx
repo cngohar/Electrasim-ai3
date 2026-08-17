@@ -58,13 +58,13 @@ export function Toolbar({ isPhone, simRunning, dashboardOpen, onToggleDashboard 
   const isBlocked = !simRunning && (hasTrippedComponents || hasBlownComponents || hasBustedWires);
 
   const stressZonesEnabled = useSettingsStore((s) => s.stressZonesEnabled);
+  const faultLabOpen = useUiStore((s) => s.faultLabOpen);
 
-  const openFaultLab = () => {
-    // Arm manual fault injection and surface the telemetry/faults tab.
+  const toggleFaultLab = () => {
+    // Arm manual fault injection and open the dedicated Fault Lab panel.
     setSetting('manualFaultInjection', true);
-    useUiStore.getState().setInspectorCollapsed(false);
-    useUiStore.getState().setActiveInspectorTab('simulation');
-    useUiStore.getState().addLog('Fault Lab opened — manual fault controls armed.', 'info');
+    useUiStore.getState().toggleFaultLab();
+    useUiStore.getState().addLog('Fault Lab toggled — manual fault controls armed.', 'info');
   };
 
   return (
@@ -237,22 +237,29 @@ export function Toolbar({ isPhone, simRunning, dashboardOpen, onToggleDashboard 
         </button>
       )}
 
-      {/* FAULT LAB — visually distinct but calm when inactive */}
-      <button
-        type="button"
-        onClick={openFaultLab}
-        title="Open Fault Lab — arm manual fault controls and open telemetry"
-        aria-pressed={manualFaultInjection}
-        className={[
-          'flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-semibold shadow-sm transition',
-          manualFaultInjection
-            ? 'border-amber-500 bg-amber-100 text-amber-800 dark:border-amber-600 dark:bg-amber-950/70 dark:text-amber-200'
-            : 'border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100 dark:border-amber-800 dark:bg-amber-950/50 dark:text-amber-300 dark:hover:bg-amber-900/70',
-        ].join(' ')}
-      >
-        <FlaskConical className="size-3.5" />
-        {!isPhone && <span className="hidden md:inline">Fault Lab</span>}
-      </button>
+      {/* FAULT LAB — Pro-only manual fault panel; visually distinct but calm when inactive */}
+      {appMode === 'pro' && (
+        <button
+          type="button"
+          onClick={toggleFaultLab}
+          title="Toggle the Fault Lab — manual fault controls"
+          aria-pressed={faultLabOpen}
+          className={[
+            'flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-semibold shadow-sm transition',
+            faultLabOpen
+              ? 'border-amber-500 bg-amber-600 text-white shadow-amber-500/20'
+              : 'border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100 dark:border-amber-800 dark:bg-amber-950/50 dark:text-amber-300 dark:hover:bg-amber-900/70',
+          ].join(' ')}
+        >
+          <FlaskConical className="size-3.5" />
+          {!isPhone && <span className="hidden md:inline">Fault Lab</span>}
+          {faultLabOpen && (
+            <span className="hidden text-[9px] font-bold uppercase tracking-wider opacity-90 lg:inline">
+              Active
+            </span>
+          )}
+        </button>
+      )}
 
       {/* spacer */}
       <div className="flex-1" />

@@ -50,6 +50,11 @@ export function useKeyboardShortcuts() {
           ui.setCommandPaletteOpen(false);
           return;
         }
+        if (ui.faultLabOpen) {
+          e.preventDefault();
+          ui.setFaultLabOpen(false);
+          return;
+        }
         if (ui.contextMenu) {
           e.preventDefault();
           ui.setContextMenu(null);

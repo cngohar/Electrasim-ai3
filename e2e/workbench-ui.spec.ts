@@ -32,7 +32,11 @@ test.describe('workbench shell', () => {
     await expect(page.getByTitle(/Redo \(Ctrl\+Shift\+Z\)/)).toBeVisible();
     // Primary run action.
     await expect(page.getByRole('button', { name: /^Run Simulation$/ })).toBeVisible();
-    // Fault Lab is a distinct entry point.
+    // Fault Lab is a Pro-only entry point; switch to Pro to see it.
+    const studentToggle = page.getByRole('button', { name: /^student$/i });
+    if (await studentToggle.isVisible().catch(() => false)) {
+      await studentToggle.click({ force: true });
+    }
     await expect(page.getByRole('button', { name: /Fault Lab/ })).toBeVisible();
     // Theme + Settings + Menu (scoped to the top app bar header).
     await expect(page.locator('header').getByTitle(/Light Theme|Dark Theme/)).toBeVisible();
@@ -132,10 +136,43 @@ test.describe('workbench shell', () => {
     await mm.click({ position: { x: 40, y: 40 } });
   });
 
-  test('fault lab button opens the simulation inspector tab', async ({ page }) => {
+  test('fault lab button opens the dedicated Fault Lab panel', async ({ page }) => {
+    // Fault Lab is a Pro-only feature; switch to Pro first.
+    const studentToggle = page.getByRole('button', { name: /^student$/i });
+    if (await studentToggle.isVisible().catch(() => false)) {
+      await studentToggle.click({ force: true });
+    }
     await page.getByRole('button', { name: /Fault Lab/ }).click();
-    // Expanding the inspector should show the simulation/telemetry tab header.
-    await expect(page.getByText(/SIMULATION PANEL/i)).toBeVisible();
+    // The dedicated Fault Lab panel appears.
+    const panel = page.getByLabel('Fault Lab panel');
+    await expect(panel).toBeVisible();
+    await expect(panel.getByTitle('Clear all injected faults')).toBeVisible();
+    // It closes with Escape.
+    await page.keyboard.press('Escape');
+    await expect(panel).not.toBeVisible();
+  });
+
+  test('fault lab injects a fault on a selected component and clears it', async ({ page }) => {
+    // Switch to Pro so the Fault Lab's manual controls are meaningful.
+    const studentToggle = page.getByRole('button', { name: /^student$/i });
+    if (await studentToggle.isVisible().catch(() => false)) {
+      await studentToggle.click({ force: true });
+    }
+    await page.getByRole('button', { name: /Fault Lab/ }).click();
+    // Select a non-source load component on the canvas (a bulb) that sits on
+    // the right side, away from the left-positioned Fault Lab panel.
+    const bulbBody = page.locator('[data-component-id^="bulb"] > g[role="button"]').nth(1);
+    await bulbBody.click({ force: true });
+    await page.waitForTimeout(300);
+    const shortBtn = page.getByRole('button', { name: /Short Circuit/ });
+    await expect(shortBtn).toBeEnabled();
+    await shortBtn.click();
+    await page.waitForTimeout(300);
+    // The active-fault badge reflects the injected fault.
+    await expect(page.getByText('short-circuit', { exact: true })).toBeVisible();
+    // Clear all faults removes it.
+    await page.getByTitle('Clear all injected faults').click();
+    await expect(page.getByText('short-circuit', { exact: true })).toHaveCount(0);
   });
 
   test('global supply voltage preset is changeable from the context bar', async ({ page }) => {
