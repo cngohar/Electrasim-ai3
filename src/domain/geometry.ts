@@ -3,8 +3,8 @@
  * bezier wire routing, and bounding-box queries.
  *
  * Used by:
- *   - the renderer (Phase 4 PixiJS) for drawing
- *   - the spatial index (Phase 4) for hit-testing
+ *   - the SVG renderer for drawing
+ *   - the spatial index for hit-testing
  *   - the simulation engine indirectly (none today, but reserved if we
  *     ever model wire length / signal propagation)
  *

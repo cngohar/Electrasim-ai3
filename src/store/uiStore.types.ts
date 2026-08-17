@@ -137,13 +137,6 @@ export interface UiState {
    */
   placingType: string | null;
 
-  /**
-   * Active 2D renderer. `'svg'` is the simple, accessible, low-overhead
-   * default suited to circuits up to ~50 items. `'pixi'` swaps in a WebGL2
-   * scene-graph renderer designed to hit 60 fps at 200+ items.
-   */
-  renderer: 'svg' | 'pixi';
-
   // Phase 6.1 — wire reroute in flight + dialogs ──────────────────────────
   reroute: RerouteState | null;
   pendingDeletion: PendingDeletion | null;
@@ -272,7 +265,6 @@ export interface UiState {
   setInspectorCollapsed: (collapsed: boolean) => void;
   setPendingWireFrom: (p: PortRef | null) => void;
   setPlacingType: (type: string | null) => void;
-  setRenderer: (r: 'svg' | 'pixi') => void;
   setReroute: (r: RerouteState | null) => void;
   setPendingDeletion: (d: PendingDeletion | null) => void;
   setSettingsOpen: (open: boolean, tab?: string | null) => void;

@@ -97,7 +97,7 @@ export function ImportExportModal({ open, onClose, svgRef }: Props) {
   const handleExportSVG = useCallback(() => {
     clearMessages();
     if (!svgRef.current) {
-      setError('SVG canvas not available (are you in GPU mode?).');
+      setError('SVG canvas is not available right now.');
       return;
     }
     promptFilename('circuit', '.svg', (filename) => {
@@ -111,7 +111,7 @@ export function ImportExportModal({ open, onClose, svgRef }: Props) {
   const handleExportPNG = useCallback(() => {
     clearMessages();
     if (!svgRef.current) {
-      setError('SVG canvas not available (are you in GPU mode?).');
+      setError('SVG canvas is not available right now.');
       return;
     }
     promptFilename('circuit', '.png', async (filename) => {
@@ -143,7 +143,7 @@ export function ImportExportModal({ open, onClose, svgRef }: Props) {
   const handleExportPDF = useCallback(() => {
     clearMessages();
     if (!svgRef.current) {
-      setError('SVG canvas not available (are you in GPU mode?).');
+      setError('SVG canvas is not available right now.');
       return;
     }
     exportPDF(svgRef.current);

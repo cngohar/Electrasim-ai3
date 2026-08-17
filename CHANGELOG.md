@@ -11,6 +11,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Removed — GPU/Pixi renderer scaffolding
+- The experimental **PixiJS / WebGL2 renderer** (and its long-parked wire-visibility defect) is removed from the codebase. The Pixi canvas and `pixi` dependency were already absent; this clears the dead scaffolding that remained: the `renderer: 'svg' | 'pixi'` store field + `setRenderer` action, the stale Pixi/WebGL comments in `App.tsx`, `geometry.ts`, `canvas-actions.ts`, `simulation.test.ts`, `ToolDock.tsx`, the "WebGL renderer feature parity" roadmap row in the About tab, and the misleading "are you in GPU mode?" error messages in the Import/Export modal (now a neutral "SVG canvas is not available right now."). **SVG is now the sole renderer.**
+
 ### Added — Session 2026-08-17 (follow-up 2): Dedicated Fault Lab panel
 - **Fault Lab** is now a real, dedicated fault-injection panel (`FaultLabPanel.tsx`) rather than a shortcut to the telemetry tab. The Pro-mode toolbar button opens a compact amber panel that operates on the currently selected component, with grouped, scannable fault buttons — Open Circuit, Short Circuit, Reverse Polarity, Earth Fault, Switched Neutral (switches), Smooth DC (EV/PV), Arc Fault, Bypass Breaker + Jam Breaker (protection devices) — plus "Clear all" and "Clear fault on selection". It reuses the exact existing circuit-store fault actions (`setComponentFault` / `clearAllFaults`); no fault behaviour is invented.
 - Fault Lab is **Pro-only** (matches the "student mode never shows fault UI" rule); the toolbar button shows an amber "Active" state while open and the panel closes with Escape. Added `faultLabOpen` state + actions to the UI store.

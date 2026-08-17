@@ -1,9 +1,9 @@
 /**
  * canvas-actions — renderer-agnostic business logic for canvas interactions.
  *
- * Both `CircuitCanvas` (SVG) and `PixiCanvas` (WebGL) call into this module
- * so wire-creation rules, drop logic, and validation only exist in one
- * place. Renderers are responsible only for *visuals* and *pointer→canvas-
+ * `CircuitCanvas` (SVG) calls into this module so wire-creation rules, drop
+ * logic, and validation only exist in one place. The renderer is responsible
+ * only for *visuals* and *pointer→canvas-
  * coord conversion*.
  */
 
@@ -256,9 +256,7 @@ export function requestDeleteSelection(): void {
     ]),
   ).filter((id) => circuit.components.some((c) => c.id === id));
 
-  const wireIds = circuit.selectedWireIds.filter((id) =>
-    circuit.wires.some((w) => w.id === id),
-  );
+  const wireIds = circuit.selectedWireIds.filter((id) => circuit.wires.some((w) => w.id === id));
 
   const totalItems = componentIds.length + wireIds.length;
   if (totalItems === 0) return;

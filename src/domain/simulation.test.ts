@@ -2,7 +2,7 @@
  * simulation.test.ts — Behavioural coverage for the pure simulation engine.
  *
  * These tests serve two purposes:
- *   1. Lock in the legacy behaviour (so the upcoming PixiJS / Worker swaps
+ *   1. Lock in the legacy behaviour (so future engine/Worker changes
  *      can't regress the user-visible simulation outcome).
  *   2. Document the intended semantics of every component flag (isSwitch,
  *      isLoad, isSource, isPassThrough, isJunction, isSocket).
@@ -611,16 +611,17 @@ describe('simulate — smooth DC residual blinding (RCD type selection)', () => 
     return { rcbo, result: simulate(circuit([l, n, rcbo, bulb], wires)) };
   };
 
-  it.each(['AC', 'A', 'F'] as const)('Type %s stays closed on smooth DC — with a blinded warning', (rcdType) => {
-    const { rcbo, result } = dcCircuit(rcdType);
+  it.each(['AC', 'A', 'F'] as const)(
+    'Type %s stays closed on smooth DC — with a blinded warning',
+    (rcdType) => {
+      const { rcbo, result } = dcCircuit(rcdType);
 
-    expect((result.trippedComponents ?? []).map((t) => t.id)).not.toContain(rcbo.id);
-    expect(
-      result.errors.some(
-        (e) => e.includes(`Type ${rcdType}`) && e.includes('DID NOT TRIP'),
-      ),
-    ).toBe(true);
-  });
+      expect((result.trippedComponents ?? []).map((t) => t.id)).not.toContain(rcbo.id);
+      expect(
+        result.errors.some((e) => e.includes(`Type ${rcdType}`) && e.includes('DID NOT TRIP')),
+      ).toBe(true);
+    },
+  );
 
   it('Type B detects the smooth DC residual and trips (BS EN 62423)', () => {
     const { rcbo, result } = dcCircuit('B');
@@ -646,7 +647,9 @@ describe('simulate — smooth DC residual blinding (RCD type selection)', () => 
     const result = simulate(circuit([l, n, rcbo, bulb], wires));
 
     expect((result.trippedComponents ?? []).map((t) => t.id)).not.toContain(rcbo.id);
-    expect(result.errors.some((e) => e.includes('Type A') && e.includes('DID NOT TRIP'))).toBe(true);
+    expect(result.errors.some((e) => e.includes('Type A') && e.includes('DID NOT TRIP'))).toBe(
+      true,
+    );
   });
 });
 
@@ -724,9 +727,9 @@ describe('simulate — arc fault detection (BS EN 62606 / Reg 421.1.7)', () => {
     expect((blinded.result.trippedComponents ?? []).map((t) => t.id)).not.toContain(
       blinded.prot.id,
     );
-    expect(blinded.result.errors.some((e) => e.includes('Type A') && e.includes('DID NOT TRIP'))).toBe(
-      true,
-    );
+    expect(
+      blinded.result.errors.some((e) => e.includes('Type A') && e.includes('DID NOT TRIP')),
+    ).toBe(true);
 
     const sensitive = arcCircuitRcdd('B');
     expect((sensitive.result.trippedComponents ?? []).map((t) => t.id)).toContain(

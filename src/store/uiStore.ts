@@ -58,7 +58,6 @@ export const useUiStore = create<UiState>()(
     mode: 'idle',
     pendingWireFrom: null,
     placingType: null,
-    renderer: 'svg',
     reroute: null,
     pendingDeletion: null,
     settingsOpen: false,
@@ -601,10 +600,6 @@ export const useUiStore = create<UiState>()(
             s.paletteOpen = false;
           }
         }
-      }),
-    setRenderer: (r) =>
-      set((s) => {
-        s.renderer = r;
       }),
     setReroute: (r) =>
       set((s) => {

@@ -17,6 +17,19 @@ Format per entry:
 
 ---
 
+## 2026-08-17 (follow-up 3) — Remove GPU/Pixi renderer
+
+Per the improvement-review follow-up: the experimental GPU/Pixi renderer and its long-parked wire-visibility bug are **removed**. The Pixi canvas and `pixi` dependency were already absent; this pass cleared all remaining dead scaffolding:
+- Removed `renderer: 'svg' | 'pixi'` field and `setRenderer` action from `uiStore` / `uiStore.types.ts` (no remaining consumers).
+- Updated stale Pixi/WebGL comments in `App.tsx`, `geometry.ts`, `canvas-actions.ts`, `simulation.test.ts`, `ToolDock.tsx`.
+- Removed the "WebGL renderer feature parity" roadmap row from the About tab.
+- Reworded the misleading "are you in GPU mode?" Import/Export errors to a neutral "SVG canvas is not available right now." (SVG is always used now).
+- `App.tsx` header comment now states SVG is the only renderer.
+
+**SVG is now the sole renderer.** Gates: typecheck 0 errors (app + e2e), 317 unit tests pass, chromium e2e 39 passed. Committed.
+
+---
+
 ## 2026-08-17 (follow-up 2) — Dedicated Fault Lab panel
 
 Built the top-recommendation from the improvement review: a real, dedicated **Fault Lab** panel instead of a shortcut to the telemetry tab.

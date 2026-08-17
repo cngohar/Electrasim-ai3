@@ -1,9 +1,8 @@
 /**
  * ToolDock — bottom-right cluster of canvas tools.
  *
- * Phase 6.1: zoom buttons now drive `viewportStore` and work in both
- * SVG (CPU) and Pixi (GPU) modes. Delete routes through the
- * confirmation flow when the setting is on.
+ * Phase 6.1: zoom buttons drive `viewportStore` in SVG mode. Delete routes
+ * through the confirmation flow when the setting is on.
  */
 
 import {

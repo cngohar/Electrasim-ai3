@@ -9,7 +9,6 @@ const ROADMAP: Array<[icon: string, item: string, status: string]> = [
   ['✅', 'Dark mode + PWA + offline support', 'shipped'],
   ['✅', 'Import / Export / Share URL', 'shipped'],
   ['✅', '6 new components (RCD, Contactor, Timer, Dimmer, DB, Bell)', 'shipped'],
-  ['🔧', 'WebGL renderer feature parity', 'future'],
   ['🔮', 'Cloud save + accounts', 'v2.0'],
   ['🔮', 'AI assistant', 'v2.0'],
 ];
