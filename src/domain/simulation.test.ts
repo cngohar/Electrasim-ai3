@@ -593,6 +593,72 @@ describe('simulate — faults operate upstream protection', () => {
     expect(tripIds).toContain(rcd.id);
     expect(tripIds).not.toContain(rcdIsolated.id);
   });
+
+  it('uses region-aware residual language and threshold (GFCI for US, RCD elsewhere)', () => {
+    const build = (standard: 'uk' | 'us') => {
+      const l = C('live-terminal');
+      const n = C('neutral-terminal');
+      const rcd = C('rcd');
+      const bulb = C('bulb', { fault: 'earth-fault' });
+      const wires = [
+        W({ c: l, p: 0 }, { c: rcd, p: 0 }),
+        W({ c: n, p: 0 }, { c: rcd, p: 1 }),
+        W({ c: rcd, p: 2 }, { c: bulb, p: 0 }),
+        W({ c: rcd, p: 3 }, { c: bulb, p: 1 }),
+      ];
+      return simulate(circuit([l, n, rcd, bulb], wires), { standard });
+    };
+
+    const ukResult = build('uk');
+    const usResult = build('us');
+
+    // Both trip the residual device on the earth fault.
+    expect((ukResult.trippedComponents ?? []).map((t) => t.id)).toContainEqual(
+      expect.stringMatching(/rcd-/),
+    );
+    expect((usResult.trippedComponents ?? []).map((t) => t.id)).toContainEqual(
+      expect.stringMatching(/rcd-/),
+    );
+
+    // UK message says RCD + 30 mA; US message says GFCI + 6 mA.
+    expect(ukResult.errors.some((e) => e.includes('RCD') && e.includes('30 mA'))).toBe(true);
+    expect(usResult.errors.some((e) => e.includes('GFCI') && e.includes('6 mA'))).toBe(true);
+
+    // Ground-fault trip metadata reflects the region threshold.
+    const ukTrip = (ukResult.trippedComponents ?? []).find((t) => t.reason === 'ground-fault');
+    const usTrip = (usResult.trippedComponents ?? []).find((t) => t.reason === 'ground-fault');
+    expect(ukTrip?.ratingAmps).toBe(0.03); // 30 mA
+    expect(usTrip?.ratingAmps).toBe(0.006); // 6 mA GFCI
+  });
+
+  it('scales prospective short-circuit fault current by the region supply voltage', () => {
+    const build = (voltage: number, standard: 'uk' | 'us') => {
+      const l = C('live-terminal');
+      const n = C('neutral-terminal');
+      const mcb = C('mcb');
+      const bulb = C('bulb', { fault: 'short-circuit' });
+      const wires = [
+        W({ c: l, p: 0 }, { c: mcb, p: 0 }),
+        W({ c: mcb, p: 1 }, { c: bulb, p: 0 }),
+        W({ c: n, p: 0 }, { c: bulb, p: 1 }),
+      ];
+      return simulate(
+        { components: [l, n, mcb, bulb], wires, globalVoltage: voltage },
+        { standard, appMode: 'basic' },
+      );
+    };
+
+    const uk230 = build(230, 'uk');
+    const us120 = build(120, 'us');
+
+    const ukTrip = (uk230.trippedComponents ?? []).find((t) => t.reason === 'short-circuit');
+    const usTrip = (us120.trippedComponents ?? []).find((t) => t.reason === 'short-circuit');
+
+    // Prospective = supply / 0.5 Ω fault loop → 460 A @ 230 V, 240 A @ 120 V.
+    expect(ukTrip?.currentAmps).toBe(460);
+    expect(usTrip?.currentAmps).toBe(240);
+    expect(ukTrip!.currentAmps).toBeGreaterThan(usTrip!.currentAmps);
+  });
 });
 
 describe('simulate — smooth DC residual blinding (RCD type selection)', () => {

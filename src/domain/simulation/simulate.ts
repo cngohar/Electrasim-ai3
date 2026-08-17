@@ -9,6 +9,7 @@
 import { COMPONENT_DEFS } from '../components';
 import { calculateElectricalValues } from '../electricalCalculations';
 import { FAULT_REGISTRY } from '../faults';
+import { type StandardId, getStandard } from '../standards';
 import type {
   Circuit,
   ComponentDef,
@@ -28,6 +29,14 @@ export interface SimulateOptions {
   defs?: Record<string, ComponentDef>;
   /** App mode — 'pro' enables stress testing for overvoltage, overcurrent, and overload. */
   appMode?: 'basic' | 'pro';
+  /**
+   * Active electrical standard (region). Drives region-aware fault behaviour:
+   *   - prospective fault current is scaled by the region's nominal voltage,
+   *   - residual-device language uses GFCI (US) vs RCD (elsewhere),
+   *   - RCD/GFCI threshold and the disconnection-time wording follow the region.
+   * Defaults to UK if omitted.
+   */
+  standard?: StandardId;
 }
 
 /**
@@ -36,6 +45,10 @@ export interface SimulateOptions {
  */
 export function simulate(circuit: Circuit, options: SimulateOptions = {}): SimulationResult {
   const defs = options.defs ?? COMPONENT_DEFS;
+  // Region-aware fault behaviour (see SimulateOptions.standard).
+  const standardPreset = getStandard(options.standard);
+  const residualName = standardPreset.id === 'us' ? 'GFCI' : 'RCD';
+  const residualThresholdMa = standardPreset.rcdThresholdMa;
 
   const energizedComponents = new Set<string>();
   const energizedWires = new Set<string>();
@@ -80,9 +93,13 @@ export function simulate(circuit: Circuit, options: SimulateOptions = {}): Simul
       const label = devDef?.label ?? dev.type;
       if (kind === 'short-circuit') {
         const rating = dev.state.customMaxAmps ?? devDef?.maxAmps ?? 32;
-        // Bolted fault: supply over an assumed ≤0.5 Ω fault loop — hundreds of
-        // amps, deep in the instantaneous magnetic zone of any IEC 60898-1 curve.
-        const prospectiveAmps = Math.round(supplyVoltage / 0.5);
+        // Bolted fault: supply over an assumed fault-loop impedance. The loop
+        // impedance is region-agnostic at the device terminals, but the
+        // prospective fault current scales with the supply voltage, so it is
+        // naturally higher on 230 V systems than 120 V systems. Deep in the
+        // instantaneous magnetic zone of any IEC 60898-1 / UL 489 curve.
+        const faultLoopOhms = 0.5;
+        const prospectiveAmps = Math.round(supplyVoltage / faultLoopOhms);
         trippedComponents.push({
           id: dev.id,
           label,
@@ -91,16 +108,24 @@ export function simulate(circuit: Circuit, options: SimulateOptions = {}): Simul
           ratingAmps: rating,
         });
         errors.push(
-          `⚡ ${label} TRIPPED: bolted short circuit — prospective ${prospectiveAmps} A ≫ magnetic zone (${rating} A device), cleared in <0.1 s per IEC 60898-1.`,
+          `⚡ ${label} TRIPPED: bolted short circuit — prospective ${prospectiveAmps} A ≫ magnetic zone (${rating} A device), cleared in <0.1 s per IEC 60898-1 / UL 489.`,
         );
       } else if (kind === 'ground-fault') {
+        // Ground / earth-leakage fault: the residual device trips on the
+        // imbalance between live and neutral. Threshold and naming follow the
+        // active region — a Class A GFCI trips at ≤6 mA (US), an RCD at
+        // 30 mA (most other regions).
+        const leakAmps = Math.max(residualThresholdMa / 1000 + 0.015, 0.045);
         trippedComponents.push({
           id: dev.id,
           label,
           reason: 'ground-fault',
-          currentAmps: 0.045, // 45mA residual leakage
-          ratingAmps: 0.03, // 30mA threshold
+          currentAmps: leakAmps,
+          ratingAmps: residualThresholdMa / 1000,
         });
+        errors.push(
+          `⚡ ${label} TRIPPED: ${residualName} operated on ${Math.round(leakAmps * 1000)} mA residual leakage (threshold ${residualThresholdMa} mA) — supply disconnected.`,
+        );
       } else {
         // Arc fault: current floats around load level — far below the device
         // rating, which is exactly why only the AFDD's waveform analysis sees it.
@@ -516,7 +541,7 @@ export function simulate(circuit: Circuit, options: SimulateOptions = {}): Simul
         }
         if (residualDevices.length === 0) {
           warnings.push(
-            'No residual-current device guards this network — no RCD present to evaluate for DC blinding.',
+            `No residual-current device guards this network — no ${residualName} present to evaluate for DC blinding.`,
           );
         }
       }

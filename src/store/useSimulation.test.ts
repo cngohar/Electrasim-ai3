@@ -62,7 +62,7 @@ describe('useSimulation request sequencing', () => {
     await act(async () => vi.advanceTimersByTime(50));
     expect(simulateAsync).toHaveBeenLastCalledWith(
       expect.objectContaining({ globalVoltage: 120 }),
-      { appMode: 'basic' },
+      { appMode: 'basic', standard: 'uk' },
     );
   });
 

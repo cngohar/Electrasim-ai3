@@ -11,6 +11,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — Session 2026-08-17 (follow-up 14): Region-aware fault simulation
+- The fault engine now receives the active electrical standard (`standard` added to `SimulateOptions`), threaded through `useSimulation` → `simulateAsync` → `simulate()`. Switching region now changes fault behaviour, not just validation.
+- **Residual-device language & threshold follow the region:** US reports **GFCI** at the 6 mA Class A threshold; UK/EU/International report **RCD** at 30 mA. Ground-fault trip metadata (`currentAmps`/`ratingAmps`) reflects the region's threshold, and trip/error messages name the correct device.
+- **Prospective short-circuit fault current scales with the region's supply voltage** — a bolted fault on a 230 V system computes ~460 A (230/0.5 Ω), on a 120 V US system ~240 A. Error text cites both IEC 60898-1 and UL 489.
+- Added 2 regression tests in `simulation.test.ts` covering region-aware residual naming/threshold and voltage-scaled prospective fault current.
+
 ### Changed — Session 2026-08-17 (follow-up 13): Split electrical standard from plug type
 - Australia/NZ, India and South Africa were electrically identical (230 V/50 Hz, IEC colours, RCD, same drop limits) — the only difference was the plug. **Combined them into a single "International" 230 V/50 Hz standard**, so the electrical-standard list is now **UK · US · EU · International** (4, down from 6).
 - Added a separate **Plug Type** section to the region dropdown: UK 3-pin (BS 1363) · NEMA (US) · Schuko (EU) · AU/NZ (AS/NZS 3112) · BS 546 (India/South Africa) · All. This is independent of the electrical standard and only controls which sockets show in the palette.

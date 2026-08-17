@@ -17,6 +17,23 @@ Format per entry:
 
 ---
 
+## 2026-08-17 (follow-up 14) — Region-aware fault simulation
+
+User asked to extend fault simulation to follow the selected region. Previously the fault engine ignored the standard (only `appMode` mattered).
+
+**Done:**
+- Added `standard?: StandardId` to `SimulateOptions` in `simulate.ts`; threaded through `useSimulation` (reads `regulationStandard`) → `simulateAsync` → `simulate()`. Effect deps updated so the sim re-runs on region change.
+- `simulate()` derives `standardPreset`, `residualName` (GFCI for US, RCD otherwise) and `residualThresholdMa` from the standard.
+- **Ground-fault trips** now use the region threshold in metadata (US 6 mA, others 30 mA) and name the device correctly in the error message (GFCI vs RCD).
+- **Short-circuit prospective fault current** scales with the region's supply voltage (230 V → ~460 A, 120 V → ~240 A over a 0.5 Ω loop); error cites IEC 60898-1 / UL 489.
+- Smooth-DC "no residual device" warning uses the region residual name.
+- Updated `useSimulation.test.ts` options assertion to include `standard: 'uk'`.
+- Added 2 `simulation.test.ts` regression tests (region residual naming/threshold + voltage-scaled fault current).
+
+**Verified:** typecheck clean, 319 unit pass (incl. 47 simulation), 39 e2e pass. Committed.
+
+---
+
 ## 2026-08-17 (follow-up 13) — Split electrical standard from plug type
 
 Follow-up to the international support: user noted AU/India/South Africa were electrically identical (all 230V/50Hz, IEC colours, RCD, same drops). Only the plug differed.

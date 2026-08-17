@@ -39,6 +39,7 @@ export function useSimulation() {
   const faults = useCircuitStore((s) => s.faults);
   const simRunning = useUiStore((s) => s.simRunning);
   const appMode = useSettingsStore((s) => s.appMode);
+  const regulationStandard = useSettingsStore((s) => s.regulationStandard);
 
   // Track the last "errors signature" so we don't re-log identical errors.
   const lastSignatureRef = useRef<string>('');
@@ -74,7 +75,7 @@ export function useSimulation() {
       // doesn't slip into the worker call we're about to make.
       const circuit = { components, wires, globalVoltage, faults };
 
-      void simulateAsync(circuit, { appMode })
+      void simulateAsync(circuit, { appMode, standard: regulationStandard })
         .then((result) => {
           // Drop result if a newer request was kicked off in the meantime
           // or the user paused the sim while we were waiting.
@@ -353,5 +354,5 @@ export function useSimulation() {
       // change the replacement effect immediately allocates a newer revision.
       if (seqRef.current === mySeq) seqRef.current++;
     };
-  }, [components, wires, globalVoltage, faults, simRunning, appMode]);
+  }, [components, wires, globalVoltage, faults, simRunning, appMode, regulationStandard]);
 }
