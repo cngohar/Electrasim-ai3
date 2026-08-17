@@ -255,9 +255,9 @@ describe('circuitStore — undo/redo (zundo)', () => {
 
     useCircuitStore.getState().setComponentFault(bulb.id, 'short-circuit');
     expect(useCircuitStore.getState().faults).toHaveLength(1);
-    expect(
-      useCircuitStore.getState().components.find((c) => c.id === bulb.id)?.state.fault,
-    ).toBe('short-circuit');
+    expect(useCircuitStore.getState().components.find((c) => c.id === bulb.id)?.state.fault).toBe(
+      'short-circuit',
+    );
     expect(useCircuitStore.temporal.getState().pastStates).toHaveLength(entriesBefore + 1);
 
     undo();
@@ -269,5 +269,41 @@ describe('circuitStore — undo/redo (zundo)', () => {
     expect(
       useCircuitStore.getState().components.find((c) => c.id === bulb.id)?.state.fault,
     ).toBeUndefined();
+  });
+});
+
+describe('circuitStore — region-aware demo socket swap', () => {
+  const socketType = () =>
+    useCircuitStore.getState().components.find((c) => c.type.includes('socket'))?.type;
+
+  it('swaps the demo socket to the requested plug type while the circuit is pristine', () => {
+    expect(socketType()).toBe('socket-3pin');
+    useCircuitStore.getState().swapDemoSocketForPlug('socket-as3112');
+    expect(socketType()).toBe('socket-as3112');
+  });
+
+  it('keeps swapping as the socket changes (uses current socket as reference)', () => {
+    useCircuitStore.getState().swapDemoSocketForPlug('socket-bs546');
+    expect(socketType()).toBe('socket-bs546');
+    useCircuitStore.getState().swapDemoSocketForPlug('socket-schuko');
+    expect(socketType()).toBe('socket-schuko');
+  });
+
+  it('does NOT swap once the user has modified the circuit', () => {
+    // Toggle a switch so the circuit no longer matches the pristine seed.
+    const sw = useCircuitStore.getState().components.find((c) => c.type === 'single-way-switch');
+    expect(sw).toBeDefined();
+    useCircuitStore.getState().toggleSwitch(sw!.id);
+    expect(useCircuitStore.getState().components.find((c) => c.id === sw!.id)?.state.on).toBe(
+      false,
+    );
+
+    useCircuitStore.getState().swapDemoSocketForPlug('socket-nema');
+    expect(socketType()).toBe('socket-3pin'); // unchanged
+  });
+
+  it('falls back to the UK socket for an unknown plug socket type', () => {
+    useCircuitStore.getState().swapDemoSocketForPlug('not-a-real-socket');
+    expect(socketType()).toBe('socket-3pin');
   });
 });

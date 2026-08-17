@@ -21,6 +21,7 @@ import {
   STANDARD_LIST,
   type StandardId,
   getStandard,
+  primarySocketForPlug,
 } from '../../domain/standards';
 import { useCircuitStore, useSettingsStore, useUiStore } from '../../store';
 
@@ -75,6 +76,9 @@ export function StandardSelector({ compact = false }: Props) {
   const applyPlugSystem = (id: PlugSystemId) => {
     setSetting('plugSystem', id);
     setOpen(false);
+    // If the user is still on the untouched demo, rebuild its socket so the
+    // demo reflects the new region's plug type.
+    useCircuitStore.getState().swapDemoSocketForPlug(primarySocketForPlug(id));
     addLog(`Plug type set to ${PLUG_SYSTEMS[id].label}.`, 'info');
   };
 

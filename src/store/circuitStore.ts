@@ -37,6 +37,41 @@ import { useUiStore } from './uiStore';
 
 const seed = buildSeedCircuit();
 
+/** Regional socket component types that the demo seed may use. */
+const REGIONAL_SOCKET_TYPES = new Set([
+  'socket-3pin',
+  'socket-2pin',
+  'socket-us',
+  'socket-schuko',
+  'socket-as3112',
+  'socket-bs546',
+]);
+
+/** True if two circuits have the same components (id, type, position, on-state)
+ *  and wires (id + endpoints) — used to detect the untouched demo seed. */
+function sameCircuitShape(
+  a: { components: readonly ComponentInstance[]; wires: readonly WireInstance[] },
+  b: { components: readonly ComponentInstance[]; wires: readonly WireInstance[] },
+): boolean {
+  if (a.components.length !== b.components.length || a.wires.length !== b.wires.length) {
+    return false;
+  }
+  const key = (c: ComponentInstance) => `${c.id}|${c.type}|${c.x}|${c.y}|${c.state?.on === true}`;
+  const aComps = a.components.map(key).sort();
+  const bComps = b.components.map(key).sort();
+  for (let i = 0; i < aComps.length; i++) {
+    if (aComps[i] !== bComps[i]) return false;
+  }
+  const wireKey = (w: WireInstance) =>
+    `${w.id}|${w.fromComponentId}|${w.fromPortIndex}|${w.toComponentId}|${w.toPortIndex}`;
+  const aWires = a.wires.map(wireKey).sort();
+  const bWires = b.wires.map(wireKey).sort();
+  for (let i = 0; i < aWires.length; i++) {
+    if (aWires[i] !== bWires[i]) return false;
+  }
+  return true;
+}
+
 export const useCircuitStore = create<CircuitState>()(
   temporal(
     immer<CircuitState>((set) => ({
@@ -59,6 +94,22 @@ export const useCircuitStore = create<CircuitState>()(
           s.selectedComponentId = null;
           s.selectedComponentIds = [];
           s.selectedWireIds = [];
+        }),
+
+      swapDemoSocketForPlug: (socketType) =>
+        set((s) => {
+          // Only swap when the circuit is still the untouched demo seed, so a
+          // user who has built their own circuit is never silently rewritten.
+          // The reference is built with the circuit's current socket so that
+          // repeated plug changes keep working (the socket may already differ
+          // from the UK default after a previous swap).
+          const currentSocket =
+            s.components.find((c) => REGIONAL_SOCKET_TYPES.has(c.type))?.type ?? 'socket-3pin';
+          const ref = buildSeedCircuit(currentSocket);
+          if (!sameCircuitShape({ components: s.components, wires: s.wires }, ref)) return;
+          const next = buildSeedCircuit(socketType);
+          s.components = next.components;
+          s.wires = next.wires;
         }),
 
       setGlobalSupplyVoltage: (voltage) =>

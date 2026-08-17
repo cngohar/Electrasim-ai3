@@ -17,6 +17,21 @@ Format per entry:
 
 ---
 
+## 2026-08-17 (follow-up 15) — Region-aware demo circuit
+
+User pointed out the demo circuit was still the fixed UK one — switching region only updated voltage/wire-colours/compliance/faults, but the demo's components (notably the UK 13A socket) stayed the same.
+
+**Done:**
+- `buildSeedCircuit(socketType)` now parameterised by socket type and made **deterministic** (resets its id counter each call) so callers can rebuild an identical seed and compare.
+- New `swapDemoSocketForPlug(socketType)` circuit-store action: rebuilds the seed with the region's socket **only while the circuit is still the pristine demo** (checked by `sameCircuitShape`), so a user's own work is never silently rewritten. Uses the circuit's current socket as the reference so repeated plug changes keep working.
+- `primarySocketForPlug(plugSystem)` helper maps a plug system to its primary single socket; `StandardSelector` calls the swap on plug change.
+- Verified in-browser: UK→`socket-3pin`, BS546→`socket-bs546`, AU/NZ→`socket-as3112`, NEMA→`socket-us`, Schuko→`socket-schuko`, all swapping while pristine and staying put once modified.
+- Added 4 circuitStore tests.
+
+Gates: typecheck clean, 323 unit + 39 e2e pass. Committed.
+
+---
+
 ## 2026-08-17 (follow-up 14) — Region-aware fault simulation
 
 User asked to extend fault simulation to follow the selected region. Previously the fault engine ignored the standard (only `appMode` mattered).

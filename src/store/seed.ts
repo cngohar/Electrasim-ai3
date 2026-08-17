@@ -38,7 +38,12 @@ const W = (
   controlPoints: [],
 });
 
-export function buildSeedCircuit(): Circuit {
+export function buildSeedCircuit(socketTypeArg = 'socket-3pin'): Circuit {
+  const socketType = COMPONENT_DEFS[socketTypeArg] ? socketTypeArg : 'socket-3pin';
+  // Deterministic ids: reset the module counter so every call produces the
+  // same component/wire ids. This lets callers rebuild an identical seed
+  // (e.g. swapping the demo socket for a region) and compare by id.
+  nextId = 0;
   // ── Supply rail (left column) ─────────────────────────────────────────
   const live = C('live-terminal', 110, 150);
   const neutral = C('neutral-terminal', 110, 380);
@@ -61,8 +66,8 @@ export function buildSeedCircuit(): Circuit {
   const dim = C('fan-dimmer', 850, 250, { on: true });
   const fan = C('ceiling-fan', 1030, 250);
 
-  // ── Branch 3: 3-pin socket + push-button bell ────────────────────────
-  const socket = C('socket-3pin', 670, 410);
+  // ── Branch 3: socket (region-aware) + push-button bell ───────────────
+  const socket = C(socketType, 670, 410);
   const pb = C('push-button', 850, 410, { on: false });
   const bulb2 = C('bulb', 1030, 410);
 

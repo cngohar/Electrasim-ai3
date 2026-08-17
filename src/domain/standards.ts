@@ -283,6 +283,17 @@ export const PLUG_SYSTEM_LIST: PlugSystemInfo[] = [
   PLUG_SYSTEMS.all,
 ];
 
+/** The single-socket type to use in a region-aware demo circuit. Picks the
+ *  first single (non-double) socket in the plug system, defaulting to the UK
+ *  3-pin socket for the "all" system. */
+export function primarySocketForPlug(plug: PlugSystemId): string {
+  const sockets = PLUG_SYSTEMS[plug]?.sockets ?? [];
+  const single =
+    sockets.find((s) => !s.includes('double') && s !== 'socket-gfci' && s !== 'socket-2pin') ??
+    'socket-3pin';
+  return single;
+}
+
 // ─── Compliance helpers ───────────────────────────────────────────────────
 
 /**

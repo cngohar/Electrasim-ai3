@@ -11,6 +11,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — Session 2026-08-17 (follow-up 15): Region-aware demo circuit
+- The demo seed circuit now **adapts its socket to the selected plug type.** Previously the demo was a fixed UK circuit, so switching to the US/EU/AU/India showed UK 13A sockets even in the wrong region.
+- `buildSeedCircuit(socketType)` is now deterministic (ids reset each call) and parameterised by socket type. A new `swapDemoSocketForPlug(socketType)` circuit-store action rebuilds the seed with the region's socket **only while the circuit is still the unmodified demo** — once the user edits their circuit it is left untouched (no silent rewrite). Detected via a `sameCircuitShape` comparison.
+- `primarySocketForPlug(plugSystem)` in `standards.ts` maps a plug system to its primary single socket; the StandardSelector calls the swap when the plug type changes.
+- Added 4 regression tests in `circuitStore.test.ts` (pristine swap, repeated swap, no-swap-when-modified, fallback).
+
 ### Changed — Session 2026-08-17 (follow-up 14): Region-aware fault simulation
 - The fault engine now receives the active electrical standard (`standard` added to `SimulateOptions`), threaded through `useSimulation` → `simulateAsync` → `simulate()`. Switching region now changes fault behaviour, not just validation.
 - **Residual-device language & threshold follow the region:** US reports **GFCI** at the 6 mA Class A threshold; UK/EU/International report **RCD** at 30 mA. Ground-fault trip metadata (`currentAmps`/`ratingAmps`) reflects the region's threshold, and trip/error messages name the correct device.
