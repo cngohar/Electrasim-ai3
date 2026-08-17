@@ -47,6 +47,7 @@ export function ComponentPropertiesView({
   const setPreviewVariant = useUiStore((s) => s.setPreviewVariant);
   const helpData = getComponentHelp(selectedComp.type, def.category);
   const simRunning = useUiStore((s) => s.simRunning);
+  const globalVoltage = useCircuitStore((s) => s.globalVoltage);
 
   // Pro-mode gating + standard-driven protection recommendations.
   const appMode = useSettingsStore((s) => s.appMode);
@@ -54,6 +55,15 @@ export function ComponentPropertiesView({
   const regulationStandard = useSettingsStore((s) => s.regulationStandard);
   const isPro = appMode === 'pro';
   const faultsArmed = isPro && manualFaultInjection;
+  // The per-component "Operating Voltage" is a design override for breaker
+  // sizing (Pro feature). In Student mode it is read-only and reflects the
+  // actual circuit supply so it can never diverge from the global voltage.
+  const isSource = Boolean(
+    def.isSource ||
+      selectedComp.type.includes('supply') ||
+      selectedComp.type.includes('mains') ||
+      selectedComp.type.includes('terminal'),
+  );
   const standard = getStandard(regulationStandard);
 
   // Recommended breaker: pick the smallest standard rating >= 1.25 × design
@@ -865,14 +875,36 @@ export function ComponentPropertiesView({
             <input
               type="number"
               aria-label="Operating voltage in volts"
-              value={selectedComp.state.customVoltage ?? def.maxVolts ?? 230}
+              disabled={!isPro}
+              title={
+                isPro
+                  ? isSource
+                    ? 'Sets this supply source and the global circuit voltage'
+                    : 'Pro: per-component design voltage for breaker sizing. Does not change the global circuit supply.'
+                  : `Circuit supply is ${globalVoltage}V. Switch to Pro to override this component's design voltage.`
+              }
+              value={
+                isPro
+                  ? (selectedComp.state.customVoltage ?? def.maxVolts ?? globalVoltage)
+                  : globalVoltage
+              }
               onChange={(e) =>
                 useCircuitStore.getState().updateComponentState(selectedComp.id, {
                   customVoltage: Number(e.target.value),
                 })
               }
-              className="w-full rounded border border-slate-200 px-2 py-1 font-mono text-xs dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+              className={`w-full rounded border px-2 py-1 font-mono text-xs dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 ${
+                isPro
+                  ? 'border-slate-200 dark:border-slate-700'
+                  : 'cursor-not-allowed border-slate-200 bg-slate-100 text-slate-400 dark:border-slate-700 dark:bg-slate-800/60 dark:text-slate-500'
+              }`}
             />
+            {!isPro && (
+              <p className="mt-0.5 text-[8px] text-slate-400 dark:text-slate-500">
+                Synced to circuit supply ({globalVoltage}V) · Pro mode unlocks a per-component
+                override.
+              </p>
+            )}
           </div>
 
           <div>

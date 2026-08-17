@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — Session 2026-08-17 (follow-up 9): Clarify per-component Operating Voltage vs global supply
+- The Inspector's per-component **"Operating Voltage (V)"** (under "Custom Electrical Specifications") previously looked like it could change the circuit's supply, but it only set a per-component `customVoltage` design override — it did **not** change the global voltage. This confused users (e.g. setting it on a contactor while the global stayed 230V).
+- Resolved (Pro-only design override): in **Student/Basic mode** the Operating Voltage is now **read-only and synced to the actual circuit supply** (global voltage), so it can never diverge, with a note explaining Pro unlocks an override. In **Pro mode** it remains an editable per-component design voltage (used for breaker sizing / compliance), with a tooltip clarifying it doesn't change the global supply.
+
 ### Changed — Session 2026-08-17 (follow-up 8): CFL zig-zag fix + realistic motor animation
 - **CFL bulb art fixed** — the spiral is now a proper **zig-zag** (four vertical tubes connected by bends at alternating ends) instead of straight lines running bottom-to-top. Added an inner glow line for depth.
 - **Motor animation made realistic** — the old behaviour spun the *entire* motor icon 360°; a real motor's body is stationary and only the **shaft rotor** spins. Replaced the rotating image with an inline `MotorGlyph` (static finned body, end caps, terminal box, feet + a rotor on the shaft that rotates via `electrasim-motor-spin`). Verified: body has no spin class, only the rotor group animates.

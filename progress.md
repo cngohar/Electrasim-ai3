@@ -17,6 +17,16 @@ Format per entry:
 
 ---
 
+## 2026-08-17 (follow-up 9) — Clarify per-component Operating Voltage vs global supply
+
+**User question:** "why is voltage changing when global voltage is set?" Root cause: there are two voltage concepts in the app — the **global supply voltage** (one per circuit, 230V) and a **per-component "Operating Voltage"** override in the Inspector's "Custom Electrical Specifications". The per-component field set `customVoltage` (used for breaker sizing / compliance only) and did **not** change the global supply, so the two could diverge confusingly.
+
+**Fix (user chose Pro-only):** in Student/Basic mode the "Operating Voltage" field is now **read-only and synced to the actual global supply voltage** (with a helper note), so it can never diverge. In Pro mode it remains an editable per-component design override with a tooltip clarifying it doesn't change the global supply.
+
+Verified: Student → field disabled, value=230, note shown; Pro → field editable, Pro tooltip. Gates: typecheck clean, chromium e2e 39 passed, 317 unit pass. Committed.
+
+---
+
 ## 2026-08-17 (follow-up 8) — CFL zig-zag fix + realistic motor animation
 
 Two review fixes:
