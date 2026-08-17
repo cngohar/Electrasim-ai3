@@ -17,6 +17,18 @@ Format per entry:
 
 ---
 
+## 2026-08-17 (follow-up 11) — Component-aware analytics, wire-joint coverage, motor & selection clarity
+
+User feedback fixes:
+1. **Analytics/DSO tab was fully circuit-level** — selecting a different component didn't change the measurements (thermal overlay worked because it was per-component). Made `InspectorAnalyticsView` component-aware: when a component is selected it scopes V/A/W + waveform to that component (with a component chip), falling back to circuit totals otherwise.
+2. **Wire-crossing joints were bezier-only** — now apply to **all** wire kinds (bezier, orthogonal, custom/polyline). Removed the `orthogonal` skip in `WireJointsLayer`.
+3. **Energized motor had a pulsing blue circle** (`theme.component.accent` halo). Removed it — energization is shown by the corner port dot, and the shaft rotor still spins.
+4. **Wire selection not obvious** — with "Trace Circuit Path" on, selecting a wire highlighted the whole connected network. Added a clear **amber dashed selection ring** on the selected wire (on top of its telemetry label) so it's unmistakable.
+
+Gates: typecheck clean, chromium e2e 39 passed, 317 unit pass, no console errors. Committed.
+
+---
+
 ## 2026-08-17 (follow-up 10) — Auto joint at wire crossings + real Live Telemetry
 
 Two items from user feedback:

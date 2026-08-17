@@ -1,13 +1,13 @@
 /**
  * WireJointsLayer — automatically places a connection joint (dot) wherever two
- * bezier wires cross each other.
+ * wires cross each other.
  *
- * This is the "auto joint on wire crossing" option. It only applies to bezier
- * wires (orthogonal wires deliberately run on a grid and are routed around
- * obstacles, so they rarely cross meaningfully). When enabled, we sample each
- * bezier wire into a polyline, test every pair of wires for segment
- * intersections, and render a small filled dot at each crossing — matching the
- * standard electrical-schematic "junction dot" convention.
+ * This is the "auto joint on wire crossing" option. It applies to every wire
+ * kind — bezier, orthogonal, and custom (hand-placed polyline) wires. We sample
+ * each wire into a polyline, test every pair of wires for segment
+ * intersections, cluster near-identical hits into one dot, and render a small
+ * filled dot at each crossing — matching the standard electrical-schematic
+ * "junction dot" convention.
  *
  * Pure visual overlay: it does not alter connectivity or add data-model nodes.
  */
@@ -81,7 +81,6 @@ export function WireJointsLayer({ wires, componentsById, theme, enabled }: WireJ
     // Sample bezier wires into polylines.
     const sampled: { id: string; pts: Point[] }[] = [];
     for (const wire of wires) {
-      if (wire.pathKind === 'orthogonal') continue;
       const pts = sampleWire(wire, componentsById, COMPONENT_DEFS, SAMPLES) as unknown as Point[];
       if (pts.length >= 2) sampled.push({ id: wire.id, pts });
     }

@@ -11,6 +11,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — Session 2026-08-17 (follow-up 11): Component-aware analytics, wire-joint coverage, motor & selection clarity
+- **Analytics / DSO tab is now component-aware.** Previously the Live Measurements + waveform were circuit-level only, so selecting a different component didn't change them. Now, when a single component is selected, the analytics scope to that component's live V/A/W (with a component chip shown), and fall back to circuit totals when nothing is selected.
+- **Auto wire-joint now applies to all wire kinds** — bezier, orthogonal, and custom (hand-placed) wires all get a joint dot where they cross (previously bezier-only).
+- **Removed the pulsing blue circle behind an energized motor** (the accent halo was confusing; the energized state is already shown by the corner port dot, and the motor's shaft rotor still spins realistically).
+- **Wire selection clarity** — the selected wire now gets a clear amber dashed selection ring on top of its existing telemetry label, so it's unmistakable even when "Trace Circuit Path" dims the surrounding network.
+
 ### Added — Session 2026-08-17 (follow-up 10): Auto joint at wire crossings + real Live Telemetry
 - **New setting "Auto joint at wire crossings"** (Settings → Editing): when enabled, a connection joint (dot) is automatically drawn wherever two **bezier** wires cross, matching the standard schematic junction-dot convention. Implemented as a pure visual overlay (`WireJointsLayer.tsx`) that samples bezier wires into polylines, detects segment intersections (with clustering so dense samples collapse to one dot), and renders a white-haloed joint dot. Orthogonal wires are excluded (grid-routed, rarely cross meaningfully). Default off.
 - **Fixed Live Telemetry always showing 0** — `simResult.componentCalculations` was declared in the type and read by the inspector but **never populated by the simulation engine**, so Voltage/Current/Power always read 0 when the simulation ran. The engine now populates `componentCalculations` for energized loads (voltage = supply, current = W/V, power = W) so the inspector's Live Telemetry reflects the real running simulation.

@@ -5,11 +5,18 @@
 
 import { Activity, Sparkles, Thermometer } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { COMPONENT_DEFS, type SimulationResult } from '../../../domain';
+import { COMPONENT_DEFS, type ComponentInstance, type SimulationResult } from '../../../domain';
 import { useCircuitStore, useUiStore } from '../../../store';
 import { AnimatedNumber } from '../AnimatedNumber';
 
-export function InspectorAnalyticsView({ simResult }: { simResult: SimulationResult | null }) {
+interface Props {
+  simResult: SimulationResult | null;
+  /** When a single component is selected, the analytics reflect that
+   *  component's live telemetry; otherwise they show circuit totals. */
+  selectedComp?: ComponentInstance | null;
+}
+
+export function InspectorAnalyticsView({ simResult, selectedComp }: Props) {
   const simRunning = useUiStore((s) => s.simRunning);
   const components = useCircuitStore((s) => s.components);
   const globalVoltage = useCircuitStore((s) => s.globalVoltage);
@@ -36,8 +43,19 @@ export function InspectorAnalyticsView({ simResult }: { simResult: SimulationRes
         c.type.includes('inverter'),
     ) || liveSupplyVoltage > 48;
 
+  // Component-aware telemetry: if a component is selected, scope the
+  // measurements to it; otherwise aggregate the whole energized circuit.
+  const focusComp =
+    selectedComp && !selectedComp.state?.isBlown && !selectedComp.state?.isTripped
+      ? selectedComp
+      : null;
+  const focusDef = focusComp ? COMPONENT_DEFS[focusComp.type] : null;
+  const focusCalc = focusComp ? simResult?.componentCalculations?.[focusComp.id] : undefined;
+
   let activePowerW = 0;
-  if (simRunning && simResult && simResult.energizedComponents.size > 0) {
+  if (focusComp && focusCalc) {
+    activePowerW = focusCalc.powerWatts ?? focusComp.state?.customPowerWatts ?? 0;
+  } else if (simRunning && simResult && simResult.energizedComponents.size > 0) {
     for (const id of simResult.energizedComponents) {
       const comp = components.find((c) => c.id === id);
       if (!comp || comp.state?.isBlown) continue;
@@ -49,13 +67,15 @@ export function InspectorAnalyticsView({ simResult }: { simResult: SimulationRes
     }
   }
 
-  // Realistic dynamic calculations for Live Measurements
-  const voltageLive = simRunning
-    ? liveSupplyVoltage - 0.4 + 0.3 * Math.sin(time * 1.8)
-    : liveSupplyVoltage;
+  const focusVoltage = focusCalc?.voltage ?? liveSupplyVoltage;
+  const focusCurrent =
+    focusCalc?.currentAmps ??
+    (activePowerW > 0 ? activePowerW / Math.max(1, liveSupplyVoltage) : 0);
 
-  const currentAmpsCalculated =
-    activePowerW > 0 ? activePowerW / Math.max(1, liveSupplyVoltage) : 0;
+  // Realistic dynamic calculations for Live Measurements
+  const voltageLive = simRunning ? focusVoltage - 0.4 + 0.3 * Math.sin(time * 1.8) : focusVoltage;
+
+  const currentAmpsCalculated = focusCurrent;
   const currentLive =
     simRunning && activePowerW > 0
       ? currentAmpsCalculated + 0.05 * Math.sin(time * 2.3)
@@ -64,13 +84,15 @@ export function InspectorAnalyticsView({ simResult }: { simResult: SimulationRes
   const powerLive =
     simRunning && activePowerW > 0 ? activePowerW + 2.5 * Math.sin(time * 2.8) : activePowerW;
 
-  const hasInductive = components.some(
-    (c) =>
-      c.type.includes('motor') ||
-      c.type.includes('transformer') ||
-      c.type.includes('fan') ||
-      c.type.includes('pump'),
-  );
+  const hasInductive =
+    (focusComp ? /motor|transformer|fan|pump/.test(focusComp.type) : false) ||
+    components.some(
+      (c) =>
+        c.type.includes('motor') ||
+        c.type.includes('transformer') ||
+        c.type.includes('fan') ||
+        c.type.includes('pump'),
+    );
   const powerFactorLive = simRunning
     ? hasInductive
       ? 0.94 + 0.02 * Math.sin(time * 1.2)
@@ -213,8 +235,15 @@ export function InspectorAnalyticsView({ simResult }: { simResult: SimulationRes
             <span className="size-2 rounded-full bg-emerald-500 shadow-[0_0_8px] shadow-emerald-400 animate-pulse" />
             Live Measurements
           </div>
-          <span className="font-mono text-[10px] text-slate-400">
-            {simRunning ? 'REAL-TIME 60Hz' : 'PAUSED'}
+          <span className="flex items-center gap-1.5">
+            {focusComp && (
+              <span className="rounded-full border border-emerald-500/40 bg-emerald-500/10 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-emerald-300">
+                {focusDef?.label ?? 'Component'}
+              </span>
+            )}
+            <span className="font-mono text-[10px] text-slate-400">
+              {simRunning ? 'REAL-TIME 60Hz' : 'PAUSED'}
+            </span>
           </span>
         </div>
 

@@ -313,7 +313,12 @@ export function Inspector({
             <InspectorSimulationContent selectionState={selectionState} simResult={simResult} />
           )}
 
-          {activeInspectorTab === 'analytics' && <InspectorAnalyticsView simResult={simResult} />}
+          {activeInspectorTab === 'analytics' && (
+            <InspectorAnalyticsView
+              simResult={simResult}
+              selectedComp={selectionState.kind === 'component' ? selectionState.component : null}
+            />
+          )}
 
           {activeInspectorTab === 'validation' && (
             <div className="h-full overflow-y-auto">

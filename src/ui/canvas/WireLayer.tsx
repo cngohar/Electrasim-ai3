@@ -228,6 +228,19 @@ function WirePath({
             pointerEvents="none"
           />
         )}
+        {selected && (
+          <path
+            d={path}
+            fill="none"
+            stroke="#f59e0b"
+            strokeWidth={wireWidth + 8}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeOpacity={0.55}
+            strokeDasharray="8 6"
+            pointerEvents="none"
+          />
+        )}
         {flagged && (
           <path
             d={path}

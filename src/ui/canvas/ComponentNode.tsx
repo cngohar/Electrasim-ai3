@@ -376,17 +376,6 @@ export function ComponentNode({
           stroke={stroke}
           strokeWidth={selected || error ? 2 : active ? 1.5 : 1}
         />
-        {showMotorSpin && (
-          <circle
-            cx={COMP_W / 2}
-            cy={COMP_H / 2}
-            r={COMP_H / 2 - 4}
-            fill={theme.component.accent}
-            fillOpacity={0.18}
-            pointerEvents="none"
-            className="electrasim-motor-pulse"
-          />
-        )}
         {(active || error) && (
           <circle cx={COMP_W - 8} cy={8} r={3} fill={error ? '#ef4444' : theme.component.accent} />
         )}
