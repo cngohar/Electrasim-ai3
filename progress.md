@@ -17,6 +17,16 @@ Format per entry:
 
 ---
 
+## 2026-08-17 (follow-up) — Fix global supply voltage picker hidden under palette
+
+**Bug:** user reported the global supply voltage presets on the sub-header bar were unclickable. Root cause: in the new workbench layout the context bar (`z-20`) and the full-height left palette (`z-20`) tie in stacking order, and the palette renders later, so the voltage dropdown (which opens downward into the palette's area) was covered and its preset buttons intercepted pointer events.
+
+**Fix:** raised the context bar container from `z-20` to `z-40` so the dropdown paints above the palette / inspector / canvas overlays (still below modals at `z-50+`). Verified the 24V preset click updates the supply value. Added a regression test to `e2e/workbench-ui.spec.ts` ("global supply voltage preset is changeable from the context bar").
+
+**Gates:** workbench + smoke + pro-features e2e green (24 passed, 1 skip). Committed.
+
+---
+
 ## 2026-08-17 — UI experiment + pre-existing error fixes
 
 **Task:** approved a "Professional Electrical Workbench" UI experiment, made it permanent, and fixed the pre-existing failing tests.

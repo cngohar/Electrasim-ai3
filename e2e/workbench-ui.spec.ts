@@ -137,4 +137,16 @@ test.describe('workbench shell', () => {
     // Expanding the inspector should show the simulation/telemetry tab header.
     await expect(page.getByText(/SIMULATION PANEL/i)).toBeVisible();
   });
+
+  test('global supply voltage preset is changeable from the context bar', async ({ page }) => {
+    // Regression: the voltage dropdown must not be covered by the left palette.
+    await page.getByTitle('Click to change Global Supply Voltage').click();
+    await page.waitForTimeout(300);
+    const preset = page.getByRole('button', { name: /^24V DC$/ });
+    await expect(preset).toBeVisible();
+    await preset.click();
+    await page.waitForTimeout(300);
+    // The supply value in the context bar reflects the new voltage.
+    await expect(page.getByText(/24 V DC/).first()).toBeVisible();
+  });
 });

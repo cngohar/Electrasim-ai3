@@ -22,6 +22,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Inspector / mini-map / tool-dock repositioned below the new bars.
 - **e2e:** `e2e/workbench-ui.spec.ts` (+10) verifying the new shell.
 
+### Fixed
+- **Global supply voltage picker was unreachable** (`SubHeaderBar.tsx`): the dropdown opened underneath the full-height left component palette (both `z-20`), so its preset buttons were covered and unclickable in the new workbench layout. Raised the context bar to `z-40` so the dropdown paints above the side panels. Regression test added to `e2e/workbench-ui.spec.ts`.
+
 ### Fixed — pre-existing
 - **Compliance gate is now Pro-only** (`uiStore.ts`): the default Student-mode demo circuit could never simulate because it contained its own blocking BS 7671 violations (over-rated breaker, excessive voltage drop, missing RCD, B-curve on motor). Validation remains a hard gate in Pro mode but is advisory in Basic/Student mode, restoring the ability to run the demo.
 - **Fault-injection e2e now run in Pro mode** (`faults-and-editing.spec.ts`): fault injection is intentionally Pro-only; the harness now switches to Pro so the injection/trip/reset flows exercise the intended path.
