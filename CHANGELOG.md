@@ -11,6 +11,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — Session 2026-08-17: Professional Electrical Workbench UI experiment
+- **Full-width top application bar** (`Toolbar.tsx`): ElectraSim brand, Undo/Redo, Guides, Student/Pro mode, Validate, primary Run Simulation, new **Fault Lab** button (arms manual fault controls + opens telemetry), Pro Analyze/Stress Zones, command-palette hint, theme toggle, Settings, and the MCB-lever Menu.
+- **Simulation context bar** (`SubHeaderBar.tsx`): full-width slim strip under the app bar showing Supply / Components / Wires / Simulation state, preserving the voltage picker, project-name edit, UK/US/EU standard selector, and manual-fault toggle.
+- **Collapsible component palette** (`Palette.tsx`): ~260 px expanded / 48 px collapsed rail, search + grouped categories, lightweight SVG glyphs.
+- **Canvas floating toolbar** (`CanvasToolbar.tsx`): Select / Wire / Delete / Zoom-Fit / Reset, reusing existing store actions (no duplicate state).
+- **Bottom console drawer** (`LogPanel.tsx`): collapsed by default with error/warning counts, expands on click.
+- **Editor status bar** (`StatusPill.tsx`): Supply · Live Check · comps · wires · energized · Snap · Grid · Mode · Zoom.
+- **Command palette** (`CommandPalette.tsx`, Ctrl+K): searchable overlay dispatching existing actions (Run Sim, Fault Lab, Validate, Zoom-Fit, Toggle Grid, Copy/Delete, Import/Export, Docs, Settings, Add component). Added `commandPaletteOpen` to the UI store + Ctrl+K/Esc bindings.
+- Inspector / mini-map / tool-dock repositioned below the new bars.
+- **e2e:** `e2e/workbench-ui.spec.ts` (+10) verifying the new shell.
+
+### Fixed — pre-existing
+- **Compliance gate is now Pro-only** (`uiStore.ts`): the default Student-mode demo circuit could never simulate because it contained its own blocking BS 7671 violations (over-rated breaker, excessive voltage drop, missing RCD, B-curve on motor). Validation remains a hard gate in Pro mode but is advisory in Basic/Student mode, restoring the ability to run the demo.
+- **Fault-injection e2e now run in Pro mode** (`faults-and-editing.spec.ts`): fault injection is intentionally Pro-only; the harness now switches to Pro so the injection/trip/reset flows exercise the intended path.
+- **Hidden-guide pill no longer overlaps the inspector** (`GuidedCircuitPanel.tsx`): moved from `right-14 top-24` to top-center so it can't cover the inspector header collapse button.
+
 ### Added — Session 2026-08-15 (part 11): Mini EIC report export
 - **Mini Electrical Installation Certificate export** (Import/Export modal → "Mini EIC", or Ctrl+E): a self-contained printable HTML document styled on the BS 7671 Appendix 6 model form — Part 1 installation/supply details (earthing arrangement + Ze), Part 2 a Schedule of Circuit Results populated from the Zs checker (device & rating, RCD type, cable pair, run length, R1+R2, Ze, Zs, max Zs, prospective fault current, ≤0.4 s disconnection, PASS / PASS* / FAIL verdict with the GN3 80 % rule explained), Part 3 signature/test-instrument blanks — plus the on-face "EDUCATIONAL SIMULATION OUTPUT — NOT A CERTIFICATE" banner and an estimated-lengths warning when wires lack lengths. Print/Save-as-PDF via the in-document button.
 - `src/lib/export/eicReport.ts` is dependency-free string rendering over `runZsChecks`; all user-influenced labels are HTML-escaped.

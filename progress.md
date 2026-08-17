@@ -17,7 +17,33 @@ Format per entry:
 
 ---
 
-## 2026-07-21 — v1.6.1 — Learning Readiness, Mobile Guidance & Homepage SEO
+## 2026-08-17 — UI experiment + pre-existing error fixes
+
+**Task:** approved a "Professional Electrical Workbench" UI experiment, made it permanent, and fixed the pre-existing failing tests.
+
+**Done — Workbench UI (approved):**
+- Full-width top application bar (`Toolbar.tsx`): brand, Undo/Redo, Guides, Student/Pro, Validate, primary Run Simulation, new Fault Lab button (arms manual fault controls + opens telemetry), Pro Analyze/Stress Zones, Ctrl+K hint, theme, Settings, MCB-lever menu.
+- Simulation context bar (`SubHeaderBar.tsx`) as a full-width slim strip under the app bar (Supply / Components / Wires / Sim state; voltage picker + standard selector + fault toggle preserved).
+- Collapsible component palette (`Palette.tsx`): ~260 px / 48 px rail, search, grouped categories, lightweight SVG glyphs.
+- Canvas floating toolbar (`CanvasToolbar.tsx`): Select / Wire / Delete / Zoom-Fit / Reset, reusing existing store actions.
+- Bottom console drawer (`LogPanel.tsx`): collapsed by default, error/warning counts, expands on click.
+- Editor status bar (`StatusPill.tsx`): Supply · Live Check · comps · wires · energized · Snap · Grid · Mode · Zoom.
+- Command palette (`CommandPalette.tsx`, Ctrl+K): native `<dialog>` overlay dispatching existing actions. Added `commandPaletteOpen` + Ctrl+K/Esc bindings.
+- Inspector / mini-map / tool-dock repositioned below the new bars.
+
+**Fixed — pre-existing failures (all were failing on the pristine checkout too):**
+- **Compliance gate is now Pro-only** (`uiStore.ts`). The default Student-mode demo circuit could never simulate because it contained its own blocking BS 7671 violations. In Pro mode the gate remains a hard block; in Basic/Student mode it is advisory. This fixed the smoke "boots and can start the simulation" test on all viewports.
+- **Fault-injection e2e now run in Pro mode** (`faults-and-editing.spec.ts`) — fault injection is intentionally Pro-only, so the harness now switches to Pro. The 5 fault tests (bolted short, earth leakage, smooth DC, arc fault, fault undo) now pass on chromium + tablet-safari.
+- **Hidden-guide pill no longer overlaps the inspector** (`GuidedCircuitPanel.tsx`): moved from `right-14 top-24` to `left-1/2 top-36` so it can't cover the inspector header collapse button (this was exposing a real z-order layout collision during the fault flow).
+
+**Verification:**
+- Full e2e suite across chromium / mobile-chrome / tablet-safari: **101 passed, 16 intentional skips, 0 failed.**
+- Unit: **317 tests passed** across 36 files. Typecheck (app + e2e configs): **0 errors**. Biome lint/format clean.
+- `npm run check` + pre-commit hooks green. Committed on `main` (`1747d52`).
+
+**Next:** Deploy/regenerate bundle if desired; the workbench shell can be tuned further (e.g. merging the context bar into the status bar for more canvas height).
+
+---
 
 **Done:**
 - Added the Push-Button Doorbell and RCBO-Protected Socket Guided Circuits, with focused learning copy, checklists, and circuit behavior that matches the current simulation model.
