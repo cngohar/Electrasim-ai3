@@ -85,6 +85,7 @@ describe('settingsStore — Phase 6.1', () => {
       regulationStandard: 'uk',
       manualFaultInjection: true,
       stressZonesEnabled: false,
+      autoWireJoints: false,
     });
 
     expect(parsed).not.toHaveProperty('injected');
@@ -106,9 +107,7 @@ describe('settingsStore — Phase 6.1', () => {
     expect(parsed).toEqual({ ...__SETTINGS_DEFAULTS, showGrid: false });
     // v1 blobs still hydrate (forward-compat onto v2 defaults); unknown
     // versions are rejected; malformed payloads are rejected.
-    expect(__parsePersistedSettings({ version: 1, settings: {} })).toEqual(
-      __SETTINGS_DEFAULTS,
-    );
+    expect(__parsePersistedSettings({ version: 1, settings: {} })).toEqual(__SETTINGS_DEFAULTS);
     expect(__parsePersistedSettings({ version: 99, settings: {} })).toBeNull();
     expect(__parsePersistedSettings({ version: 2, settings: [] })).toBeNull();
   });

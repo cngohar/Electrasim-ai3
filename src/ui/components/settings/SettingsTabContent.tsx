@@ -27,6 +27,7 @@ function EditingSettings() {
   const confirmDelete = useSettingsStore((state) => state.confirmDelete);
   const customWiringMode = useSettingsStore((state) => state.customWiringMode);
   const routingStyle = useSettingsStore((state) => state.routingStyle);
+  const autoWireJoints = useSettingsStore((state) => state.autoWireJoints);
   const setSetting = useSettingsStore((state) => state.setSetting);
 
   return (
@@ -61,6 +62,17 @@ function EditingSettings() {
       <RoutingStyleSelector
         value={routingStyle}
         onChange={(value) => setSetting('routingStyle', value)}
+      />
+      <ElectricToggle
+        label="Auto joint at wire crossings"
+        description="When two bezier wires cross each other, automatically place a connection joint (dot) at the crossing point. A standard schematic convention for marking intentional junctions. Applies to bezier wires only."
+        preview={
+          autoWireJoints
+            ? '🔘 A joint dot is drawn wherever two bezier wires cross.'
+            : '◯ Crossed wires are shown as plain crossings with no joint dot.'
+        }
+        checked={autoWireJoints}
+        onChange={(value) => setSetting('autoWireJoints', value)}
       />
     </>
   );

@@ -16,9 +16,9 @@ import type {
   FaultDiagnostic,
   SimulationResult,
 } from '../types';
+import { findProtectionDevicesInNetwork } from './faultPropagation';
 import { indexCircuit, portKey } from './indexing';
 import { traverseSources } from './traversal';
-import { findProtectionDevicesInNetwork } from './faultPropagation';
 import { getCableAmpacity } from './tripCurves';
 
 // ─── Public entry point ────────────────────────────────────────────────────
@@ -123,6 +123,10 @@ export function simulate(circuit: Circuit, options: SimulateOptions = {}): Simul
   const warnings: string[] = [];
   const blownComponents: { id: string; reason: 'overvoltage' | 'overcurrent' | 'overload' }[] = [];
   const wireCalculations: NonNullable<SimulationResult['wireCalculations']> = {};
+  // Per-component live telemetry (voltage / current / power). Populated so the
+  // inspector's Live Telemetry section reflects the running simulation instead
+  // of always reading 0.
+  const componentCalculations: NonNullable<SimulationResult['componentCalculations']> = {};
 
   // Empty circuit → no-op (legacy returns early).
   if (circuit.components.length === 0) {
@@ -610,6 +614,18 @@ export function simulate(circuit: Circuit, options: SimulateOptions = {}): Simul
         pWatts = totalLoadAmps * totalLoadAmps * 0.02;
       }
     }
+    // Per-component live telemetry (voltage / current / power). Only energized,
+    // non-blown loads carry real current; sources sit at supply voltage.
+    if (isEnergized && !c.state.isBlown && !c.state.isTripped) {
+      const v = def?.isSource ? supplyVoltage : supplyVoltage;
+      const amps = def?.isLoad && supplyVoltage > 0 ? pWatts / Math.max(1, supplyVoltage) : 0;
+      componentCalculations[c.id] = {
+        voltage: v,
+        currentAmps: amps,
+        powerWatts: def?.isLoad ? pWatts : 0,
+      };
+    }
+
     const ambientC = 22;
     const tempC = ambientC + (pWatts > 0 ? Math.min(120, pWatts * 0.5) : 0);
     let colorCode = '#22c55e';
@@ -646,6 +662,8 @@ export function simulate(circuit: Circuit, options: SimulateOptions = {}): Simul
     supplyVoltage,
     wireHeatRatios: Object.keys(wireHeatRatios).length > 0 ? wireHeatRatios : undefined,
     wireCalculations: Object.keys(wireCalculations).length > 0 ? wireCalculations : undefined,
+    componentCalculations:
+      Object.keys(componentCalculations).length > 0 ? componentCalculations : undefined,
     bustedWires: bustedWires.size > 0 ? bustedWires : undefined,
     trippedComponents: trippedComponents.length > 0 ? trippedComponents : undefined,
     wireMeltEvents: wireMeltEvents.length > 0 ? wireMeltEvents : undefined,

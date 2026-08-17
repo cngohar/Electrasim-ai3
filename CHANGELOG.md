@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — Session 2026-08-17 (follow-up 10): Auto joint at wire crossings + real Live Telemetry
+- **New setting "Auto joint at wire crossings"** (Settings → Editing): when enabled, a connection joint (dot) is automatically drawn wherever two **bezier** wires cross, matching the standard schematic junction-dot convention. Implemented as a pure visual overlay (`WireJointsLayer.tsx`) that samples bezier wires into polylines, detects segment intersections (with clustering so dense samples collapse to one dot), and renders a white-haloed joint dot. Orthogonal wires are excluded (grid-routed, rarely cross meaningfully). Default off.
+- **Fixed Live Telemetry always showing 0** — `simResult.componentCalculations` was declared in the type and read by the inspector but **never populated by the simulation engine**, so Voltage/Current/Power always read 0 when the simulation ran. The engine now populates `componentCalculations` for energized loads (voltage = supply, current = W/V, power = W) so the inspector's Live Telemetry reflects the real running simulation.
+
 ### Changed — Session 2026-08-17 (follow-up 9): Clarify per-component Operating Voltage vs global supply
 - The Inspector's per-component **"Operating Voltage (V)"** (under "Custom Electrical Specifications") previously looked like it could change the circuit's supply, but it only set a per-component `customVoltage` design override — it did **not** change the global voltage. This confused users (e.g. setting it on a contactor while the global stayed 230V).
 - Resolved (Pro-only design override): in **Student/Basic mode** the Operating Voltage is now **read-only and synced to the actual circuit supply** (global voltage), so it can never diverge, with a note explaining Pro unlocks an override. In **Pro mode** it remains an editable per-component design voltage (used for breaker sizing / compliance), with a tooltip clarifying it doesn't change the global supply.

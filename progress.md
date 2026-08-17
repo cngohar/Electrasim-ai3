@@ -17,6 +17,18 @@ Format per entry:
 
 ---
 
+## 2026-08-17 (follow-up 10) — Auto joint at wire crossings + real Live Telemetry
+
+Two items from user feedback:
+1. **New option: auto joint at wire crossings.** Added an "Auto joint at wire crossings" setting (Settings → Editing). When on, `WireJointsLayer.tsx` samples each bezier wire into a polyline, tests every wire pair for segment intersections, clusters near-identical hits, and draws a white-haloed joint dot at each crossing (the standard schematic junction-dot convention). Bezier-only; orthogonal wires are excluded. Pure visual overlay — no topology change. Default off.
+2. **Live Telemetry always showed 0.** Root cause: `SimulationResult.componentCalculations` was declared in `types.ts` and read by `ComponentPropertiesView.tsx`, but the simulation engine never populated it. Fixed in `simulate.ts` — the engine now fills `componentCalculations` for energized loads (voltage = supply voltage, current = W/V, power = W). Verified at the domain level: an energized 60W bulb at 230V returns `{voltage:230, currentAmps:0.26, powerWatts:60}`.
+
+**Waveform/analytics chart question answered:** the analytics waveforms and the properties-tab voltage sparkline are **procedurally synthesized** — sine/ripple curves driven by a `Math.sin` clock plus small jitter on the real `liveVoltage`. So the numbers are real (now fixed), but the chart shape is a synthetic animation, not a recording of actual transient fluctuation.
+
+Gates: typecheck clean, chromium e2e 39 passed, 317 unit pass (settingsStore whitelist test updated for the new field). Committed.
+
+---
+
 ## 2026-08-17 (follow-up 9) — Clarify per-component Operating Voltage vs global supply
 
 **User question:** "why is voltage changing when global voltage is set?" Root cause: there are two voltage concepts in the app — the **global supply voltage** (one per circuit, 230V) and a **per-component "Operating Voltage"** override in the Inspector's "Custom Electrical Specifications". The per-component field set `customVoltage` (used for breaker sizing / compliance only) and did **not** change the global supply, so the two could diverge confusingly.

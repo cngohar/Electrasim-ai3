@@ -18,6 +18,7 @@ import {
 import { ComponentLayer, ComponentTooltip } from './canvas/ComponentLayer';
 import { CanvasOverlayLayer } from './canvas/OverlayLayer';
 import { StressZoneOverlay } from './canvas/StressZoneOverlay';
+import { WireJointsLayer } from './canvas/WireJointsLayer';
 import { WireLayer } from './canvas/WireLayer';
 import { buildOrthogonalPath, screenToSvg, svgToWorld } from './canvas/geometry';
 import type { CanvasTheme, PortLoc } from './canvas/types';
@@ -109,6 +110,7 @@ export function CircuitCanvas({
   const activeLoadEffectsSetting = useSettingsStore((s) => s.activeLoadEffects);
   const reducedEffectsSetting = useSettingsStore((s) => s.reducedEffects);
   const customWiringMode = useSettingsStore((s) => s.customWiringMode);
+  const autoWireJoints = useSettingsStore((s) => s.autoWireJoints);
   const tracePathMode = useUiStore((s) => s.tracePathMode);
 
   // The custom-path cursor uses a ref + rAF so we
@@ -499,6 +501,13 @@ export function CircuitCanvas({
                 target: { kind: 'wire', id },
               });
             }}
+          />
+
+          <WireJointsLayer
+            wires={circuit.wires}
+            componentsById={byId}
+            theme={theme}
+            enabled={autoWireJoints}
           />
 
           <CanvasOverlayLayer

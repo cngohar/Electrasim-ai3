@@ -131,6 +131,13 @@ export interface UserSettings {
    * for the currently selected regulation standard.
    */
   stressZonesEnabled: boolean;
+  /**
+   * Automatically place a connection joint (dot) wherever two bezier wires
+   * cross each other. This visually marks the crossing as an intentional
+   * junction (a common schematic convention). Default off. Toggled in
+   * Settings → Editing.
+   */
+  autoWireJoints: boolean;
 }
 
 const DEFAULTS: UserSettings = {
@@ -153,6 +160,7 @@ const DEFAULTS: UserSettings = {
   regulationStandard: 'uk',
   manualFaultInjection: true,
   stressZonesEnabled: false,
+  autoWireJoints: false,
 };
 
 interface SettingsState extends UserSettings {
@@ -239,6 +247,7 @@ function parsePersistedSettings(value: unknown): UserSettings | null {
       DEFAULTS.manualFaultInjection,
     ),
     stressZonesEnabled: booleanOrDefault(stored.stressZonesEnabled, DEFAULTS.stressZonesEnabled),
+    autoWireJoints: booleanOrDefault(stored.autoWireJoints, DEFAULTS.autoWireJoints),
   };
 }
 
@@ -312,6 +321,7 @@ function snapshot(state: SettingsState): UserSettings {
     regulationStandard: state.regulationStandard,
     manualFaultInjection: state.manualFaultInjection,
     stressZonesEnabled: state.stressZonesEnabled,
+    autoWireJoints: state.autoWireJoints,
   };
 }
 
@@ -354,7 +364,8 @@ export async function startSettingsPersistence(): Promise<void> {
       state.thermalOverlayEnabled === prev.thermalOverlayEnabled &&
       state.regulationStandard === prev.regulationStandard &&
       state.manualFaultInjection === prev.manualFaultInjection &&
-      state.stressZonesEnabled === prev.stressZonesEnabled
+      state.stressZonesEnabled === prev.stressZonesEnabled &&
+      state.autoWireJoints === prev.autoWireJoints
     ) {
       return;
     }
