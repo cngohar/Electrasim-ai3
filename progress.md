@@ -17,6 +17,20 @@ Format per entry:
 
 ---
 
+## 2026-08-17 (follow-up 6) — Refined default SVG art per user review
+
+User approved the LED bulb and fan-speed regulator; asked for improvements to the single/two-way switches, junction box, MCB, motor, and 3-pin socket. Refined `componentArt.ts`:
+- **MCB**: terminal clamps + screws, DIN clip, recessed toggle mechanism, red trip window, "B16" rating plate.
+- **UK 3-pin socket**: bevel faceplate + 4 corner screws, recessed well, earth pin + L/N blades, shutter line.
+- **Single-way switch**: glossy angled rocker with highlight, corner screws, status pip.
+- **Two-way switch**: double-gang-style rocker with L1/L2 dots.
+- **Junction box**: round screw-on lid, moulded cross, central screw, 4 cable entries.
+- **Motor**: finned body, end caps, shaft, terminal box, feet.
+
+Gates: typecheck clean, targeted e2e 28 passed, no console errors. Committed.
+
+---
+
 ## 2026-08-17 (follow-up 5) — Near-realistic SVG component art (default only, experimental)
 
 Per improvement-review #4, upgraded the **default seed-circuit components** to hand-drawn near-realistic lightweight SVG art so the user can preview before extending to the whole catalogue.

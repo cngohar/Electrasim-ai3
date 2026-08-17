@@ -52,20 +52,37 @@ const ART: Record<string, string> = {
         <stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#e2e8f0"/>
       </linearGradient>
       <linearGradient id="${T('mcb')}bar" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0" stop-color="#38bdf8"/><stop offset="1" stop-color="#0284c7"/>
+        <stop offset="0" stop-color="#60a5fa"/><stop offset="0.5" stop-color="#3b82f6"/><stop offset="1" stop-color="#1d4ed8"/>
+      </linearGradient>
+      <linearGradient id="${T('mcb')}toggle" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#f8fafc"/><stop offset="1" stop-color="#cbd5e1"/>
+      </linearGradient>
+      <linearGradient id="${T('mcb')}screw" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#f1f5f9"/><stop offset="1" stop-color="#94a3b8"/>
       </linearGradient>
     </defs>
-    <rect x="18" y="6" width="28" height="52" rx="5" fill="url(#${T('mcb')}body)" stroke="#64748b" stroke-width="2"/>
-    <rect x="18" y="6" width="28" height="8" rx="4" fill="#334155"/>
-    <line x1="22" y1="9" x2="42" y2="9" stroke="#64748b" stroke-width="1"/>
-    <rect x="23" y="17" width="18" height="24" rx="2" fill="#cbd5e1"/>
-    <rect x="26" y="20" width="12" height="18" rx="1.5" fill="url(#${T('mcb')}bar)"/>
-    <rect x="29" y="22" width="6" height="14" rx="1.5" fill="#0f172a" transform="rotate(18 32 29)"/>
-    <circle cx="32" cy="22" r="1.6" fill="#e0f2fe"/>
-    <line x1="24" y1="46" x2="40" y2="46" stroke="#64748b" stroke-width="1"/>
-    <rect x="21" y="46" width="22" height="7" rx="2" fill="#94a3b8"/>
-    <line x1="26" y1="49.5" x2="38" y2="49.5" stroke="#e2e8f0" stroke-width="1"/>
-    <text x="32" y="59" text-anchor="middle" font-size="7" font-weight="800" fill="#475569" font-family="ui-monospace,monospace">B16</text>
+    <!-- Housing -->
+    <rect x="17" y="5" width="30" height="54" rx="5" fill="url(#${T('mcb')}body)" stroke="#475569" stroke-width="1.5"/>
+    <!-- Side profile shading -->
+    <rect x="17" y="5" width="4" height="54" rx="2" fill="#cbd5e1"/>
+    <rect x="43" y="5" width="4" height="54" rx="2" fill="#cbd5e1"/>
+    <!-- Top terminal clamp + screw -->
+    <rect x="22" y="5" width="20" height="7" rx="3" fill="#64748b"/>
+    <circle cx="32" cy="8.5" r="2.4" fill="url(#${T('mcb')}screw)"/>
+    <line x1="30.4" y1="8.5" x2="33.6" y2="8.5" stroke="#475569" stroke-width="0.8"/>
+    <!-- DIN clip at bottom -->
+    <path d="M20 56 h24 l-2 -4 h-20 Z" fill="#64748b"/>
+    <!-- Toggle mechanism recess -->
+    <rect x="23" y="15" width="18" height="30" rx="4" fill="#f1f5f9" stroke="#cbd5e1" stroke-width="1"/>
+    <!-- Toggle handle (up = ON) -->
+    <g>
+      <rect x="27" y="18" width="10" height="18" rx="5" fill="url(#${T('mcb')}toggle)" stroke="#94a3b8" stroke-width="1"/>
+      <line x1="29" y1="20" x2="35" y2="20" stroke="#94a3b8" stroke-width="0.8"/>
+    </g>
+    <!-- Trip status window -->
+    <rect x="26" y="38" width="12" height="5" rx="1.5" fill="#dc2626" stroke="#991b1b" stroke-width="0.8"/>
+    <!-- Rating plate -->
+    <text x="32" y="51" text-anchor="middle" font-size="6" font-weight="800" fill="#0f172a" font-family="ui-monospace,monospace">B16</text>
   `),
 
   // ─── RCD / RCCB ────────────────────────────────────────────────────────
@@ -106,53 +123,102 @@ const ART: Record<string, string> = {
   'socket-3pin': S(`
     <defs>
       <linearGradient id="${T('socket3pin')}face" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#e2e8f0"/>
+        <stop offset="0" stop-color="#ffffff"/><stop offset="0.5" stop-color="#f8fafc"/><stop offset="1" stop-color="#e2e8f0"/>
+      </linearGradient>
+      <radialGradient id="${T('socket3pin')}recess" cx="0.5" cy="0.4" r="1">
+        <stop offset="0" stop-color="#e2e8f0"/><stop offset="1" stop-color="#cbd5e1"/>
+      </radialGradient>
+      <linearGradient id="${T('socket3pin')}screw" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#f8fafc"/><stop offset="1" stop-color="#94a3b8"/>
       </linearGradient>
     </defs>
-    <rect x="10" y="8" width="44" height="48" rx="9" fill="url(#${T('socket3pin')}face)" stroke="#94a3b8" stroke-width="2"/>
-    <rect x="14" y="12" width="36" height="40" rx="6" fill="#f1f5f9" stroke="#cbd5e1" stroke-width="1.5"/>
-    <circle cx="20" cy="16" r="1.6" fill="#cbd5e1"/>
-    <circle cx="44" cy="16" r="1.6" fill="#cbd5e1"/>
-    <rect x="31.2" y="16" width="2.6" height="9" rx="1.3" fill="#0f172a"/>
-    <rect x="20" y="29" width="8" height="3.6" rx="1.4" fill="#0f172a"/>
-    <rect x="36" y="29" width="8" height="3.6" rx="1.4" fill="#0f172a"/>
-    <rect x="29.5" y="36" width="6" height="5" rx="1.5" fill="#475569"/>
-    <path d="M32 36 v-6" stroke="#334155" stroke-width="1.2"/>
-    <circle cx="20" cy="44" r="1.6" fill="#cbd5e1"/>
-    <circle cx="44" cy="44" r="1.6" fill="#cbd5e1"/>
+    <!-- Faceplate with bevel -->
+    <rect x="9" y="7" width="46" height="50" rx="9" fill="url(#${T('socket3pin')}face)" stroke="#94a3b8" stroke-width="1.5"/>
+    <rect x="12" y="10" width="40" height="44" rx="7" fill="none" stroke="#cbd5e1" stroke-width="0.8"/>
+    <!-- Corner screws -->
+    <circle cx="16" cy="14" r="2" fill="url(#${T('socket3pin')}screw)"/>
+    <line x1="15" y1="14" x2="17" y2="14" stroke="#64748b" stroke-width="0.7"/>
+    <circle cx="48" cy="14" r="2" fill="url(#${T('socket3pin')}screw)"/>
+    <line x1="47" y1="14" x2="49" y2="14" stroke="#64748b" stroke-width="0.7"/>
+    <circle cx="16" cy="50" r="2" fill="url(#${T('socket3pin')}screw)"/>
+    <line x1="15" y1="50" x2="17" y2="50" stroke="#64748b" stroke-width="0.7"/>
+    <circle cx="48" cy="50" r="2" fill="url(#${T('socket3pin')}screw)"/>
+    <line x1="47" y1="50" x2="49" y2="50" stroke="#64748b" stroke-width="0.7"/>
+    <!-- Socket recess -->
+    <rect x="18" y="18" width="28" height="30" rx="5" fill="url(#${T('socket3pin')}recess)"/>
+    <!-- Earth pin (top, centre) -->
+    <rect x="30.4" y="16" width="3.2" height="10" rx="1.6" fill="#0f172a"/>
+    <ellipse cx="32" cy="16.5" rx="2.2" ry="1.2" fill="#334155"/>
+    <!-- Line + neutral blades -->
+    <rect x="20" y="30" width="9" height="4" rx="1.5" fill="#0f172a"/>
+    <ellipse cx="20" cy="31.5" rx="1.2" ry="2.2" fill="#334155"/>
+    <rect x="35" y="30" width="9" height="4" rx="1.5" fill="#0f172a"/>
+    <ellipse cx="44" cy="31.5" rx="1.2" ry="2.2" fill="#334155"/>
+    <!-- Shutter line -->
+    <rect x="18" y="37" width="28" height="1" fill="#94a3b8" opacity="0.5"/>
   `),
 
   // ─── Wall rocker switch ────────────────────────────────────────────────
   'single-way-switch': S(`
     <defs>
       <linearGradient id="${T('singlewayswitch')}face" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#e2e8f0"/>
+        <stop offset="0" stop-color="#ffffff"/><stop offset="0.5" stop-color="#f8fafc"/><stop offset="1" stop-color="#e2e8f0"/>
       </linearGradient>
       <linearGradient id="${T('singlewayswitch')}rocker" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0" stop-color="#f8fafc"/><stop offset="1" stop-color="#cbd5e1"/>
+        <stop offset="0" stop-color="#ffffff"/><stop offset="0.5" stop-color="#f1f5f9"/><stop offset="1" stop-color="#cbd5e1"/>
+      </linearGradient>
+      <linearGradient id="${T('singlewayswitch')}screw" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#f8fafc"/><stop offset="1" stop-color="#94a3b8"/>
       </linearGradient>
     </defs>
-    <rect x="12" y="8" width="40" height="48" rx="8" fill="url(#${T('singlewayswitch')}face)" stroke="#94a3b8" stroke-width="2"/>
-    <circle cx="18" cy="13" r="1.5" fill="#cbd5e1"/>
-    <circle cx="46" cy="13" r="1.5" fill="#cbd5e1"/>
-    <rect x="18" y="16" width="28" height="32" rx="6" fill="url(#${T('singlewayswitch')}rocker)" stroke="#94a3b8" stroke-width="1.5"/>
-    <rect x="22" y="22" width="20" height="20" rx="4" fill="#e2e8f0" stroke="#94a3b8" stroke-width="1"/>
-    <line x1="22" y1="32" x2="42" y2="32" stroke="#cbd5e1" stroke-width="1.5"/>
-    <circle cx="32" cy="26" r="1.8" fill="#16a34a"/>
+    <!-- Faceplate -->
+    <rect x="11" y="7" width="42" height="50" rx="8" fill="url(#${T('singlewayswitch')}face)" stroke="#94a3b8" stroke-width="1.5"/>
+    <!-- Corner screws -->
+    <circle cx="16" cy="12" r="1.8" fill="url(#${T('singlewayswitch')}screw)"/>
+    <circle cx="48" cy="12" r="1.8" fill="url(#${T('singlewayswitch')}screw)"/>
+    <circle cx="16" cy="52" r="1.8" fill="url(#${T('singlewayswitch')}screw)"/>
+    <circle cx="48" cy="52" r="1.8" fill="url(#${T('singlewayswitch')}screw)"/>
+    <!-- Rocker recess -->
+    <rect x="19" y="17" width="26" height="30" rx="5" fill="#e2e8f0" stroke="#cbd5e1" stroke-width="0.8"/>
+    <!-- Rocker (angled, glossy) -->
+    <g transform="rotate(12 32 32)">
+      <rect x="22" y="20" width="20" height="24" rx="4" fill="url(#${T('singlewayswitch')}rocker)" stroke="#94a3b8" stroke-width="1"/>
+      <rect x="22" y="20" width="20" height="5" rx="2" fill="#ffffff" opacity="0.5"/>
+    </g>
+    <!-- Pivot line -->
+    <line x1="22" y1="32" x2="42" y2="32" stroke="#cbd5e1" stroke-width="1"/>
+    <!-- Green status pip -->
+    <circle cx="32" cy="25" r="1.6" fill="#16a34a"/>
   `),
 
   // ─── Two-way switch ────────────────────────────────────────────────────
   'two-way-switch': S(`
     <defs>
       <linearGradient id="${T('twowayswitch')}face" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#e2e8f0"/>
+        <stop offset="0" stop-color="#ffffff"/><stop offset="0.5" stop-color="#f8fafc"/><stop offset="1" stop-color="#e2e8f0"/>
+      </linearGradient>
+      <linearGradient id="${T('twowayswitch')}rocker" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#ffffff"/><stop offset="0.5" stop-color="#f1f5f9"/><stop offset="1" stop-color="#cbd5e1"/>
+      </linearGradient>
+      <linearGradient id="${T('twowayswitch')}screw" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#f8fafc"/><stop offset="1" stop-color="#94a3b8"/>
       </linearGradient>
     </defs>
-    <rect x="12" y="8" width="40" height="48" rx="8" fill="url(#${T('twowayswitch')}face)" stroke="#94a3b8" stroke-width="2"/>
-    <rect x="18" y="16" width="28" height="32" rx="6" fill="#e2e8f0" stroke="#94a3b8" stroke-width="1.5"/>
-    <path d="M22 26 L30 20 L30 26 L22 32 Z M38 26 L30 20 L30 26 L38 32 Z" fill="#f8fafc" stroke="#94a3b8" stroke-width="1"/>
-    <path d="M22 40 L30 34 L30 40 L22 46 Z M38 40 L30 34 L30 40 L38 46 Z" fill="#f8fafc" stroke="#94a3b8" stroke-width="1"/>
-    <circle cx="30" cy="30" r="1.8" fill="#16a34a"/>
+    <!-- Faceplate -->
+    <rect x="11" y="7" width="42" height="50" rx="8" fill="url(#${T('twowayswitch')}face)" stroke="#94a3b8" stroke-width="1.5"/>
+    <circle cx="16" cy="12" r="1.8" fill="url(#${T('twowayswitch')}screw)"/>
+    <circle cx="48" cy="12" r="1.8" fill="url(#${T('twowayswitch')}screw)"/>
+    <circle cx="16" cy="52" r="1.8" fill="url(#${T('twowayswitch')}screw)"/>
+    <circle cx="48" cy="52" r="1.8" fill="url(#${T('twowayswitch')}screw)"/>
+    <!-- Two-way rocker (double-gang style with L1/L2) -->
+    <rect x="19" y="17" width="26" height="30" rx="5" fill="#e2e8f0" stroke="#cbd5e1" stroke-width="0.8"/>
+    <g transform="rotate(-8 32 32)">
+      <rect x="22" y="20" width="20" height="24" rx="4" fill="url(#${T('twowayswitch')}rocker)" stroke="#94a3b8" stroke-width="1"/>
+      <rect x="22" y="20" width="20" height="5" rx="2" fill="#ffffff" opacity="0.5"/>
+    </g>
+    <line x1="22" y1="32" x2="42" y2="32" stroke="#cbd5e1" stroke-width="1"/>
+    <circle cx="25" cy="27" r="1.4" fill="#94a3b8"/>
+    <circle cx="39" cy="37" r="1.4" fill="#94a3b8"/>
   `),
 
   // ─── Push button (momentary) ───────────────────────────────────────────
@@ -190,23 +256,40 @@ const ART: Record<string, string> = {
     <circle cx="32" cy="32" r="2.5" fill="#e0f2fe"/>
   `),
 
-  // ─── Motor ─────────────────────────────────────────────────────────────
+  // ─── Finned electric motor ─────────────────────────────────────────────
   motor: S(`
     <defs>
       <linearGradient id="${T('motor')}body" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#cbd5e1"/><stop offset="0.5" stop-color="#94a3b8"/><stop offset="1" stop-color="#64748b"/>
+      </linearGradient>
+      <linearGradient id="${T('motor')}endcap" x1="0" y1="0" x2="0" y2="1">
         <stop offset="0" stop-color="#f1f5f9"/><stop offset="1" stop-color="#94a3b8"/>
       </linearGradient>
+      <linearGradient id="${T('motor')}tbox" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#e2e8f0"/><stop offset="1" stop-color="#64748b"/>
+      </linearGradient>
     </defs>
-    <rect x="16" y="14" width="32" height="36" rx="6" fill="url(#${T('motor')}body)" stroke="#475569" stroke-width="2"/>
-    <line x1="16" y1="22" x2="48" y2="22" stroke="#64748b" stroke-width="1"/>
-    <line x1="16" y1="30" x2="48" y2="30" stroke="#64748b" stroke-width="1"/>
-    <line x1="16" y1="38" x2="48" y2="38" stroke="#64748b" stroke-width="1"/>
-    <line x1="16" y1="46" x2="48" y2="46" stroke="#64748b" stroke-width="1"/>
-    <rect x="40" y="18" width="10" height="6" rx="2" fill="#0f172a"/>
-    <rect x="40" y="40" width="10" height="6" rx="2" fill="#0f172a"/>
-    <circle cx="32" cy="32" r="8" fill="#334155" stroke="#94a3b8" stroke-width="1.5"/>
-    <path d="M32 24 L32 27 M32 37 L32 40 M24 32 L27 32 M37 32 L40 32" stroke="#e2e8f0" stroke-width="2" stroke-linecap="round"/>
-    <circle cx="32" cy="32" r="2" fill="#38bdf8"/>
+    <!-- Cylindrical body (fins) -->
+    <rect x="14" y="22" width="36" height="22" rx="4" fill="url(#${T('motor')}body)" stroke="#475569" stroke-width="1.5"/>
+    <!-- Cooling fins -->
+    <g stroke="#64748b" stroke-width="1.2">
+      <line x1="22" y1="22" x2="22" y2="44"/>
+      <line x1="27" y1="22" x2="27" y2="44"/>
+      <line x1="32" y1="22" x2="32" y2="44"/>
+      <line x1="37" y1="22" x2="37" y2="44"/>
+      <line x1="42" y1="22" x2="42" y2="44"/>
+    </g>
+    <!-- End caps -->
+    <rect x="10" y="22" width="6" height="22" rx="2" fill="url(#${T('motor')}endcap)" stroke="#64748b" stroke-width="1.2"/>
+    <rect x="48" y="22" width="6" height="22" rx="2" fill="url(#${T('motor')}endcap)" stroke="#64748b" stroke-width="1.2"/>
+    <!-- Shaft on right -->
+    <rect x="54" y="30" width="7" height="6" rx="1" fill="#94a3b8" stroke="#64748b" stroke-width="1"/>
+    <!-- Terminal box on top -->
+    <rect x="27" y="14" width="14" height="10" rx="2" fill="url(#${T('motor')}tbox)" stroke="#475569" stroke-width="1.2"/>
+    <rect x="30" y="16" width="8" height="6" rx="1" fill="#0f172a"/>
+    <circle cx="34" cy="19" r="1" fill="#38bdf8"/>
+    <!-- Base / feet -->
+    <path d="M16 44 h32 v3 h-32 Z" fill="#64748b"/>
   `),
 
   // ─── Rotary dimmer / fan speed switch ──────────────────────────────────
@@ -266,22 +349,33 @@ const ART: Record<string, string> = {
     <circle cx="50" cy="41" r="1.6" fill="#facc15"/>
   `),
 
-  // ─── Junction box ──────────────────────────────────────────────────────
+  // ─── 4-way round junction box ──────────────────────────────────────────
   'junction-box': S(`
     <defs>
       <radialGradient id="${T('junctionbox')}cap" cx="0.4" cy="0.35" r="1">
-        <stop offset="0" stop-color="#f1f5f9"/><stop offset="1" stop-color="#94a3b8"/>
+        <stop offset="0" stop-color="#ffffff"/><stop offset="0.6" stop-color="#f1f5f9"/><stop offset="1" stop-color="#cbd5e1"/>
       </radialGradient>
+      <linearGradient id="${T('junctionbox')}ring" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#e2e8f0"/><stop offset="1" stop-color="#94a3b8"/>
+      </linearGradient>
     </defs>
-    <circle cx="32" cy="32" r="22" fill="url(#${T('junctionbox')}cap)" stroke="#64748b" stroke-width="2"/>
-    <circle cx="32" cy="32" r="15" fill="#e2e8f0" stroke="#94a3b8" stroke-width="1"/>
-    <circle cx="32" cy="32" r="4" fill="#0f172a"/>
-    <circle cx="24" cy="24" r="1.5" fill="#475569"/>
-    <circle cx="40" cy="24" r="1.5" fill="#475569"/>
-    <circle cx="24" cy="40" r="1.5" fill="#475569"/>
-    <circle cx="40" cy="40" r="1.5" fill="#475569"/>
-    <rect x="30" y="5" width="4" height="5" fill="#94a3b8"/>
-    <rect x="30" y="54" width="4" height="5" fill="#94a3b8"/>
+    <!-- Round body -->
+    <circle cx="32" cy="32" r="23" fill="url(#${T('junctionbox')}ring)" stroke="#64748b" stroke-width="1.5"/>
+    <!-- Lid -->
+    <circle cx="32" cy="32" r="19" fill="url(#${T('junctionbox')}cap)" stroke="#94a3b8" stroke-width="1.2"/>
+    <!-- Lid moulded cross pattern -->
+    <line x1="32" y1="15" x2="32" y2="49" stroke="#cbd5e1" stroke-width="0.8" opacity="0.7"/>
+    <line x1="15" y1="32" x2="49" y2="32" stroke="#cbd5e1" stroke-width="0.8" opacity="0.7"/>
+    <!-- Central screw -->
+    <circle cx="32" cy="32" r="3.4" fill="#e2e8f0" stroke="#94a3b8" stroke-width="0.8"/>
+    <line x1="30" y1="32" x2="34" y2="32" stroke="#64748b" stroke-width="1"/>
+    <!-- Four cable entries -->
+    <path d="M32 5 v7 M32 52 v7" stroke="#64748b" stroke-width="3" stroke-linecap="round"/>
+    <path d="M5 32 h7 M52 32 h7" stroke="#64748b" stroke-width="3" stroke-linecap="round"/>
+    <circle cx="32" cy="9" r="1.5" fill="#475569"/>
+    <circle cx="32" cy="55" r="1.5" fill="#475569"/>
+    <circle cx="9" cy="32" r="1.5" fill="#475569"/>
+    <circle cx="55" cy="32" r="1.5" fill="#475569"/>
   `),
 
   // ─── Terminals ─────────────────────────────────────────────────────────

@@ -12,9 +12,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added — Session 2026-08-17 (follow-up 5): Near-realistic SVG art for default components (experimental)
-- New `src/ui/canvas/componentArt.ts` with hand-drawn **near-realistic lightweight SVG** art for the 20 default seed-circuit component types: DIN-rail MCB (B16), RCD (30mA), fuse carrier, UK 3-pin socket faceplate, wall rocker switch, two-way switch, push button, ceiling fan, motor, rotary dimmer/fan-speed, distribution board/consumer unit, junction box, live/neutral/earth terminals (L/N/E with green-yellow earth stripe), contactor, timer switch, bell, and LED bulb.
-- Wired into `ComponentNode.tsx` **only for default components** — the upgraded bulbs now use inline SVG instead of photo thumbnails (the "lightweight vector, not raster" goal). All other components keep their existing renderer, so the two can be compared side by side.
-- Zero network weight (inline data-URI, no raster assets), crisp at any zoom, namespaced gradient ids to avoid SVG-id collisions. No console errors; simulation/glow/fault visuals unaffected.
+- New `src/ui/canvas/componentArt.ts` with hand-drawn **near-realistic lightweight SVG** art for the 20 default seed-circuit component types (DIN-rail MCB, RCD, fuse, UK socket, switches, fan, motor, dimmer, DB, junction box, terminals, contactor, timer, bell, LED bulb).
+- Wired into `ComponentNode.tsx` **only for default components** — the upgraded bulbs now use inline SVG instead of photo thumbnails. All other components keep their existing renderer so the two can be compared. Zero network weight, namespaced gradient ids, no console errors.
+
+### Changed — Session 2026-08-17 (follow-up 6): Refined default SVG art per review
+- **MCB** — more realistic DIN-rail breaker: terminal clamps + screws, DIN clip, toggle mechanism with recessed handle, red trip-status window, rating plate "B16".
+- **UK 3-pin socket** — proper bevel faceplate with 4 corner screws, recessed socket well, earth pin + L/N blades with rounded openings and shutter line.
+- **Single-way switch** — glossier rocker with highlight, corner screws, angled rocker for depth, green status pip.
+- **Two-way switch** — double-gang-style rocker with L1/L2 indicator dots, angled for depth.
+- **4-way junction box** — round screw-on lid with moulded cross pattern, central screw, and four cable entry points around the body.
+- **Electric motor** — finned cylindrical body, end caps, shaft, top terminal box, and mounting feet.
 
 ### Changed — Command palette fully searchable (Ctrl+K)
 - The command palette now indexes the **entire component registry** ("Add <component>" for every component) instead of a hardcoded subset, so Ctrl+K is a real search tool across all actions and all ~80 components.
