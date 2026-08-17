@@ -99,7 +99,10 @@ test.describe('workbench shell', () => {
     await expect(palette).toBeVisible();
     // Search for a component command and run it — it should place a placing type.
     await palette.getByPlaceholder('What do you want to do?').fill('Add MCB');
-    await palette.getByRole('button', { name: /Add MCB/ }).click();
+    await palette
+      .getByRole('button', { name: /Add MCB/ })
+      .first()
+      .click();
     await expect(palette).not.toBeVisible();
     // Esc toggles it closed too.
     await page.keyboard.press('Control+k');

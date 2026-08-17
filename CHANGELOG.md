@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — Command palette fully searchable (Ctrl+K)
+- The command palette now indexes the **entire component registry** ("Add <component>" for every component) instead of a hardcoded subset, so Ctrl+K is a real search tool across all actions and all ~80 components.
+- Added **↑/↓ arrow-key navigation** with a highlighted active row, Enter-to-run, and multi-token matching (e.g. "add mcb type c"). Still dispatches only existing store actions; no new state.
+
 ### Removed — GPU/Pixi renderer scaffolding
 - The experimental **PixiJS / WebGL2 renderer** (and its long-parked wire-visibility defect) is removed from the codebase. The Pixi canvas and `pixi` dependency were already absent; this clears the dead scaffolding that remained: the `renderer: 'svg' | 'pixi'` store field + `setRenderer` action, the stale Pixi/WebGL comments in `App.tsx`, `geometry.ts`, `canvas-actions.ts`, `simulation.test.ts`, `ToolDock.tsx`, the "WebGL renderer feature parity" roadmap row in the About tab, and the misleading "are you in GPU mode?" error messages in the Import/Export modal (now a neutral "SVG canvas is not available right now."). **SVG is now the sole renderer.**
 

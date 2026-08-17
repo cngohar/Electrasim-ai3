@@ -1,10 +1,10 @@
 /**
  * CommandPalette — Workbench experiment (Ctrl+K).
  *
- * Progressive enhancement on top of the existing stores/actions. No new
- * state; it just dispatches the same actions the toolbar/panels already use.
- * If a command isn't applicable (e.g. no selected component to copy), the
- * action simply no-ops like it does elsewhere.
+ * A searchable command palette that dispatches the same actions the toolbar /
+ * panels already use. It covers the full component registry (every "Add
+ * <component>" entry) plus the common actions, with arrow-key navigation and
+ * Enter-to-run. No new state — every command calls an existing store action.
  */
 
 import {
@@ -40,29 +40,31 @@ export function CommandPalette() {
   const open = useUiStore((s) => s.commandPaletteOpen);
   const setOpen = useUiStore((s) => s.setCommandPaletteOpen);
   const [query, setQuery] = useState('');
+  const [activeIndex, setActiveIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (open) {
       setQuery('');
-      // Focus after the overlay paints so the search box is ready to type.
+      setActiveIndex(0);
       requestAnimationFrame(() => inputRef.current?.focus());
     }
   }, [open]);
 
   const commands = useMemo<Command[]>(() => {
     const ui = useUiStore.getState;
-    const add = (type: string) => {
+    const setPlace = (type: string) => {
       ui().setPlacingType(useUiStore.getState().placingType === type ? null : type);
       setOpen(false);
     };
-    const base: Command[] = [
+
+    const actionCommands: Command[] = [
       {
         id: 'run-sim',
         label: 'Run Simulation',
         hint: 'Start live circuit simulation',
         icon: Play,
-        keywords: 'start play live energize',
+        keywords: 'start play live energize run',
         run: () => {
           ui().toggleSim();
           setOpen(false);
@@ -71,13 +73,13 @@ export function CommandPalette() {
       {
         id: 'fault-lab',
         label: 'Open Fault Lab',
-        hint: 'Arm manual fault injection & open telemetry',
+        hint: 'Manual fault injection panel (Pro)',
         icon: FlaskConical,
         keywords: 'fault short open circuit injection',
         run: () => {
-          const ui = useUiStore.getState();
-          ui.setFaultLabOpen(true);
-          ui.addLog('Fault Lab opened — manual fault controls armed.', 'info');
+          const s = useUiStore.getState();
+          s.setFaultLabOpen(true);
+          s.addLog('Fault Lab opened — manual fault controls armed.', 'info');
           setOpen(false);
         },
       },
@@ -128,7 +130,7 @@ export function CommandPalette() {
         label: 'Copy Selection',
         hint: 'Copy selected components (Ctrl+C)',
         icon: Copy,
-        keywords: 'duplicate clipboard',
+        keywords: 'duplicate clipboard copy',
         run: () => {
           const ids = useCircuitStore.getState().selectedComponentIds;
           if (ids.length === 0) return;
@@ -142,7 +144,7 @@ export function CommandPalette() {
         label: 'Delete Selection',
         hint: 'Remove selected component(s) / wire(s)',
         icon: Copy,
-        keywords: 'remove clear',
+        keywords: 'remove clear delete',
         run: () => {
           requestDeleteSelection();
           setOpen(false);
@@ -175,7 +177,7 @@ export function CommandPalette() {
         label: 'Settings',
         hint: 'Open preferences',
         icon: Settings,
-        keywords: 'preferences options',
+        keywords: 'preferences options settings',
         run: () => {
           ui().setSettingsOpen(true);
           setOpen(false);
@@ -183,41 +185,39 @@ export function CommandPalette() {
       },
     ];
 
-    // Add frequently used components (a small subset to keep the list scannable).
-    const quickTypes = [
-      'mcb',
-      'rcd',
-      'single-way-switch',
-      'socket-3pin',
-      'bulb',
-      'led-downlight',
-      'ceiling-fan',
-      'push-button',
-      'isolator-switch',
-    ];
-    for (const t of quickTypes) {
-      const def = COMPONENT_DEFS[t];
-      if (!def) continue;
-      base.push({
-        id: `add-${t}`,
+    // Every component in the registry is addable — this gives full coverage
+    // (not just a hardcoded subset) and makes the palette a real search tool.
+    const addCommands: Command[] = Object.entries(COMPONENT_DEFS)
+      .filter(([, def]) => !def.isSource)
+      .map(([type, def]) => ({
+        id: `add-${type}`,
         label: `Add ${def.label}`,
-        hint: 'Place on canvas',
+        hint: `Place ${def.category}`,
         icon: Layers,
-        keywords: `add place ${def.label} ${t}`,
-        run: () => add(t),
-      });
-    }
-    return base;
+        keywords: `add place ${def.label} ${type} ${def.category}`,
+        run: () => setPlace(type),
+      }));
+
+    return [...actionCommands, ...addCommands];
   }, [setOpen]);
 
   if (!open) return null;
 
   const q = query.trim().toLowerCase();
   const filtered = q
-    ? commands.filter(
-        (c) => c.label.toLowerCase().includes(q) || (c.keywords ?? '').toLowerCase().includes(q),
-      )
+    ? commands.filter((c) => {
+        const tokens = q.split(/\s+/);
+        const haystack = `${c.label} ${c.keywords ?? ''}`.toLowerCase();
+        return tokens.every((t) => haystack.includes(t));
+      })
     : commands;
+
+  const safeActive = filtered.length === 0 ? 0 : Math.min(activeIndex, filtered.length - 1);
+
+  const runIndex = (i: number) => {
+    const cmd = filtered[i];
+    if (cmd) cmd.run();
+  };
 
   return (
     <div
@@ -235,13 +235,24 @@ export function CommandPalette() {
           <input
             ref={inputRef}
             value={query}
-            onChange={(e) => setQuery(e.target.value)}
+            onChange={(e) => {
+              setQuery(e.target.value);
+              setActiveIndex(0);
+            }}
             placeholder="What do you want to do?"
             className="w-full bg-transparent text-sm text-slate-900 outline-none placeholder:text-slate-400 dark:text-slate-100"
             onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                const first = filtered[0];
-                if (first) first.run();
+              if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                setActiveIndex((i) => (filtered.length === 0 ? 0 : (i + 1) % filtered.length));
+              } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                setActiveIndex((i) =>
+                  filtered.length === 0 ? 0 : (i - 1 + filtered.length) % filtered.length,
+                );
+              } else if (e.key === 'Enter') {
+                e.preventDefault();
+                runIndex(safeActive);
               }
             }}
           />
@@ -255,24 +266,44 @@ export function CommandPalette() {
               No commands match &ldquo;{query}&rdquo;
             </div>
           )}
-          {filtered.map((c) => (
-            <button
-              key={c.id}
-              type="button"
-              onClick={c.run}
-              className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left transition hover:bg-blue-50 dark:hover:bg-slate-800"
-            >
-              <c.icon className="size-4 shrink-0 text-slate-400" />
-              <span className="flex-1 text-sm font-medium text-slate-800 dark:text-slate-100">
-                {c.label}
-              </span>
-              {c.hint && <span className="text-[11px] text-slate-400">{c.hint}</span>}
-            </button>
-          ))}
+          {filtered.map((c, i) => {
+            const active = i === safeActive;
+            return (
+              <button
+                key={c.id}
+                type="button"
+                onClick={c.run}
+                onMouseEnter={() => setActiveIndex(i)}
+                className={[
+                  'flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left transition',
+                  active
+                    ? 'bg-blue-50 dark:bg-slate-800'
+                    : 'hover:bg-blue-50/60 dark:hover:bg-slate-800/60',
+                ].join(' ')}
+              >
+                <c.icon
+                  className={['size-4 shrink-0', active ? 'text-blue-600' : 'text-slate-400'].join(
+                    ' ',
+                  )}
+                />
+                <span
+                  className={[
+                    'flex-1 text-sm font-medium',
+                    active
+                      ? 'text-blue-800 dark:text-blue-200'
+                      : 'text-slate-800 dark:text-slate-100',
+                  ].join(' ')}
+                >
+                  {c.label}
+                </span>
+                {c.hint && <span className="text-[11px] text-slate-400">{c.hint}</span>}
+              </button>
+            );
+          })}
         </div>
         <div className="border-t border-slate-100 px-4 py-2 text-[10px] text-slate-400 dark:border-slate-800">
           <Zap className="mr-1 inline size-3 text-amber-400" />
-          Enter to run · Esc to close
+          ↑↓ to navigate · Enter to run · Esc to close
         </div>
       </dialog>
     </div>

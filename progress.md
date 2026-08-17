@@ -17,6 +17,14 @@ Format per entry:
 
 ---
 
+## 2026-08-17 (follow-up 4) — Command palette fully searchable
+
+Extended the Ctrl+K command palette from the "quick win" suggestion: it now indexes the whole component registry ("Add <component>" for every component) rather than a hardcoded 9, adds ↑/↓ arrow-key navigation with a highlighted active row, Enter-to-run, and multi-token matching. All commands still dispatch existing store actions — no new state. The palette test was tightened to `.first()` now that searching "MCB" returns Type B/C/D variants.
+
+**Gates:** chromium e2e 39 passed, typecheck 0 errors. Committed.
+
+---
+
 ## 2026-08-17 (follow-up 3) — Remove GPU/Pixi renderer
 
 Per the improvement-review follow-up: the experimental GPU/Pixi renderer and its long-parked wire-visibility bug are **removed**. The Pixi canvas and `pixi` dependency were already absent; this pass cleared all remaining dead scaffolding:
