@@ -9,6 +9,7 @@ import { useMemo, useState } from 'react';
 import { COMPONENT_DEFS } from '../../domain';
 import { useUiStore } from '../../store';
 import { useSettingsStore } from '../../store/settingsStore';
+import { getDefaultArt } from '../canvas/componentArt';
 import { getComponentImage } from './componentImages';
 
 interface PaletteEntry {
@@ -163,6 +164,48 @@ interface Props {
   isPhone: boolean;
 }
 
+/** Renders a palette tile's icon: near-realistic SVG art when upgraded, else
+ *  the legacy photo (lighting) or emoji glyph. Keeps palette consistent with
+ *  the upgraded canvas components. */
+function TileIcon({
+  type,
+  label,
+  icon,
+  isLighting,
+}: {
+  type: string;
+  label: string;
+  icon: string;
+  isLighting: boolean;
+}) {
+  const art = getDefaultArt(type);
+  if (art) {
+    return (
+      <div className="size-8 rounded-lg bg-slate-50 flex items-center justify-center p-0.5 dark:bg-slate-800">
+        <img
+          src={art}
+          alt={label}
+          referrerPolicy="no-referrer"
+          className="size-full object-contain"
+        />
+      </div>
+    );
+  }
+  if (isLighting) {
+    return (
+      <div className="size-8 rounded-lg overflow-hidden bg-slate-900 flex items-center justify-center p-0.5 border border-slate-700/60">
+        <img
+          src={getComponentImage(type, 'lighting')}
+          alt={label}
+          referrerPolicy="no-referrer"
+          className="size-full object-contain"
+        />
+      </div>
+    );
+  }
+  return <span className="text-xl leading-none">{icon}</span>;
+}
+
 export function Palette({ open, isPhone }: Props) {
   const groups = useMemo(buildGroups, []);
   const placingType = useUiStore((s) => s.placingType);
@@ -278,18 +321,12 @@ export function Palette({ open, isPhone }: Props) {
                             : 'border-slate-200 bg-white text-slate-700 hover:border-blue-300 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300',
                         ].join(' ')}
                       >
-                        {isLighting ? (
-                          <div className="size-8 rounded-lg overflow-hidden bg-slate-900 flex items-center justify-center p-0.5 border border-slate-700/60">
-                            <img
-                              src={getComponentImage(it.type, 'lighting')}
-                              alt={it.label}
-                              referrerPolicy="no-referrer"
-                              className="size-full object-contain"
-                            />
-                          </div>
-                        ) : (
-                          <span className="text-2xl leading-none">{it.icon}</span>
-                        )}
+                        <TileIcon
+                          type={it.type}
+                          label={it.label}
+                          icon={it.icon}
+                          isLighting={isLighting}
+                        />
                         <span className="truncate text-center w-full">{it.label}</span>
                       </button>
                     );
@@ -415,18 +452,12 @@ export function Palette({ open, isPhone }: Props) {
                           PRO
                         </span>
                       )}
-                      {isLighting ? (
-                        <div className="size-8 rounded-lg overflow-hidden bg-slate-900 flex items-center justify-center p-0.5 border border-slate-700/60 shadow-2xs">
-                          <img
-                            src={getComponentImage(it.type, 'lighting')}
-                            alt={it.label}
-                            referrerPolicy="no-referrer"
-                            className="size-full object-contain"
-                          />
-                        </div>
-                      ) : (
-                        <span className="text-xl leading-none">{it.icon}</span>
-                      )}
+                      <TileIcon
+                        type={it.type}
+                        label={it.label}
+                        icon={it.icon}
+                        isLighting={isLighting}
+                      />
                       <span className="truncate text-center w-full px-1">{it.label}</span>
                     </button>
                     <button

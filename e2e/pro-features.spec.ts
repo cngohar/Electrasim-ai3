@@ -1,4 +1,4 @@
-import { test, expect, type Page } from '@playwright/test';
+import { type Page, expect, test } from '@playwright/test';
 
 /**
  * End-to-end coverage for the Pro-mode feature set delivered in this branch:
@@ -25,8 +25,8 @@ async function ensureProMode(page: Page) {
   if (await studentToggle.isVisible().catch(() => false)) {
     await studentToggle.click({ force: true });
   }
-  // Wait until Pro-only chrome appears (the manual fault toggle).
-  await expect(page.locator('button[title*="fault injection"]')).toBeVisible();
+  // Wait until Pro-only chrome appears (the Fault Lab button in the app bar).
+  await expect(page.getByRole('button', { name: /Fault Lab/ })).toBeVisible();
 }
 
 test.describe('Dual standard & pro features', () => {
@@ -62,45 +62,35 @@ test.describe('Dual standard & pro features', () => {
     await expect(page.getByText('? Specs', { exact: true })).toHaveCount(0);
   });
 
-  test('manual fault toggle is Pro-only and hides fault UI when off', async ({ page }) => {
+  test('Fault Lab is Pro-only and arms the manual fault UI', async ({ page }) => {
     await ensureProMode(page);
 
-    // Faults master toggle is visible in Pro mode (defaults armed). Target it
-    // by its title since the visible label is just "Faults".
-    const faultToggle = page.locator('button[title*="fault injection"]');
-    await expect(faultToggle).toBeVisible();
+    // The Fault Lab button is the single dedicated fault entry point (the old
+    // sub-header "Faults" master toggle was removed as redundant).
+    const faultLab = page.getByRole('button', { name: /Fault Lab/ });
+    await expect(faultLab).toBeVisible();
 
-    // Select a non-source component around the centre of the canvas — this
-    // area is free of the floating header/inspector overlays.
+    // Opening it arms manual fault injection and opens the dedicated panel.
+    await faultLab.click();
+    await expect(page.getByLabel('Fault Lab panel')).toBeVisible();
+
+    // Select a non-source component — the Inspector Properties tab shows the
+    // Manual Fault Simulation panel while armed.
     await page.mouse.click(937, 347); // single-way switch in the seed circuit
     await page.waitForTimeout(300);
-
-    // The Properties tab content includes the Manual Fault Simulation panel
-    // when armed (default).
-    await expect(page.getByText('Manual Fault Simulation').first()).toBeVisible();
-
-    // Turn the master toggle OFF — the panel must disappear.
-    await faultToggle.click();
-    await expect(page.getByText('Manual Fault Simulation')).toHaveCount(0);
-
-    // Turn it back on — panel returns.
-    await faultToggle.click();
     await expect(page.getByText('Manual Fault Simulation').first()).toBeVisible();
   });
 
-  test('student mode never shows the faults toggle or standards selector', async ({ page }) => {
+  test('student mode never shows the Fault Lab button or standards selector', async ({ page }) => {
     // Switch to Student mode (Pro toggle visible means we're in pro).
     const proToggle = page.getByRole('button', { name: /^pro$/i });
     if (await proToggle.isVisible().catch(() => false)) {
       await proToggle.click({ force: true });
     }
     await expect(page.getByRole('button', { name: /^student$/i })).toBeVisible();
-    // The manual-fault-injection master toggle (titled "Manual fault injection …")
-    // must not be rendered in student mode. The generic "Simulation Telemetry
-    // & Faults" inspector tab is unrelated and remains available.
-    await expect(
-      page.locator('button[title*="fault injection"]'),
-    ).toHaveCount(0);
+    // The Fault Lab button must not be rendered in student mode (fault
+    // injection is Pro-only).
+    await expect(page.getByRole('button', { name: /Fault Lab/ })).toHaveCount(0);
     // Standard selector popover is absent.
     await expect(page.getByText('Regulation Template')).toHaveCount(0);
   });
@@ -110,7 +100,7 @@ test.describe('Dual standard & pro features', () => {
 
     // The standard selector trigger has a title that starts with
     // "Regulation template:" — select by that title.
-    const trigger = page.locator("[data-standard-selector]");
+    const trigger = page.locator('[data-standard-selector]');
     await trigger.click({ force: true });
     await expect(page.getByText('United States', { exact: true })).toBeVisible();
 
@@ -184,7 +174,12 @@ test.describe('Dual standard & pro features', () => {
     for (const [x, y] of candidates) {
       await page.mouse.click(x, y);
       await page.waitForTimeout(250);
-      if (await page.locator('[data-recommended-protection]').isVisible().catch(() => false)) {
+      if (
+        await page
+          .locator('[data-recommended-protection]')
+          .isVisible()
+          .catch(() => false)
+      ) {
         found = true;
         break;
       }

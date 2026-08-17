@@ -42,6 +42,12 @@ export const DEFAULT_ART_TYPES = new Set([
   'timer-switch',
   'bell',
   'bulb',
+  'bulb-incandescent',
+  'bulb-halogen',
+  'bulb-cfl',
+  'bulb-smart-rgb',
+  'led-downlight',
+  'tube-light',
 ]);
 
 const ART: Record<string, string> = {
@@ -465,6 +471,116 @@ const ART: Record<string, string> = {
     <rect x="26" y="30" width="12" height="3" rx="1" fill="#b45309"/>
     <path d="M25 42 h14 M26 48 h12 M28 54 h8" stroke="#94a3b8" stroke-width="3.5" stroke-linecap="round"/>
     <rect x="23" y="42" width="18" height="4" rx="2" fill="#cbd5e1"/>
+  `),
+
+  // ─── Edison incandescent ───────────────────────────────────────────────
+  'bulb-incandescent': S(`
+    <defs>
+      <radialGradient id="${T('bulbincandescent')}glass" cx="0.4" cy="0.35" r="1">
+        <stop offset="0" stop-color="#fff7ed"/><stop offset="0.55" stop-color="#ffedd5"/><stop offset="1" stop-color="#fdba74"/>
+      </radialGradient>
+    </defs>
+    <path d="M32 4 c-12 0-20 9-20 20 0 8 5 13 9 17 h22 c4-4 9-9 9-17 C52 13 44 4 32 4 Z" fill="url(#${T('bulbincandescent')}glass)" stroke="#ea580c" stroke-width="1.5"/>
+    <!-- Filament (classic zig-zag) -->
+    <path d="M24 20 l4 5 4-5 4 5 4-5" fill="none" stroke="#b45309" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M27 25 v4 M37 25 v4" stroke="#b45309" stroke-width="1.2"/>
+    <path d="M24 45 h16 M26 51 h12 M28 57 h8" stroke="#94a3b8" stroke-width="3.5" stroke-linecap="round"/>
+    <rect x="22" y="43" width="20" height="4" rx="2" fill="#cbd5e1"/>
+  `),
+
+  // ─── Halogen (GU10 reflector) ──────────────────────────────────────────
+  'bulb-halogen': S(`
+    <defs>
+      <linearGradient id="${T('bulbhalogen')}body" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#fef08a"/><stop offset="1" stop-color="#f59e0b"/>
+      </linearGradient>
+    </defs>
+    <!-- Reflector body (truncated cone) -->
+    <path d="M16 8 L48 8 L56 34 L8 34 Z" fill="url(#${T('bulbhalogen')}body)" stroke="#ca8a04" stroke-width="1.5"/>
+    <ellipse cx="32" cy="34" rx="24" ry="4" fill="#fef9c3" stroke="#ca8a04" stroke-width="1"/>
+    <!-- Filament element -->
+    <path d="M28 20 h8 M28 24 h8" stroke="#eab308" stroke-width="1.2"/>
+    <rect x="24" y="38" width="16" height="4" rx="1.5" fill="#cbd5e1" stroke="#94a3b8" stroke-width="0.8"/>
+    <!-- GU10 pins -->
+    <rect x="29" y="42" width="2.5" height="7" rx="1.2" fill="#94a3b8"/>
+    <rect x="32.5" y="42" width="2.5" height="7" rx="1.2" fill="#94a3b8"/>
+  `),
+
+  // ─── CFL spiral ────────────────────────────────────────────────────────
+  'bulb-cfl': S(`
+    <defs>
+      <linearGradient id="${T('bulbcfl')}tube" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#bae6fd"/><stop offset="1" stop-color="#38bdf8"/>
+      </linearGradient>
+    </defs>
+    <!-- Spiral tube -->
+    <path d="M22 12 C22 6 28 6 28 12 L28 34 M28 12 C28 6 36 6 36 12 L36 34 M36 12 C36 6 42 6 42 12 L42 34"
+      fill="none" stroke="url(#${T('bulbcfl')}tube)" stroke-width="4.5" stroke-linecap="round"/>
+    <!-- Ballast base -->
+    <rect x="20" y="34" width="24" height="9" rx="3" fill="#e2e8f0" stroke="#94a3b8" stroke-width="1.2"/>
+    <line x1="24" y1="38" x2="40" y2="38" stroke="#cbd5e1" stroke-width="0.8"/>
+    <rect x="24" y="43" width="16" height="8" rx="2" fill="#cbd5e1" stroke="#94a3b8" stroke-width="1"/>
+    <!-- Screw base ridges -->
+    <line x1="27" y1="45" x2="37" y2="45" stroke="#94a3b8" stroke-width="0.8"/>
+    <line x1="27" y1="47" x2="37" y2="47" stroke="#94a3b8" stroke-width="0.8"/>
+    <line x1="27" y1="49" x2="37" y2="49" stroke="#94a3b8" stroke-width="0.8"/>
+  `),
+
+  // ─── Smart RGB bulb ────────────────────────────────────────────────────
+  'bulb-smart-rgb': S(`
+    <defs>
+      <radialGradient id="${T('bulbsmartrgb')}glass" cx="0.4" cy="0.35" r="1">
+        <stop offset="0" stop-color="#e879f9"/><stop offset="0.5" stop-color="#a855f7"/><stop offset="1" stop-color="#6366f1"/>
+      </radialGradient>
+    </defs>
+    <path d="M32 6 c-11 0-18 8-18 18 0 8 5 12 9 16 h18 c4-4 9-8 9-16 C50 14 43 6 32 6 Z" fill="url(#${T('bulbsmartrgb')}glass)" stroke="#a855f7" stroke-width="1.5"/>
+    <!-- RGB chips row -->
+    <rect x="25" y="22" width="4" height="7" rx="1" fill="#22d3ee"/>
+    <rect x="30" y="22" width="4" height="7" rx="1" fill="#f43f5e"/>
+    <rect x="35" y="22" width="4" height="7" rx="1" fill="#4ade80"/>
+    <path d="M25 44 h14 M26 50 h12 M28 56 h8" stroke="#94a3b8" stroke-width="3.5" stroke-linecap="round"/>
+    <rect x="23" y="42" width="18" height="4" rx="2" fill="#cbd5e1"/>
+  `),
+
+  // ─── LED downlight ─────────────────────────────────────────────────────
+  'led-downlight': S(`
+    <defs>
+      <radialGradient id="${T('leddownlight')}lens" cx="0.5" cy="0.45" r="0.7">
+        <stop offset="0" stop-color="#ffffff"/><stop offset="0.5" stop-color="#fef9c3"/><stop offset="1" stop-color="#fde047"/>
+      </radialGradient>
+      <linearGradient id="${T('leddownlight')}trim" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#f8fafc"/><stop offset="1" stop-color="#cbd5e1"/>
+      </linearGradient>
+    </defs>
+    <!-- Recessed trim ring -->
+    <circle cx="32" cy="32" r="24" fill="url(#${T('leddownlight')}trim)" stroke="#94a3b8" stroke-width="2"/>
+    <circle cx="32" cy="32" r="20" fill="#0f172a"/>
+    <!-- Lens + LED -->
+    <circle cx="32" cy="32" r="13" fill="url(#${T('leddownlight')}lens)"/>
+    <circle cx="32" cy="32" r="5" fill="#ffffff" opacity="0.9"/>
+    <!-- Heat sink fins hint -->
+    <rect x="28" y="6" width="8" height="3" rx="1" fill="#94a3b8"/>
+    <rect x="28" y="10" width="8" height="3" rx="1" fill="#94a3b8"/>
+  `),
+
+  // ─── Fluorescent tube ──────────────────────────────────────────────────
+  'tube-light': S(`
+    <defs>
+      <linearGradient id="${T('tubelight')}glass" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#f0f9ff"/><stop offset="1" stop-color="#bae6fd"/>
+      </linearGradient>
+    </defs>
+    <!-- Tube -->
+    <rect x="6" y="24" width="52" height="16" rx="8" fill="url(#${T('tubelight')}glass)" stroke="#0ea5e9" stroke-width="1.5"/>
+    <line x1="12" y1="32" x2="52" y2="32" stroke="#e0f2fe" stroke-width="7" stroke-linecap="round"/>
+    <!-- End caps -->
+    <rect x="6" y="26" width="5" height="12" rx="2" fill="#94a3b8" stroke="#64748b" stroke-width="1"/>
+    <rect x="53" y="26" width="5" height="12" rx="2" fill="#94a3b8" stroke="#64748b" stroke-width="1"/>
+    <!-- Pins -->
+    <rect x="8" y="40" width="2" height="4" rx="1" fill="#64748b"/>
+    <rect x="12" y="40" width="2" height="4" rx="1" fill="#64748b"/>
+    <rect x="50" y="40" width="2" height="4" rx="1" fill="#64748b"/>
+    <rect x="54" y="40" width="2" height="4" rx="1" fill="#64748b"/>
   `),
 };
 

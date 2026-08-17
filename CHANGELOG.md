@@ -11,6 +11,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — Session 2026-08-17 (follow-up 7): Bulb category art, palette consistency, label overflow, fault-button de-dupe
+- **Entire Bulb category upgraded** to near-realistic inline SVG art: Edison incandescent (zig-zag filament), halogen GU10 (reflector + pins), CFL spiral (tube + ballast + screw base), smart RGB (RGB chip row), LED downlight (recessed trim + lens), and fluorescent tube (glass + end caps + pins) — in addition to the existing LED A60.
+- **Palette now matches the upgraded canvas art.** The left component palette shows the new near-realistic SVG art for every upgraded default component (previously it still showed the legacy photo thumbnails / emoji). Lighting category included.
+- **Fixed canvas label overflow.** Long labels (e.g. "RCD / RCCB (80A 30mA)", "Distribution Board (Consumer Unit)") were wider than the 100px component box and overflowed horizontally. Labels are now truncated with an ellipsis to fit the box (full name remains in the tooltip/inspector).
+- **Removed the redundant sub-header "Faults" master toggle.** The app-bar **Fault Lab** button is now the single dedicated fault entry point (it arms manual fault injection and opens the panel), eliminating the duplicate fault control in the sub-header. `pro-features.spec.ts` updated to test Fault Lab instead.
+
 ### Added — Session 2026-08-17 (follow-up 5): Near-realistic SVG art for default components (experimental)
 - New `src/ui/canvas/componentArt.ts` with hand-drawn **near-realistic lightweight SVG** art for the 20 default seed-circuit component types (DIN-rail MCB, RCD, fuse, UK socket, switches, fan, motor, dimmer, DB, junction box, terminals, contactor, timer, bell, LED bulb).
 - Wired into `ComponentNode.tsx` **only for default components** — the upgraded bulbs now use inline SVG instead of photo thumbnails. All other components keep their existing renderer so the two can be compared. Zero network weight, namespaced gradient ids, no console errors.

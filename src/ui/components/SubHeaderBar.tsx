@@ -1,14 +1,4 @@
-import {
-  Bug,
-  ChevronDown,
-  ChevronRight,
-  Edit2,
-  Layers,
-  Route,
-  Sliders,
-  X,
-  Zap,
-} from 'lucide-react';
+import { ChevronDown, ChevronRight, Edit2, Layers, Route, Sliders, X, Zap } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { COMPONENT_DEFS } from '../../domain/components';
 import { getStandard } from '../../domain/standards';
@@ -30,15 +20,12 @@ export function SubHeaderBar() {
   const setGlobalSupplyVoltage = useCircuitStore((s) => s.setGlobalSupplyVoltage);
   const simResult = useUiStore((s) => s.simResult);
 
-  // Pro-mode feature flags: manual fault injection and the regulatory standard
-  // selector only surface when the user is in Pro Electrician Mode. In Student
-  // Mode all manual fault controls are hidden regardless of the toggle.
+  // The regulatory standard selector only surfaces when the user is in Pro
+  // Electrician Mode. (Manual fault injection is now armed through the Fault
+  // Lab button in the top app bar, not a separate sub-header toggle.)
   const appMode = useSettingsStore((s) => s.appMode);
-  const manualFaultInjection = useSettingsStore((s) => s.manualFaultInjection);
   const regulationStandard = useSettingsStore((s) => s.regulationStandard);
-  const setSetting = useSettingsStore((s) => s.setSetting);
   const isPro = appMode === 'pro';
-  const faultsArmed = isPro && manualFaultInjection;
   const standard = getStandard(regulationStandard);
 
   const selectedComponentIds = useCircuitStore((s) => s.selectedComponentIds);
@@ -325,41 +312,6 @@ export function SubHeaderBar() {
         <>
           {/* Regulation template quick-switch (UK / US / EU) */}
           <StandardSelector />
-
-          {/* Manual fault injection master toggle.
-              Fault controls in the Inspector / right-click menu only render
-              while this is armed. Student mode never shows it at all. */}
-          <button
-            type="button"
-            onClick={() => setSetting('manualFaultInjection', !manualFaultInjection)}
-            className={`flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-semibold shadow-sm transition ${
-              faultsArmed
-                ? 'border-red-300 bg-red-600 text-white hover:bg-red-500'
-                : 'border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700'
-            }`}
-            title={
-              faultsArmed
-                ? 'Manual fault injection ON — fault controls visible in Inspector & context menu'
-                : 'Manual fault injection OFF — fault controls hidden in Inspector & context menu'
-            }
-            aria-pressed={faultsArmed}
-          >
-            <Bug className="size-3.5" />
-            <span className="hidden sm:inline">Faults</span>
-            <span
-              className={`flex h-3.5 w-6 items-center rounded-full p-0.5 transition ${
-                faultsArmed ? 'bg-white/30' : 'bg-slate-300 dark:bg-slate-600'
-              }`}
-            >
-              <span
-                className={`size-2.5 rounded-full bg-white transition-transform ${
-                  faultsArmed ? 'translate-x-2.5' : 'translate-x-0'
-                }`}
-              />
-            </span>
-          </button>
-
-          <div className="h-3 w-px bg-slate-200 dark:bg-slate-700" />
         </>
       )}
 

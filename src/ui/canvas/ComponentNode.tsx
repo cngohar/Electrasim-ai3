@@ -22,6 +22,17 @@ import type { CanvasTheme, PortLoc } from './types';
 
 const PORT_R = 5;
 
+/** Truncate a canvas label so it fits the component box without overflowing. */
+function fitLabel(label: string, fontSize: number): string {
+  // Usable width inside the ~100px box (leave breathing room each side).
+  const usablePx = COMP_W - 18;
+  // Average glyph advance for Inter at this size (mixed-case, some kerning).
+  const avgAdvance = fontSize * 0.55;
+  const maxChars = Math.floor(usablePx / avgAdvance);
+  if (label.length <= maxChars) return label;
+  return `${label.slice(0, Math.max(1, maxChars - 1))}…`;
+}
+
 export interface ComponentNodeProps {
   component: ComponentInstance;
   componentsById: ReadonlyMap<string, ComponentInstance>;
@@ -561,7 +572,7 @@ export function ComponentNode({
             fill={theme.component.text}
             style={{ userSelect: 'none', pointerEvents: 'none' }}
           >
-            {definition.label}
+            {fitLabel(definition.label, 8)}
           </text>
         ) : (
           <>
@@ -682,9 +693,12 @@ export function ComponentNode({
               fill={theme.component.text}
               style={{ userSelect: 'none', pointerEvents: 'none', letterSpacing: '0.02em' }}
             >
-              {autoLabelsEnabled && component.state.autoLabel
-                ? `[${component.state.autoLabel}] ${definition.label}`
-                : definition.label}
+              {fitLabel(
+                autoLabelsEnabled && component.state.autoLabel
+                  ? `[${component.state.autoLabel}] ${definition.label}`
+                  : definition.label,
+                9,
+              )}
             </text>
             <text
               x={COMP_W / 2}

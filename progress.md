@@ -17,6 +17,18 @@ Format per entry:
 
 ---
 
+## 2026-08-17 (follow-up 7) — Bulb category, palette sync, label overflow, fault-button de-dupe
+
+Four issues from review, all fixed:
+1. **Palette didn't show the upgraded SVG art** — added a shared `TileIcon` to `Palette.tsx` that uses `getDefaultArt` when available, falling back to photo/emoji. 21 palette tiles now match the canvas.
+2. **Entire Bulb category SVG art** — added near-realistic art for `bulb-incandescent` (zig-zag filament), `bulb-halogen` (GU10 reflector + pins), `bulb-cfl` (spiral + ballast), `bulb-smart-rgb` (RGB chips), `led-downlight` (recessed trim), `tube-light` (fluorescent tube); registered all in `DEFAULT_ART_TYPES`.
+3. **Canvas label overflow** — long labels exceeded the 100px box horizontally. Added `fitLabel()` in `ComponentNode.tsx` that truncates with an ellipsis to fit (full name still in tooltip/inspector). Verified 0 overflowing labels.
+4. **Duplicate fault button** — the sub-header "Faults" master toggle was redundant once the app-bar **Fault Lab** button became the single fault entry (it arms injection + opens the panel). Removed the sub-header toggle; updated `pro-features.spec.ts` to test the Fault Lab button instead.
+
+Gates: typecheck clean, chromium e2e 39 passed, 317 unit pass, no console errors. Committed.
+
+---
+
 ## 2026-08-17 (follow-up 6) — Refined default SVG art per user review
 
 User approved the LED bulb and fan-speed regulator; asked for improvements to the single/two-way switches, junction box, MCB, motor, and 3-pin socket. Refined `componentArt.ts`:
