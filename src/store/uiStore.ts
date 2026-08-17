@@ -88,9 +88,10 @@ export const useUiStore = create<UiState>()(
     thermalOverlayEnabled: false,
 
     paletteOpen: typeof window !== 'undefined' ? window.innerWidth >= 1024 : true,
-    logOpen: true,
+    logOpen: false,
     inspectorOpen: true,
     inspectorCollapsed: true,
+    commandPaletteOpen: false,
 
     setSimRunning: (v) =>
       set((s) => {
@@ -114,17 +115,19 @@ export const useUiStore = create<UiState>()(
             };
             return;
           }
-          // Compliance gate: the active regulation standard's blocking
-          // errors (voltage drop, missing RCD, wrong MCB curve) must be
-          // resolved before simulation can run. We validate on the fly so
-          // this is always in sync with the latest graph + standard.
+          // Compliance gate (Pro mode only): the active regulation standard's
+          // blocking errors (voltage drop, missing RCD, wrong MCB curve) must
+          // be resolved before simulation can run. In Basic / Student mode the
+          // check is advisory — learners are free to run whatever they build.
+          const appMode = useSettingsStore.getState().appMode;
+          const isPro = appMode === 'pro';
           const standard = useSettingsStore.getState().regulationStandard;
           const report = validateCircuit(
             { components: cs.components, wires: cs.wires, globalVoltage: cs.globalVoltage },
             s.simResult,
             standard,
           );
-          if ((report.blockingErrorsCount ?? 0) > 0) {
+          if (isPro && (report.blockingErrorsCount ?? 0) > 0) {
             s.simRunning = false;
             s.validationReport = report;
             s.inspectorOpen = true;
@@ -170,13 +173,15 @@ export const useUiStore = create<UiState>()(
             };
             return;
           }
+          const appMode = useSettingsStore.getState().appMode;
+          const isPro = appMode === 'pro';
           const standard = useSettingsStore.getState().regulationStandard;
           const report = validateCircuit(
             { components: cs.components, wires: cs.wires, globalVoltage: cs.globalVoltage },
             s.simResult,
             standard,
           );
-          if ((report.blockingErrorsCount ?? 0) > 0) {
+          if (isPro && (report.blockingErrorsCount ?? 0) > 0) {
             s.simRunning = false;
             s.validationReport = report;
             s.inspectorOpen = true;
@@ -546,6 +551,14 @@ export const useUiStore = create<UiState>()(
     toggleInspector: () =>
       set((s) => {
         s.inspectorOpen = !s.inspectorOpen;
+      }),
+    setCommandPaletteOpen: (open) =>
+      set((s) => {
+        s.commandPaletteOpen = open;
+      }),
+    toggleCommandPalette: () =>
+      set((s) => {
+        s.commandPaletteOpen = !s.commandPaletteOpen;
       }),
     setInspectorOpen: (open) =>
       set((s) => {

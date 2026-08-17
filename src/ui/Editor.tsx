@@ -41,6 +41,8 @@ const WelcomeModal = lazy(() =>
 import type { PendingDeletion } from '../store/uiStore';
 import { cancelPendingDeletion, confirmPendingDeletion } from './canvas-actions';
 import { AlignmentBar } from './components/AlignmentBar';
+import { CanvasToolbar } from './components/CanvasToolbar';
+import { CommandPalette } from './components/CommandPalette';
 import { ComponentInfoModal } from './components/ComponentInfoModal';
 import { ConfirmDialog } from './components/ConfirmDialog';
 import { ContextMenu } from './components/ContextMenu';
@@ -225,6 +227,7 @@ export function Editor() {
         onToggleDashboard={() => setDashboardOpen(!dashboardOpen)}
       />
       {!isPhone && <SubHeaderBar />}
+      {!isPhone && <CanvasToolbar />}
       <Palette open={paletteOpen} isPhone={isPhone} />
       <Inspector
         selectedComp={selectedComp}
@@ -321,6 +324,7 @@ export function Editor() {
         </Suspense>
       )}
       <FaultAlertModal />
+      <CommandPalette />
       <WhatHappenedModal />
       <ValidationDetailsModal />
       <ComponentInfoModal />

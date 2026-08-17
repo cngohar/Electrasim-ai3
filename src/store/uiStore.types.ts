@@ -224,6 +224,8 @@ export interface UiState {
   logOpen: boolean;
   inspectorOpen: boolean;
   inspectorCollapsed: boolean;
+  /** Workbench experiment: command palette (Ctrl+K) open flag. */
+  commandPaletteOpen: boolean;
 
   // Actions ───────────────────────────────────────────────────────────────
   setSimRunning: (v: boolean) => void;
@@ -260,6 +262,8 @@ export interface UiState {
   togglePalette: () => void;
   toggleLog: () => void;
   toggleInspector: () => void;
+  setCommandPaletteOpen: (open: boolean) => void;
+  toggleCommandPalette: () => void;
   setInspectorOpen: (open: boolean) => void;
   setInspectorCollapsed: (collapsed: boolean) => void;
   setPendingWireFrom: (p: PortRef | null) => void;

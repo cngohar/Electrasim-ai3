@@ -26,6 +26,12 @@ async function loadGuide(page: Page, templateId: string, title: string) {
     .getByRole('article')
     .filter({ has: page.getByRole('heading', { name: title }) });
   await card.getByRole('button', { name: 'Load guide' }).click();
+  // Fault injection is a Pro-mode feature; ensure the harness runs in Pro.
+  const studentToggle = page.getByRole('button', { name: /^student$/i });
+  if (await studentToggle.isVisible().catch(() => false)) {
+    await studentToggle.click({ force: true });
+    await page.waitForTimeout(250);
+  }
 }
 
 async function runSim(page: Page) {
@@ -46,9 +52,7 @@ const faultAlertDialog = (page: Page) =>
   page.getByRole('dialog').filter({ has: page.getByText('CIRCUIT PROTECTION TRIPPED!') });
 
 async function dismissFaultAlert(page: Page) {
-  await faultAlertDialog(page)
-    .getByRole('button', { name: 'Close modal' })
-    .click();
+  await faultAlertDialog(page).getByRole('button', { name: 'Close modal' }).click();
   await expect(faultAlertDialog(page)).toBeHidden();
 }
 
@@ -188,9 +192,7 @@ test.describe('faults & editing', () => {
     const rcboAria = hitboxIn(page.locator(`[data-component-id="${rcboId}"]`));
     await expect(rcboAria).not.toHaveAttribute('aria-label', /, tripped/);
     await expect(page.getByRole('button', { name: /^Stop$/ })).toBeHidden();
-    await manualFaultDialog(page)
-      .getByRole('button', { name: 'Close modal' })
-      .click();
+    await manualFaultDialog(page).getByRole('button', { name: 'Close modal' }).click();
     await expect(manualFaultDialog(page)).toBeHidden();
 
     // Re-spec the device as Type B in the Inspector — the deliberate fix a
@@ -246,9 +248,7 @@ test.describe('faults & editing', () => {
     await expect(page.getByRole('button', { name: /^Stop$/ })).toBeHidden();
     // Teach the standard: the modal names the regulation behind the advice.
     await expect(arcFaultDialog(page)).toContainText('BS EN 62606');
-    await arcFaultDialog(page)
-      .getByRole('button', { name: 'Close modal' })
-      .click();
+    await arcFaultDialog(page).getByRole('button', { name: 'Close modal' }).click();
     await expect(arcFaultDialog(page)).toBeHidden();
 
     // Recover: clear the injected arc fault and prove a clean run.
@@ -301,9 +301,10 @@ test.describe('faults & editing', () => {
       page.locator(`[data-component-id="${bulbId}"]`).locator('circle[fill="#facc15"]').first(),
     ).toBeVisible();
     await expect(faultAlertDialog(page)).toBeHidden();
-    await expect(
-      hitboxIn(page.locator(`[data-component-id="${mcbId}"]`)),
-    ).not.toHaveAttribute('aria-label', /, tripped/);
+    await expect(hitboxIn(page.locator(`[data-component-id="${mcbId}"]`))).not.toHaveAttribute(
+      'aria-label',
+      /, tripped/,
+    );
   });
 
   test('copy/paste duplicates the selected component and undo removes it', async ({ page }) => {

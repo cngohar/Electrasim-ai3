@@ -93,10 +93,10 @@ export function MiniMap({ consoleOffset = 'none' }: Props) {
 
   const bottomClass =
     consoleOffset === 'expanded'
-      ? 'bottom-72'
+      ? 'bottom-80'
       : consoleOffset === 'collapsed'
-        ? 'bottom-44'
-        : 'bottom-36';
+        ? 'bottom-52'
+        : 'bottom-44';
 
   return (
     <div

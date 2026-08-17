@@ -6,9 +6,11 @@ import {
   CheckCircle2,
   Grid,
   Magnet,
+  MousePointer2,
+  ScanSearch,
   Zap,
 } from 'lucide-react';
-import { useCircuitStore, useSettingsStore, useUiStore } from '../../store';
+import { useCircuitStore, useSettingsStore, useUiStore, useViewportStore } from '../../store';
 
 interface Props {
   simRunning: boolean;
@@ -32,6 +34,8 @@ export function StatusPill({
   const simResult = useUiStore((s) => s.simResult);
   const paletteOpen = useUiStore((s) => s.paletteOpen);
   const inspectorCollapsed = useUiStore((s) => s.inspectorCollapsed);
+  const mode = useUiStore((s) => s.mode);
+  const zoom = useViewportStore((s) => s.zoom);
 
   const effectiveVoltage = simResult?.supplyVoltage ?? globalVoltage;
   const isAc = effectiveVoltage > 48;
@@ -42,93 +46,104 @@ export function StatusPill({
     return null;
   }
 
-  const leftClass = paletteOpen ? 'left-64' : 'left-0';
-  // Collapsed: clear the w-12 icon rail (right-14 = 48 px + 8 px gap).
-  // Expanded: drawer (w-64 md:w-72 lg:w-80) + rail.
+  const leftClass = paletteOpen ? 'left-[260px]' : 'left-0';
   const rightClass = !inspectorCollapsed ? 'right-76 md:right-84 lg:right-92' : 'right-14';
+
+  const modeLabel = mode === 'wiring' ? 'Wire' : mode === 'placing' ? 'Place' : 'Select';
 
   return (
     <div
-      className={`absolute bottom-0 ${leftClass} ${rightClass} z-10 hidden items-center justify-between border-t border-slate-200/80 bg-white/85 px-4 py-1.5 text-[11px] font-medium text-slate-700 shadow-lg backdrop-blur-xl transition-all duration-150 md:flex dark:border-slate-800/80 dark:bg-slate-900/85 dark:text-slate-300`}
+      className={`absolute bottom-0 ${leftClass} ${rightClass} z-10 hidden items-center justify-between border-t border-slate-200/80 bg-white/95 px-3 py-1 text-[11px] font-medium text-slate-600 shadow-lg backdrop-blur-xl transition-all duration-150 md:flex dark:border-slate-800/80 dark:bg-slate-900/95 dark:text-slate-300`}
     >
-      {/* Real-time live counts and telemetry */}
+      {/* Left: supply + health */}
       <div className="flex items-center gap-3">
-        {/* Real-time simulation pulse status */}
-        <div className="flex items-center gap-1.5 font-semibold text-slate-800 dark:text-slate-200">
-          <span
-            className={`size-2 rounded-full ${
-              simRunning ? 'bg-emerald-500 shadow-[0_0_6px] shadow-emerald-400 animate-pulse' : 'bg-slate-400'
-            }`}
-          />
-          <span className="text-[10px] uppercase tracking-wider text-slate-500 dark:text-slate-400 font-bold">
-            Live Check:
+        <div
+          className="flex items-center gap-1.5 rounded-md border border-amber-200/80 bg-amber-50/70 px-2 py-0.5 font-mono text-[11px] font-bold text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-300"
+          title="Live circuit supply voltage — change from the context bar"
+        >
+          <Zap className="size-3 fill-amber-500 text-amber-500" />
+          <span>
+            Supply: {effectiveVoltage} V {isAc ? 'AC' : 'DC'}
           </span>
         </div>
 
-        {/* Component Count */}
-        <div className="flex items-center gap-1 font-semibold text-slate-800 dark:text-slate-200" title="Total components on canvas">
-          <Boxes className="size-3.5 text-blue-500" />
-          <span>{components}</span>
-          <span className="text-slate-500 dark:text-slate-400 font-normal">comp{components === 1 ? '' : 's'}</span>
-        </div>
-
-        <span className="text-slate-300 dark:text-slate-700">•</span>
-
-        {/* Wire Count */}
-        <div className="flex items-center gap-1 font-semibold text-slate-800 dark:text-slate-200" title="Total connecting wires">
-          <Cable className="size-3.5 text-indigo-500" />
-          <span>{wires}</span>
-          <span className="text-slate-500 dark:text-slate-400 font-normal">wire{wires === 1 ? '' : 's'}</span>
-        </div>
-
-        {/* Active Nodes Count when Simulation Running */}
-        {simRunning && (
-          <>
-            <span className="text-slate-300 dark:text-slate-700">•</span>
-            <div className="flex items-center gap-1 font-semibold text-emerald-600 dark:text-emerald-400" title="Active energized components">
-              <Activity className="size-3.5 text-emerald-500" />
-              <span>{active}</span>
-              <span className="font-normal text-emerald-700/80 dark:text-emerald-300/80">energized</span>
-            </div>
-          </>
-        )}
-
-        <div className="h-3 w-px bg-slate-200 dark:bg-slate-700" />
-
-        {/* Real-time Global Supply Voltage indicator (Synced from SubHeaderBar) */}
         <div
-          className="flex items-center gap-1.5 rounded-lg border border-amber-200/80 bg-amber-50/70 px-2 py-0.5 font-mono text-[11px] font-bold text-amber-900 shadow-2xs dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-300"
-          title="Live circuit supply voltage — change anytime from the sub-header bar"
+          className="flex items-center gap-1 font-semibold text-slate-700 dark:text-slate-200"
+          title="Live circuit health"
         >
-          <Zap className="size-3.5 fill-amber-500 text-amber-500" />
-          <span>Supply: {effectiveVoltage} V {isAc ? 'AC' : 'DC'}</span>
-        </div>
-
-        <div className="h-3 w-px bg-slate-200 dark:bg-slate-700" />
-
-        {/* Real-time Health Status */}
-        <div className="flex items-center gap-1 text-[10px]">
+          <span
+            className={`size-2 rounded-full ${
+              hasErrors
+                ? 'bg-rose-500'
+                : hasWarnings
+                  ? 'bg-amber-500'
+                  : simRunning && active > 0
+                    ? 'bg-emerald-500 shadow-[0_0_6px] shadow-emerald-400'
+                    : 'bg-slate-400'
+            }`}
+          />
+          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+            Live Check:
+          </span>
           {hasErrors ? (
             <span className="flex items-center gap-1 font-bold text-rose-600 dark:text-rose-400">
-              <AlertCircle className="size-3 text-rose-500" /> Faults Active
+              <AlertCircle className="size-3" /> Faults
             </span>
           ) : hasWarnings ? (
-            <span className="flex items-center gap-1 font-medium text-amber-600 dark:text-amber-400">
-              <AlertCircle className="size-3 text-amber-500" /> Open Circuit
-            </span>
+            <span className="font-medium text-amber-600 dark:text-amber-400">Open Circuit</span>
           ) : simRunning && active > 0 ? (
             <span className="flex items-center gap-1 font-medium text-emerald-600 dark:text-emerald-400">
-              <CheckCircle2 className="size-3 text-emerald-500" /> Circuit Closed & Healthy
+              <CheckCircle2 className="size-3" /> Healthy
             </span>
           ) : (
             <span className="text-slate-400 dark:text-slate-500">
-              {components === 0 ? 'Canvas Ready' : 'Standby'}
+              {components === 0 ? 'Ready' : 'Standby'}
             </span>
           )}
         </div>
       </div>
 
-      {/* Right controls: Snap & Grid toggles */}
+      {/* Center: counts */}
+      <div className="hidden items-center gap-3 md:flex">
+        <div
+          className="flex items-center gap-1 font-semibold text-slate-700 dark:text-slate-200"
+          title="Total components on canvas"
+        >
+          <Boxes className="size-3.5 text-blue-500" />
+          <span>{components}</span>
+          <span className="font-normal text-slate-500 dark:text-slate-400">
+            comp{components === 1 ? '' : 's'}
+          </span>
+        </div>
+        <span className="text-slate-300 dark:text-slate-700">•</span>
+        <div
+          className="flex items-center gap-1 font-semibold text-slate-700 dark:text-slate-200"
+          title="Total connecting wires"
+        >
+          <Cable className="size-3.5 text-indigo-500" />
+          <span>{wires}</span>
+          <span className="font-normal text-slate-500 dark:text-slate-400">
+            wire{wires === 1 ? '' : 's'}
+          </span>
+        </div>
+        {simRunning && (
+          <>
+            <span className="text-slate-300 dark:text-slate-700">•</span>
+            <div
+              className="flex items-center gap-1 font-semibold text-emerald-600 dark:text-emerald-400"
+              title="Active energized components"
+            >
+              <Activity className="size-3.5 text-emerald-500" />
+              <span>{active}</span>
+              <span className="font-normal text-emerald-700/80 dark:text-emerald-300/80">
+                energized
+              </span>
+            </div>
+          </>
+        )}
+      </div>
+
+      {/* Right: snap / grid / mode / zoom */}
       <div className="flex items-center gap-3">
         <button
           type="button"
@@ -139,9 +154,7 @@ export function StatusPill({
           <Magnet className="size-3 text-slate-400" />
           <span className="text-slate-500 dark:text-slate-400">Snap:</span>
           <span
-            className={`font-bold ${
-              snapToGrid ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-400'
-            }`}
+            className={`font-bold ${snapToGrid ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-400'}`}
           >
             {snapToGrid ? 'ON' : 'OFF'}
           </span>
@@ -158,11 +171,36 @@ export function StatusPill({
           <Grid className="size-3 text-slate-400" />
           <span className="text-slate-500 dark:text-slate-400">Grid:</span>
           <span
-            className={`font-bold ${
-              showGrid ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-400'
-            }`}
+            className={`font-bold ${showGrid ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-400'}`}
           >
             {showGrid ? 'ON' : 'OFF'}
+          </span>
+        </button>
+
+        <div className="h-3 w-px bg-slate-200 dark:bg-slate-700" />
+
+        <div className="flex items-center gap-1" title="Active tool">
+          <MousePointer2 className="size-3 text-slate-400" />
+          <span className="text-slate-500 dark:text-slate-400">Mode:</span>
+          <span className="font-bold text-slate-700 dark:text-slate-200">{modeLabel}</span>
+        </div>
+
+        <div className="h-3 w-px bg-slate-200 dark:bg-slate-700" />
+
+        <button
+          type="button"
+          onClick={() =>
+            useViewportStore
+              .getState()
+              .zoomToFit({ width: 1200, height: 720 }, useCircuitStore.getState().components)
+          }
+          className="flex items-center gap-1 rounded px-1.5 py-0.5 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+          title="Zoom to fit (F)"
+        >
+          <ScanSearch className="size-3 text-slate-400" />
+          <span className="text-slate-500 dark:text-slate-400">Zoom:</span>
+          <span className="font-mono font-bold text-slate-700 dark:text-slate-200">
+            {Math.round(zoom * 100)}%
           </span>
         </button>
       </div>

@@ -50,10 +50,10 @@ export function ToolDock({ selectedId, mode, consoleOffset = 'none' }: Props) {
     <div
       className={`absolute ${rightClass} z-10 flex flex-col gap-2 transition-all duration-150 ${
         consoleOffset === 'expanded'
-          ? 'bottom-48'
+          ? 'bottom-52'
           : consoleOffset === 'collapsed'
-            ? 'bottom-16'
-            : 'bottom-4'
+            ? 'bottom-[4.5rem]'
+            : 'bottom-9'
       }`}
     >
       <div className="flex items-center gap-1 rounded-full border border-white/80 bg-white/75 p-1 shadow-xl ring-1 ring-slate-900/5 backdrop-blur-xl dark:border-slate-700/80 dark:bg-slate-900/80 dark:ring-slate-700/50">

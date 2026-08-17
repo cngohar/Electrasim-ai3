@@ -65,7 +65,7 @@ export function GuidedCircuitPanel({ isPhone }: Props) {
         title={`${template.title} — show guide steps`}
         className={[
           'absolute z-20 flex items-center gap-2 rounded-full border border-white/80 bg-white/95 px-3 py-2 shadow-xl shadow-slate-900/10 ring-1 ring-slate-900/5 backdrop-blur-xl transition hover:bg-blue-50 dark:border-slate-700/80 dark:bg-slate-900/95 dark:ring-slate-700/50 dark:hover:bg-slate-800',
-          isPhone ? 'bottom-20 right-3' : 'right-14 top-24',
+          isPhone ? 'bottom-20 right-3' : 'left-1/2 top-36 -translate-x-1/2',
         ].join(' ')}
       >
         <span className="grid size-6 place-items-center rounded-lg bg-blue-600 text-white shadow-sm shadow-blue-600/30">

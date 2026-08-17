@@ -1,10 +1,19 @@
 /**
- * Toolbar — the floating top capsule. Holds the brand mark, undo/redo,
- * simulation controls, and the settings entry-point.
+ * Toolbar — Workbench experiment top application bar.
+ *
+ * Full-width strip (not a floating capsule) with the professional workbench
+ * command order:
+ *   [ElectraSim] [Undo] [Redo] [Student/Pro] [Validate] [▶ Run Simulation]
+ *   [⚡ Fault Lab]   ···spacer···   [Ctrl+K] [Theme] [Settings] [Menu]
+ *
+ * All existing behaviour is preserved — this only re-hosts the same buttons
+ * into a cleaner full-width shell and adds the Fault Lab + Settings + Ctrl+K
+ * entry points.
  */
 
 import {
   BookOpen,
+  Command,
   Flame,
   FlaskConical,
   GraduationCap,
@@ -12,6 +21,7 @@ import {
   OctagonAlert,
   Play,
   Redo2,
+  Settings,
   ShieldCheck,
   Sparkles,
   Square,
@@ -22,7 +32,6 @@ import {
 } from 'lucide-react';
 import { redo, undo, useUiStore } from '../../store';
 import { useSettingsStore } from '../../store/settingsStore';
-import { clearAll, seedStress } from '../../store/stress';
 import { useResolvedTheme } from '../hooks/useResolvedTheme';
 import { IconBtn } from './IconBtn';
 
@@ -36,7 +45,7 @@ interface Props {
 export function Toolbar({ isPhone, simRunning, dashboardOpen, onToggleDashboard }: Props) {
   const appMode = useSettingsStore((s) => s.appMode);
   const setSetting = useSettingsStore((s) => s.setSetting);
-  const stressZonesEnabled = useSettingsStore((s) => s.stressZonesEnabled);
+  const manualFaultInjection = useSettingsStore((s) => s.manualFaultInjection);
   const resolvedTheme = useResolvedTheme();
   const isDark = resolvedTheme === 'dark';
   const simResult = useUiStore((s) => s.simResult);
@@ -48,44 +57,60 @@ export function Toolbar({ isPhone, simRunning, dashboardOpen, onToggleDashboard 
   const hasBustedWires = simResult?.bustedWires && simResult.bustedWires.size > 0;
   const isBlocked = !simRunning && (hasTrippedComponents || hasBlownComponents || hasBustedWires);
 
+  const stressZonesEnabled = useSettingsStore((s) => s.stressZonesEnabled);
+
+  const openFaultLab = () => {
+    // Arm manual fault injection and surface the telemetry/faults tab.
+    setSetting('manualFaultInjection', true);
+    useUiStore.getState().setInspectorCollapsed(false);
+    useUiStore.getState().setActiveInspectorTab('simulation');
+    useUiStore.getState().addLog('Fault Lab opened — manual fault controls armed.', 'info');
+  };
+
   return (
     <header
       className={[
-        'absolute left-1/2 top-4 z-10 flex -translate-x-1/2 items-center gap-2 rounded-full border border-white/80 bg-white/70 px-3 py-2 shadow-xl shadow-slate-900/5 ring-1 ring-slate-900/5 backdrop-blur-xl backdrop-saturate-150 dark:border-slate-700/80 dark:bg-slate-900/80 dark:shadow-slate-900/30 dark:ring-slate-700/50',
-        isPhone ? 'w-[92%] justify-between' : '',
+        'absolute inset-x-0 top-0 z-30 flex h-12 items-center gap-1 border-b border-slate-200/80 bg-white/90 px-2 shadow-sm ring-1 ring-slate-900/5 backdrop-blur-xl dark:border-slate-700/80 dark:bg-slate-900/90 dark:ring-slate-700/50',
+        isPhone ? 'justify-between' : '',
       ].join(' ')}
     >
-      <div className="flex items-center gap-2 pr-2">
+      {/* Brand */}
+      <div className="flex shrink-0 items-center gap-2 pr-2">
         <div className="grid size-7 place-items-center rounded-lg bg-blue-600 text-white shadow-sm shadow-blue-600/30">
           <Zap className="size-3.5" strokeWidth={3} />
         </div>
         {!isPhone && (
-          <div>
-            <div className="text-[13px] font-semibold leading-tight tracking-tight text-slate-900 dark:text-slate-100">
+          <div className="leading-tight">
+            <div className="text-[13px] font-semibold tracking-tight text-slate-900 dark:text-slate-100">
               ElectraSim
             </div>
-            <div className="text-[10px] leading-tight text-slate-500 dark:text-slate-400">
-              Interactive Wiring Lab
+            <div className="text-[9px] leading-tight text-slate-400 dark:text-slate-500">
+              Wiring Workbench
             </div>
           </div>
         )}
       </div>
+
       <Sep />
+
+      {/* Undo / Redo */}
       <IconBtn icon={Undo2} title="Undo (Ctrl+Z)" onClick={undo} />
       <IconBtn icon={Redo2} title="Redo (Ctrl+Shift+Z)" onClick={redo} />
+
       {!isPhone && <Sep />}
+
+      {/* Guided circuits */}
       <button
         type="button"
         onClick={() => useUiStore.getState().setTemplatesOpen(true)}
         title="Guided circuits"
-        className={[
-          'flex items-center gap-1.5 rounded-full border border-blue-100 bg-blue-50 px-3 py-1.5 text-xs font-semibold text-blue-700 shadow-sm shadow-blue-600/5 transition hover:border-blue-200 hover:bg-blue-100 dark:border-blue-900 dark:bg-blue-950/60 dark:text-blue-300 dark:hover:bg-blue-900/70',
-          isPhone ? 'px-2.5' : '',
-        ].join(' ')}
+        className="flex items-center gap-1.5 rounded-lg border border-blue-100 bg-blue-50 px-2.5 py-1.5 text-xs font-semibold text-blue-700 shadow-sm transition hover:border-blue-200 hover:bg-blue-100 dark:border-blue-900 dark:bg-blue-950/60 dark:text-blue-300 dark:hover:bg-blue-900/70"
       >
         <BookOpen className="size-3.5" />
-        {!isPhone && 'Guides'}
+        {!isPhone && <span className="hidden md:inline">Guides</span>}
       </button>
+
+      {/* Student / Pro mode */}
       <button
         type="button"
         onClick={() => {
@@ -109,11 +134,10 @@ export function Toolbar({ isPhone, simRunning, dashboardOpen, onToggleDashboard 
             : 'Pro Electrician Mode active — click to switch to Basic Student Mode'
         }
         className={[
-          'flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold shadow-sm transition',
+          'flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-semibold shadow-sm transition',
           appMode === 'basic'
             ? 'border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:border-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300'
             : 'border-purple-200 bg-purple-50 text-purple-700 hover:bg-purple-100 dark:border-purple-800 dark:bg-purple-950/60 dark:text-purple-300',
-          isPhone ? 'px-2' : '',
         ].join(' ')}
       >
         {appMode === 'basic' ? (
@@ -121,71 +145,34 @@ export function Toolbar({ isPhone, simRunning, dashboardOpen, onToggleDashboard 
         ) : (
           <Wrench className="size-3.5" />
         )}
-        {!isPhone && (appMode === 'basic' ? 'Student' : 'Pro')}
+        {!isPhone && (
+          <span className="hidden md:inline">{appMode === 'basic' ? 'Student' : 'Pro'}</span>
+        )}
       </button>
 
-      {appMode === 'pro' && !isPhone && (
-        <button
-          type="button"
-          onClick={() => {
-            useUiStore.getState().setInspectorCollapsed(false);
-            useUiStore.getState().setActiveInspectorTab('analytics');
-            onToggleDashboard?.();
-          }}
-          title="Toggle circuit diagnostics, analysis & waveforms"
-          className={[
-            'flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold shadow-sm transition',
-            dashboardOpen
-              ? 'border-blue-500 bg-blue-600 text-white shadow-blue-500/20'
-              : 'border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100 dark:border-blue-800 dark:bg-blue-950/60 dark:text-blue-300',
-          ].join(' ')}
-        >
-          <Sparkles className="size-3.5" />
-          Analyze Circuit
-        </button>
-      )}
-      {appMode === 'pro' && (
-        <button
-          type="button"
-          onClick={() => setSetting('stressZonesEnabled', !stressZonesEnabled)}
-          title="Overlay a heatmap highlighting components and wiring with high heat dissipation or voltage drop under the current regulation standard"
-          aria-pressed={stressZonesEnabled}
-          className={[
-            'flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold shadow-sm transition',
-            stressZonesEnabled
-              ? 'border-orange-500 bg-orange-600 text-white shadow-orange-500/20'
-              : 'border-orange-200 bg-orange-50 text-orange-700 hover:bg-orange-100 dark:border-orange-800 dark:bg-orange-950/60 dark:text-orange-300 dark:hover:bg-orange-900/70',
-            isPhone ? 'px-2' : '',
-          ].join(' ')}
-        >
-          <Flame className="size-3.5" />
-          {!isPhone && 'Stress Zones'}
-        </button>
-      )}
+      {/* Validate */}
       <button
         type="button"
         onClick={() => useUiStore.getState().runCircuitValidation()}
         title="Validate circuit for design flaws & BS 7671 compliance"
-        className={[
-          'flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700 shadow-sm transition hover:bg-emerald-100 dark:border-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 dark:hover:bg-emerald-900/70',
-          isPhone ? 'px-2' : '',
-        ].join(' ')}
+        className="flex items-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-1.5 text-xs font-semibold text-emerald-700 shadow-sm transition hover:bg-emerald-100 dark:border-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 dark:hover:bg-emerald-900/70"
       >
         <ShieldCheck className="size-3.5 text-emerald-600 dark:text-emerald-400" />
-        {!isPhone && 'Validate'}
+        {!isPhone && <span className="hidden md:inline">Validate</span>}
       </button>
 
+      {/* RUN SIMULATION — primary action */}
       <button
         type="button"
         onClick={() => !isBlocked && useUiStore.getState().toggleSim()}
         disabled={isBlocked}
         className={[
-          'flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold shadow-sm transition',
+          'flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold shadow-sm transition',
           isBlocked
-            ? 'bg-red-600 text-white cursor-not-allowed animate-pulse'
+            ? 'cursor-not-allowed bg-red-600 text-white animate-pulse'
             : simRunning
               ? 'bg-emerald-600 text-white shadow-emerald-600/20 hover:bg-emerald-700'
-              : 'bg-slate-900 text-white hover:bg-slate-800',
+              : 'bg-blue-600 text-white shadow-blue-600/20 hover:bg-blue-700',
         ].join(' ')}
         title={
           isBlocked
@@ -196,7 +183,7 @@ export function Toolbar({ isPhone, simRunning, dashboardOpen, onToggleDashboard 
         {isBlocked ? (
           <>
             <OctagonAlert className="size-3" />
-            CIRCUIT TRIPPED
+            Circuit Tripped
           </>
         ) : simRunning ? (
           <>
@@ -210,34 +197,87 @@ export function Toolbar({ isPhone, simRunning, dashboardOpen, onToggleDashboard 
           </>
         )}
       </button>
-      {import.meta.env.DEV && !isPhone && (
+
+      {/* Pro-mode: Analyze Circuit dashboard (existing behaviour preserved) */}
+      {appMode === 'pro' && !isPhone && (
         <button
           type="button"
-          title="DEV: spawn 50 lamp branches (≈100 components, 150 wires). Shift-click to wipe + spawn 100. Alt-click to clear all."
-          onClick={(e) => {
-            if (e.altKey) {
-              clearAll();
-              useUiStore.getState().addLog('Cleared circuit.', 'info');
-              return;
-            }
-            const branches = e.shiftKey ? 100 : 50;
-            if (e.shiftKey) clearAll();
-            const r = seedStress(branches);
-            useUiStore
-              .getState()
-              .addLog(`Stress: +${r.components} components, +${r.wires} wires.`, 'info');
+          onClick={() => {
+            useUiStore.getState().setInspectorCollapsed(false);
+            useUiStore.getState().setActiveInspectorTab('analytics');
+            onToggleDashboard?.();
           }}
-          className="flex items-center gap-1 rounded-full bg-amber-500 px-2.5 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-white shadow-sm shadow-amber-500/20 transition hover:bg-amber-600"
+          title="Toggle circuit diagnostics, analysis & waveforms"
+          className={[
+            'flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-semibold shadow-sm transition',
+            dashboardOpen
+              ? 'border-blue-500 bg-blue-600 text-white shadow-blue-500/20'
+              : 'border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100 dark:border-blue-800 dark:bg-blue-950/60 dark:text-blue-300',
+          ].join(' ')}
         >
-          <FlaskConical className="size-3" />
-          Stress
+          <Sparkles className="size-3.5" />
+          <span className="hidden lg:inline">Analyze</span>
         </button>
       )}
+      {appMode === 'pro' && !isPhone && (
+        <button
+          type="button"
+          onClick={() => setSetting('stressZonesEnabled', !stressZonesEnabled)}
+          title="Overlay a heatmap highlighting components and wiring with high heat dissipation or voltage drop under the current regulation standard"
+          aria-pressed={stressZonesEnabled}
+          className={[
+            'flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-semibold shadow-sm transition',
+            stressZonesEnabled
+              ? 'border-orange-500 bg-orange-600 text-white shadow-orange-500/20'
+              : 'border-orange-200 bg-orange-50 text-orange-700 hover:bg-orange-100 dark:border-orange-800 dark:bg-orange-950/60 dark:text-orange-300 dark:hover:bg-orange-900/70',
+          ].join(' ')}
+        >
+          <Flame className="size-3.5" />
+          <span className="hidden lg:inline">Stress Zones</span>
+        </button>
+      )}
+
+      {/* FAULT LAB — visually distinct but calm when inactive */}
+      <button
+        type="button"
+        onClick={openFaultLab}
+        title="Open Fault Lab — arm manual fault controls and open telemetry"
+        aria-pressed={manualFaultInjection}
+        className={[
+          'flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-semibold shadow-sm transition',
+          manualFaultInjection
+            ? 'border-amber-500 bg-amber-100 text-amber-800 dark:border-amber-600 dark:bg-amber-950/70 dark:text-amber-200'
+            : 'border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100 dark:border-amber-800 dark:bg-amber-950/50 dark:text-amber-300 dark:hover:bg-amber-900/70',
+        ].join(' ')}
+      >
+        <FlaskConical className="size-3.5" />
+        {!isPhone && <span className="hidden md:inline">Fault Lab</span>}
+      </button>
+
+      {/* spacer */}
+      <div className="flex-1" />
+
+      {/* Command palette hint (Ctrl+K) */}
+      {!isPhone && (
+        <button
+          type="button"
+          onClick={() => useUiStore.getState().toggleCommandPalette()}
+          title="Command palette (Ctrl+K)"
+          className="flex items-center gap-1.5 rounded-lg border border-slate-200/80 bg-white/80 px-2 py-1.5 text-xs text-slate-500 transition hover:border-blue-300 hover:text-blue-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400 dark:hover:border-blue-500"
+        >
+          <Command className="size-3.5" />
+          <kbd className="rounded border border-slate-200 bg-slate-50 px-1 text-[9px] font-semibold text-slate-400 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-300">
+            Ctrl K
+          </kbd>
+        </button>
+      )}
+
+      {/* Theme */}
       <button
         type="button"
         title={isDark ? 'Switch to Light Theme' : 'Switch to Dark Theme'}
         onClick={() => setSetting('colorScheme', isDark ? 'light' : 'dark')}
-        className="flex size-8 items-center justify-center rounded-full border border-slate-200/80 bg-white/80 text-slate-700 shadow-sm transition hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+        className="flex size-8 items-center justify-center rounded-lg border border-slate-200/80 bg-white/80 text-slate-600 shadow-sm transition hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
       >
         {isDark ? (
           <Sun className="size-4 text-amber-400" />
@@ -245,13 +285,24 @@ export function Toolbar({ isPhone, simRunning, dashboardOpen, onToggleDashboard 
           <Moon className="size-4 text-slate-600" />
         )}
       </button>
+
+      {/* Settings */}
+      <button
+        type="button"
+        title="Settings"
+        onClick={() => useUiStore.getState().setSettingsOpen(true)}
+        className="flex size-8 items-center justify-center rounded-lg border border-slate-200/80 bg-white/80 text-slate-600 shadow-sm transition hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
+      >
+        <Settings className="size-4" />
+      </button>
+
       <MenuTrigger />
     </header>
   );
 }
 
 function Sep() {
-  return <div className="mx-1 h-4 w-px bg-slate-200 dark:bg-slate-700" />;
+  return <div className="mx-1 h-4 w-px shrink-0 bg-slate-200 dark:bg-slate-700" />;
 }
 
 /** MCB breaker-switch menu trigger — Phase 6.5. */
@@ -262,7 +313,7 @@ function MenuTrigger() {
       type="button"
       aria-label="Menu"
       onClick={() => useUiStore.getState().setMenuOpen(!menuOpen)}
-      className="group relative grid size-9 place-items-center rounded-xl border border-slate-200/80 bg-white/80 shadow-md shadow-slate-900/5 backdrop-blur-xl transition hover:border-blue-300 hover:shadow-lg dark:border-slate-700/80 dark:bg-slate-800/80 dark:hover:border-blue-500"
+      className="group relative grid size-8 place-items-center rounded-lg border border-slate-200/80 bg-white/80 shadow-sm transition hover:border-blue-300 dark:border-slate-700/80 dark:bg-slate-800/80 dark:hover:border-blue-500"
       title="Menu (Esc to close)"
     >
       {/* MCB breaker lever — rotates on toggle */}

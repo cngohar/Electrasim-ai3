@@ -45,6 +45,11 @@ export function useKeyboardShortcuts() {
       // placement or closes modals.
       if (e.key === 'Escape') {
         const ui = useUiStore.getState();
+        if (ui.commandPaletteOpen) {
+          e.preventDefault();
+          ui.setCommandPaletteOpen(false);
+          return;
+        }
         if (ui.contextMenu) {
           e.preventDefault();
           ui.setContextMenu(null);
@@ -163,6 +168,13 @@ export function useKeyboardShortcuts() {
       }
 
       const meta = e.ctrlKey || e.metaKey;
+
+      // Workbench experiment — command palette (Ctrl/Cmd+K).
+      if (meta && (e.key === 'k' || e.key === 'K')) {
+        e.preventDefault();
+        useUiStore.getState().toggleCommandPalette();
+        return;
+      }
 
       // Phase 6.2.4 — Copy / Paste.
       if (meta && (e.key === 'c' || e.key === 'C') && !e.shiftKey) {
