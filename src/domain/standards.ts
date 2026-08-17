@@ -1,8 +1,8 @@
 /**
  * standards.ts — international electrical standard presets & compliance helpers.
  *
- * Centralises the regulatory differences between the three templates the
- * "Dual Standard" feature exposes in the UI:
+ * Centralises the regulatory differences between the electrical rule sets the
+ * app exposes:
  *
  *   - `uk` — BS 7671 (IET Wiring Regulations, 18th Edition Amendment 3/4):
  *            230 V / 50 Hz, brown/blue/green-yellow conductors, Type B/C/D
@@ -13,6 +13,16 @@
  *   - `eu` — IEC 60364:
  *            230 V / 50 Hz, brown/blue/green-yellow (harmonised HD 308 S2),
  *            C-curve breakers on motor circuits, same drop limits as UK.
+ *   - `int` — International 230 V / 50 Hz (IEC-style). This single standard
+ *            covers every other 230 V / 50 Hz country (Australia/NZ, India,
+ *            South Africa, most of Asia/Africa/the Gulf, etc.) because their
+ *            electrical rules are identical — only the plug/socket differs,
+ *            which is handled separately by the plug-type selector.
+ *
+ * The plug/socket system is a SEPARATE concept from the electrical standard
+ * (see `PLUG_SYSTEMS` below): a user picks their electrical rules once and
+ * then their regional plug type, rather than duplicating near-identical
+ * standards for every country.
  *
  * Keep this module pure & dependency-free so the simulator worker and the
  * validation engine can both import it without dragging React in.
@@ -22,10 +32,17 @@ import type { PortType } from './types';
 
 // ─── Types ────────────────────────────────────────────────────────────────
 
-export type StandardId = 'uk' | 'us' | 'eu' | 'au' | 'in' | 'za';
+export type StandardId = 'uk' | 'us' | 'eu' | 'int';
 
-/** Regional plug / socket system (drives which socket palette tiles show). */
-export type PlugSystem = 'bs1363' | 'nema5' | 'schuko' | 'as3112' | 'bs546' | 'schuko-sa';
+/** Regional plug / socket system. This is independent of the electrical
+ *  standard — it only drives which socket tiles appear in the palette. */
+export type PlugSystemId =
+  | 'bs1363' // UK 3-pin
+  | 'nema5' // US / Canada / parts of South America
+  | 'schuko' // Continental Europe
+  | 'as3112' // Australia / New Zealand
+  | 'bs546' // India / South Africa / Pakistan / Gulf
+  | 'all'; // Show every socket type
 
 /** Maximum permissible voltage drop at the furthest point of a final circuit. */
 export interface VoltageDropLimits {
@@ -68,10 +85,6 @@ export interface StandardPreset {
   lightingCircuitAmps: number;
   /** Human-readable wire-colour legend for tooltips/help text. */
   conductorLegend: { live: string; neutral: string; earth: string };
-  /** Regional plug / socket system used for this region. */
-  plugSystem: PlugSystem;
-  /** Sockets relevant to this region (component type ids shown in palette). */
-  regionalSockets: string[];
 }
 
 // ─── Presets ──────────────────────────────────────────────────────────────
@@ -99,8 +112,6 @@ export const STANDARDS: Record<StandardId, StandardPreset> = {
       neutral: 'Blue (Neutral)',
       earth: 'Green/Yellow (CPC)',
     },
-    plugSystem: 'bs1363',
-    regionalSockets: ['socket-3pin', 'double-socket', 'socket-usb'],
   },
   us: {
     id: 'us',
@@ -125,8 +136,6 @@ export const STANDARDS: Record<StandardId, StandardPreset> = {
       neutral: 'White / Gray (Grounded)',
       earth: 'Green / Bare (EGC)',
     },
-    plugSystem: 'nema5',
-    regionalSockets: ['socket-2pin', 'socket-us', 'double-socket-us', 'socket-gfci'],
   },
   eu: {
     id: 'eu',
@@ -150,48 +159,20 @@ export const STANDARDS: Record<StandardId, StandardPreset> = {
       neutral: 'Blue (Neutral)',
       earth: 'Green/Yellow (PE)',
     },
-    plugSystem: 'schuko',
-    regionalSockets: ['socket-schuko', 'socket-schuko-double'],
   },
 
-  // ─── Australia / New Zealand — AS/NZS 3000 ──────────────────────────────
-  au: {
-    id: 'au',
-    label: 'Australia / New Zealand',
-    shortLabel: 'AU/NZ',
-    citation: 'AS/NZS 3000',
-    flag: '🇦🇺',
+  // ─── International 230 V / 50 Hz (IEC-style) ───────────────────────────
+  // Covers Australia/NZ, India, South Africa, and every other 230 V / 50 Hz
+  // country. Their electrical rules are identical; only the plug type differs,
+  // which is handled by the separate plug-type selector.
+  int: {
+    id: 'int',
+    label: 'International',
+    shortLabel: 'Intl',
+    citation: 'IEC 60364 · 230 V / 50 Hz',
+    flag: '🌍',
     nominalVoltage: 230,
     frequencyHz: 50,
-    // AU/NZ use brown live, blue neutral, green/yellow earth (IEC-ish, AS/NZS 3008 colours).
-    wireColors: { live: '#b45309', neutral: '#2563eb', earth: '#16a34a' },
-    wireColorsDark: { live: '#f87171', neutral: '#60a5fa', earth: '#34d399' },
-    voltageDrop: { lightingPercent: 3, powerPercent: 5 },
-    defaultMcbCurve: 'C',
-    motorMcbCurve: 'C',
-    rcdThresholdMa: 30,
-    rcdRequiredOnSockets: true,
-    socketCircuitAmps: 20,
-    lightingCircuitAmps: 10,
-    conductorLegend: {
-      live: 'Brown (Active)',
-      neutral: 'Blue (Neutral)',
-      earth: 'Green/Yellow (Earth)',
-    },
-    plugSystem: 'as3112',
-    regionalSockets: ['socket-as3112', 'socket-as3112-double'],
-  },
-
-  // ─── India — BS 546 / IS 1293 (and BS 1363 for new installs) ───────────
-  in: {
-    id: 'in',
-    label: 'India',
-    shortLabel: 'IN',
-    citation: 'IS 732 / IS 1293 (BS 546 style)',
-    flag: '🇮🇳',
-    nominalVoltage: 230,
-    frequencyHz: 50,
-    // India: red/brown live, black/blue neutral, green/yellow earth (IS 732).
     wireColors: { live: '#b45309', neutral: '#2563eb', earth: '#16a34a' },
     wireColorsDark: { live: '#f87171', neutral: '#60a5fa', earth: '#34d399' },
     voltageDrop: { lightingPercent: 3, powerPercent: 5 },
@@ -202,40 +183,10 @@ export const STANDARDS: Record<StandardId, StandardPreset> = {
     socketCircuitAmps: 16,
     lightingCircuitAmps: 10,
     conductorLegend: {
-      live: 'Red / Brown (Phase)',
-      neutral: 'Black / Blue (Neutral)',
+      live: 'Brown / Red (Phase)',
+      neutral: 'Blue / Black (Neutral)',
       earth: 'Green/Yellow (Earth)',
     },
-    plugSystem: 'bs546',
-    regionalSockets: ['socket-bs546', 'socket-bs546-double', 'socket-3pin'],
-  },
-
-  // ─── South Africa — SANS 10142 (BS 546 / SANS 164 style, Schuko-compatible) ──
-  za: {
-    id: 'za',
-    label: 'South Africa',
-    shortLabel: 'ZA',
-    citation: 'SANS 10142-1',
-    flag: '🇿🇦',
-    nominalVoltage: 230,
-    frequencyHz: 50,
-    // South Africa: brown live, blue neutral, green/yellow earth (SANS 10142).
-    wireColors: { live: '#b45309', neutral: '#2563eb', earth: '#16a34a' },
-    wireColorsDark: { live: '#f87171', neutral: '#60a5fa', earth: '#34d399' },
-    voltageDrop: { lightingPercent: 3, powerPercent: 5 },
-    defaultMcbCurve: 'C',
-    motorMcbCurve: 'C',
-    rcdThresholdMa: 30,
-    rcdRequiredOnSockets: true,
-    socketCircuitAmps: 16,
-    lightingCircuitAmps: 10,
-    conductorLegend: {
-      live: 'Brown (Phase)',
-      neutral: 'Blue (Neutral)',
-      earth: 'Green/Yellow (Earth)',
-    },
-    plugSystem: 'bs546',
-    regionalSockets: ['socket-bs546', 'socket-schuko-double'],
   },
 };
 
@@ -243,14 +194,94 @@ export const STANDARD_LIST: StandardPreset[] = [
   STANDARDS.uk,
   STANDARDS.us,
   STANDARDS.eu,
-  STANDARDS.au,
-  STANDARDS.in,
-  STANDARDS.za,
+  STANDARDS.int,
 ];
 
 export function getStandard(id: StandardId | undefined | null): StandardPreset {
   return STANDARDS[id ?? 'uk'];
 }
+
+// ─── Plug / socket systems ────────────────────────────────────────────────
+// Independent of the electrical standard. A user picks their electrical rules
+// once, then their regional plug type; this drives which socket tiles the
+// palette shows. 'all' reveals every socket type.
+
+export interface PlugSystemInfo {
+  id: PlugSystemId;
+  label: string;
+  shortLabel: string;
+  flag: string;
+  /** Socket component type ids shown when this plug system is active. */
+  sockets: string[];
+}
+
+export const PLUG_SYSTEMS: Record<PlugSystemId, PlugSystemInfo> = {
+  bs1363: {
+    id: 'bs1363',
+    label: 'UK / BS 1363 (3-pin)',
+    shortLabel: 'UK 3-pin',
+    flag: '🇬🇧',
+    sockets: ['socket-3pin', 'double-socket', 'socket-usb'],
+  },
+  nema5: {
+    id: 'nema5',
+    label: 'US / NEMA 5-15',
+    shortLabel: 'NEMA',
+    flag: '🇺🇸',
+    sockets: ['socket-2pin', 'socket-us', 'double-socket-us', 'socket-gfci'],
+  },
+  schuko: {
+    id: 'schuko',
+    label: 'Europe / Schuko (CEE 7/3)',
+    shortLabel: 'Schuko',
+    flag: '🇪🇺',
+    sockets: ['socket-schuko', 'socket-schuko-double'],
+  },
+  as3112: {
+    id: 'as3112',
+    label: 'Australia / NZ (AS/NZS 3112)',
+    shortLabel: 'AU/NZ',
+    flag: '🇦🇺',
+    sockets: ['socket-as3112', 'socket-as3112-double'],
+  },
+  bs546: {
+    id: 'bs546',
+    label: 'India / South Africa (BS 546)',
+    shortLabel: 'BS 546',
+    flag: '🇮🇳',
+    sockets: ['socket-bs546', 'socket-bs546-double'],
+  },
+  all: {
+    id: 'all',
+    label: 'All plug types',
+    shortLabel: 'All',
+    flag: '🌐',
+    sockets: [
+      'socket-3pin',
+      'double-socket',
+      'socket-usb',
+      'socket-2pin',
+      'socket-us',
+      'double-socket-us',
+      'socket-gfci',
+      'socket-schuko',
+      'socket-schuko-double',
+      'socket-as3112',
+      'socket-as3112-double',
+      'socket-bs546',
+      'socket-bs546-double',
+    ],
+  },
+};
+
+export const PLUG_SYSTEM_LIST: PlugSystemInfo[] = [
+  PLUG_SYSTEMS.bs1363,
+  PLUG_SYSTEMS.nema5,
+  PLUG_SYSTEMS.schuko,
+  PLUG_SYSTEMS.as3112,
+  PLUG_SYSTEMS.bs546,
+  PLUG_SYSTEMS.all,
+];
 
 // ─── Compliance helpers ───────────────────────────────────────────────────
 

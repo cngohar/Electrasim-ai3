@@ -7,7 +7,7 @@
 import { ChevronLeft, ChevronRight, Layers, Search, X } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { COMPONENT_DEFS } from '../../domain';
-import { getStandard } from '../../domain/standards';
+import { PLUG_SYSTEMS } from '../../domain/standards';
 import { useUiStore } from '../../store';
 import { useSettingsStore } from '../../store/settingsStore';
 import { getDefaultArt } from '../canvas/componentArt';
@@ -237,16 +237,13 @@ export function Palette({ open, isPhone }: Props) {
   const groups = useMemo(buildGroups, []);
   const placingType = useUiStore((s) => s.placingType);
   const appMode = useSettingsStore((s) => s.appMode);
-  const regulationStandard = useSettingsStore((s) => s.regulationStandard);
+  const plugSystem = useSettingsStore((s) => s.plugSystem);
   const [query, setQuery] = useState('');
   const [isCollapsed, setIsCollapsed] = useState(false);
 
-  // Regional socket set — only show the country's regional sockets (plus
+  // Regional socket set — only show the selected plug type's sockets (plus
   // universal components). Keeps the palette relevant, not bloated.
-  const regionalSockets = useMemo(
-    () => new Set(getStandard(regulationStandard).regionalSockets),
-    [regulationStandard],
-  );
+  const regionalSockets = useMemo(() => new Set(PLUG_SYSTEMS[plugSystem].sockets), [plugSystem]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();

@@ -94,14 +94,14 @@ test.describe('Dual standard & pro features', () => {
     // injection is Pro-only).
     await expect(page.getByRole('button', { name: /Fault Lab/ })).toHaveCount(0);
     // The country / region selector is universal (available in all modes).
-    await expect(page.getByRole('banner').getByRole('button', { name: /Region:/ })).toBeVisible();
+    await expect(
+      page.getByRole('banner').getByRole('button', { name: /Standard: .* Plug: / }),
+    ).toBeVisible();
   });
 
   test('standard selector switches nominal voltage and frequency', async ({ page }) => {
     await ensureProMode(page);
 
-    // The standard selector trigger has a title that starts with
-    // "Regulation template:" — select by that title.
     const trigger = page.locator('[data-standard-selector]');
     await trigger.click({ force: true });
     await expect(page.getByText('United States', { exact: true })).toBeVisible();
@@ -111,9 +111,7 @@ test.describe('Dual standard & pro features', () => {
     await expect(page.getByText(/120\s*V\s*60\s*Hz/)).toBeVisible({ timeout: 5000 });
 
     // Switch to EU (230 V / 50 Hz).
-    await page
-      .getByRole('button', { name: /country \/ region|regulation template/i })
-      .click({ force: true });
+    await trigger.click({ force: true });
     await page.getByRole('button', { name: /european union/i }).click();
     await expect(page.getByText(/230\s*V\s*50\s*Hz/)).toBeVisible({ timeout: 5000 });
   });

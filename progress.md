@@ -17,6 +17,21 @@ Format per entry:
 
 ---
 
+## 2026-08-17 (follow-up 13) — Split electrical standard from plug type
+
+Follow-up to the international support: user noted AU/India/South Africa were electrically identical (all 230V/50Hz, IEC colours, RCD, same drops). Only the plug differed.
+
+**Done:**
+- **Combined AU/IN/ZA into a single "International" 230V/50Hz standard.** `StandardId` is now `'uk' | 'us' | 'eu' | 'int'` (4 standards). Removed the `au`/`in`/`za` presets and the `plugSystem`/`regionalSockets` fields from `StandardPreset`.
+- **New separate "Plug Type" concept** (`PLUG_SYSTEMS` map in `standards.ts`): `bs1363` · `nema5` · `schuko` · `as3112` · `bs546` · `all`. Each maps to the regional socket tiles it reveals.
+- **Persisted `plugSystem` setting** in `settingsStore` (default `'bs1363'`), hydrated/snapshotted/subscribed.
+- **`StandardSelector` now has two sections:** Electrical Standard (UK/US/EU/International) + Plug Type. The palette filters sockets by the selected plug type.
+- Removed the old `regionalSockets`-based filtering in `Palette.tsx` in favour of `PLUG_SYSTEMS[plugSystem].sockets`.
+
+**Verified:** standards list = UK, US, EU, International; plugs = UK3-pin, NEMA, Schuko, AU/NZ, BS546, All. International sets 230V/50Hz; BS546 plug shows BS546 socket & hides UK13A; Schuko shows Schuko & hides others. Gates: typecheck clean, chromium e2e 39 passed, 317 unit pass (settingsStore whitelist test updated). Committed.
+
+---
+
 ## 2026-08-17 (follow-up 12) — International country / region support
 
 User asked to target international users without ballooning the palette. Implemented a **country/region selector** that reuses the existing standards engine (which already handled UK/US/EU voltage, wire colours, and compliance).

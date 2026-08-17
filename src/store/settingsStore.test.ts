@@ -86,6 +86,7 @@ describe('settingsStore — Phase 6.1', () => {
       manualFaultInjection: true,
       stressZonesEnabled: false,
       autoWireJoints: false,
+      plugSystem: 'bs1363',
     });
 
     expect(parsed).not.toHaveProperty('injected');

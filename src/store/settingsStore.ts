@@ -23,7 +23,7 @@
 import { get, set } from 'idb-keyval';
 import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
-import type { StandardId } from '../domain/standards';
+import type { PlugSystemId, StandardId } from '../domain/standards';
 
 const SCHEMA_VERSION = 2 as const;
 const STORAGE_KEY = `electrasim:settings:v${SCHEMA_VERSION}`;
@@ -138,6 +138,12 @@ export interface UserSettings {
    * Settings → Editing.
    */
   autoWireJoints: boolean;
+  /**
+   * Regional plug / socket system. Independent of the electrical standard —
+   * controls which socket tiles show in the palette. One of 'bs1363' |
+   * 'nema5' | 'schuko' | 'as3112' | 'bs546' | 'all'. Persisted.
+   */
+  plugSystem: PlugSystemId;
 }
 
 const DEFAULTS: UserSettings = {
@@ -161,6 +167,7 @@ const DEFAULTS: UserSettings = {
   manualFaultInjection: true,
   stressZonesEnabled: false,
   autoWireJoints: false,
+  plugSystem: 'bs1363',
 };
 
 interface SettingsState extends UserSettings {
@@ -248,6 +255,11 @@ function parsePersistedSettings(value: unknown): UserSettings | null {
     ),
     stressZonesEnabled: booleanOrDefault(stored.stressZonesEnabled, DEFAULTS.stressZonesEnabled),
     autoWireJoints: booleanOrDefault(stored.autoWireJoints, DEFAULTS.autoWireJoints),
+    plugSystem: (
+      ['bs1363', 'nema5', 'schuko', 'as3112', 'bs546', 'all'] as PlugSystemId[]
+    ).includes(stored.plugSystem as PlugSystemId)
+      ? (stored.plugSystem as PlugSystemId)
+      : DEFAULTS.plugSystem,
   };
 }
 
@@ -322,6 +334,7 @@ function snapshot(state: SettingsState): UserSettings {
     manualFaultInjection: state.manualFaultInjection,
     stressZonesEnabled: state.stressZonesEnabled,
     autoWireJoints: state.autoWireJoints,
+    plugSystem: state.plugSystem,
   };
 }
 
@@ -365,7 +378,8 @@ export async function startSettingsPersistence(): Promise<void> {
       state.regulationStandard === prev.regulationStandard &&
       state.manualFaultInjection === prev.manualFaultInjection &&
       state.stressZonesEnabled === prev.stressZonesEnabled &&
-      state.autoWireJoints === prev.autoWireJoints
+      state.autoWireJoints === prev.autoWireJoints &&
+      state.plugSystem === prev.plugSystem
     ) {
       return;
     }

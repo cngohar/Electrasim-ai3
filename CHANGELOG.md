@@ -11,6 +11,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — Session 2026-08-17 (follow-up 13): Split electrical standard from plug type
+- Australia/NZ, India and South Africa were electrically identical (230 V/50 Hz, IEC colours, RCD, same drop limits) — the only difference was the plug. **Combined them into a single "International" 230 V/50 Hz standard**, so the electrical-standard list is now **UK · US · EU · International** (4, down from 6).
+- Added a separate **Plug Type** section to the region dropdown: UK 3-pin (BS 1363) · NEMA (US) · Schuko (EU) · AU/NZ (AS/NZS 3112) · BS 546 (India/South Africa) · All. This is independent of the electrical standard and only controls which sockets show in the palette.
+- Added a persisted `plugSystem` setting (`'bs1363' | 'nema5' | 'schuko' | 'as3112' | 'bs546' | 'all'`, default `'bs1363'`). The palette filters regional sockets by it via a new `PLUG_SYSTEMS` map in `standards.ts`.
+- Result: a user picks their electrical rules once (e.g. International), then their plug type (e.g. AS/NZS 3112 for Australia) — cleaner and scales to any 230 V/50 Hz country without adding a near-duplicate standard.
+
 ### Added — Session 2026-08-17 (follow-up 12): International country / region support
 - **Country / Region selector** in the top app bar (always visible, all modes). Selects one of **6 regions**: UK (BS 7671), US (NEC), EU (IEC 60364), **Australia/NZ (AS/NZS 3000)**, **India (IS 732 / BS 546)**, **South Africa (SANS 10142)**. Each sets voltage, frequency, wire colours, circuit ratings, RCD/GFCI thresholds and the compliance standard (reuses the existing standards engine).
 - **Palette is now region-aware** — it shows only the selected country's regional sockets (UK 13A, US NEMA 5-15, EU Schuko, AU AS/NZS 3112, India/South-Africa BS 546) plus universal components, keeping the palette relevant instead of bloated.

@@ -1,19 +1,27 @@
 /**
- * StandardSelector — quick-switch UK / US / EU regulation template control.
+ * StandardSelector — Country / Region control.
  *
- * Renders as a compact segmented pill used in the SubHeaderBar (Pro mode).
- * Selecting a template:
- *   - updates `regulationStandard` in the settings store (persisted),
- *   - applies that standard's nominal voltage as the global supply voltage,
- *   - re-runs validation so any new compliance violations surface at once.
- *
- * Pro Mode only — the caller decides whether to render it. The component
- * itself is presentational and safe to mount anywhere.
+ * A single dropdown with two independent sections:
+ *   1. **Electrical standard** (voltage, wire colours, ratings, compliance):
+ *      UK (BS 7671), US (NEC), EU (IEC), International 230V/50Hz (IEC-style —
+ *      covers AU/NZ, India, South Africa and every other 230V/50Hz country).
+ *      Selecting one applies its nominal voltage as the global supply voltage
+ *      and re-runs validation.
+ *   2. **Plug / socket type** (which socket tiles show in the palette):
+ *      independent of the standard — a user picks their electrical rules once,
+ *      then their regional plug.
  */
 
-import { ChevronDown, Globe, ShieldCheck } from 'lucide-react';
+import { ChevronDown, Globe, Plug, ShieldCheck } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
-import { STANDARD_LIST, type StandardId, getStandard } from '../../domain/standards';
+import {
+  PLUG_SYSTEMS,
+  PLUG_SYSTEM_LIST,
+  type PlugSystemId,
+  STANDARD_LIST,
+  type StandardId,
+  getStandard,
+} from '../../domain/standards';
 import { useCircuitStore, useSettingsStore, useUiStore } from '../../store';
 
 interface Props {
@@ -26,6 +34,7 @@ export function StandardSelector({ compact = false }: Props) {
   const rootRef = useRef<HTMLDivElement>(null);
 
   const regulationStandard = useSettingsStore((s) => s.regulationStandard);
+  const plugSystem = useSettingsStore((s) => s.plugSystem);
   const setSetting = useSettingsStore((s) => s.setSetting);
   const setGlobalSupplyVoltage = useCircuitStore((s) => s.setGlobalSupplyVoltage);
   const runCircuitValidation = useUiStore((s) => s.runCircuitValidation);
@@ -56,11 +65,17 @@ export function StandardSelector({ compact = false }: Props) {
     setGlobalSupplyVoltage(preset.nominalVoltage);
     setOpen(false);
     addLog(
-      `Regulation template set to ${preset.flag} ${preset.label} (${preset.citation}) — ${preset.nominalVoltage} V / ${preset.frequencyHz} Hz.`,
+      `Standard set to ${preset.flag} ${preset.label} (${preset.citation}) — ${preset.nominalVoltage} V / ${preset.frequencyHz} Hz.`,
       'info',
     );
     // Re-validate so newly applicable rules (drop %, RCD, MCB curve) flag up.
     setTimeout(() => runCircuitValidation(), 0);
+  };
+
+  const applyPlugSystem = (id: PlugSystemId) => {
+    setSetting('plugSystem', id);
+    setOpen(false);
+    addLog(`Plug type set to ${PLUG_SYSTEMS[id].label}.`, 'info');
   };
 
   return (
@@ -70,14 +85,18 @@ export function StandardSelector({ compact = false }: Props) {
         data-standard-selector
         onClick={() => setOpen((v) => !v)}
         className="flex items-center gap-1.5 rounded-full border border-indigo-200 bg-indigo-50 px-2.5 py-1 text-[11px] font-semibold text-indigo-700 shadow-sm transition hover:bg-indigo-100 dark:border-indigo-900 dark:bg-indigo-950/60 dark:text-indigo-300 dark:hover:bg-indigo-900/70"
-        title={`Region: ${current.citation}. Click to switch country / region.`}
-        aria-label={`Region: ${current.shortLabel}. Click to switch country / region.`}
+        title={`${current.citation} · ${PLUG_SYSTEMS[plugSystem].label}. Click to change country/standard or plug type.`}
+        aria-label={`Standard: ${current.shortLabel} · Plug: ${PLUG_SYSTEMS[plugSystem].shortLabel}. Click to change.`}
         aria-haspopup="listbox"
         aria-expanded={open}
       >
         <Globe className="size-3.5" />
         <span className="font-mono">{current.flag}</span>
-        {!compact && <span className="hidden md:inline">{current.shortLabel}</span>}
+        {!compact && (
+          <span className="hidden md:inline">
+            {current.shortLabel} · {PLUG_SYSTEMS[plugSystem].shortLabel}
+          </span>
+        )}
         <ChevronDown
           className={`size-3 text-indigo-400 transition-transform ${open ? 'rotate-180' : ''}`}
         />
@@ -86,11 +105,12 @@ export function StandardSelector({ compact = false }: Props) {
       {open && (
         <div
           tabIndex={-1}
-          className="absolute left-0 top-9 z-50 w-72 rounded-xl border border-slate-200 bg-white p-2 shadow-2xl dark:border-slate-800 dark:bg-slate-900"
+          className="absolute left-0 top-9 z-50 w-80 rounded-xl border border-slate-200 bg-white p-2 shadow-2xl dark:border-slate-800 dark:bg-slate-900"
         >
-          <div className="mb-1.5 flex items-center gap-1.5 border-b border-slate-200 pb-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:border-slate-800 dark:text-slate-400">
+          {/* ── Electrical standard ── */}
+          <div className="mb-1 flex items-center gap-1.5 border-b border-slate-200 pb-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:border-slate-800 dark:text-slate-400">
             <ShieldCheck className="size-3.5 text-emerald-500" />
-            Country / Region
+            Electrical Standard
           </div>
           {STANDARD_LIST.map((s) => {
             const selected = s.id === regulationStandard;
@@ -139,9 +159,37 @@ export function StandardSelector({ compact = false }: Props) {
               </button>
             );
           })}
-          <p className="mt-1.5 border-t border-slate-200 pt-1.5 text-[9px] leading-snug text-slate-400 dark:border-slate-800">
-            Switching updates supply voltage, conductor colours and the rule set used by the
-            compliance checker. Simulation is blocked while any error-level violation is open.
+
+          {/* ── Plug / socket type ── */}
+          <div className="mb-1 mt-2 flex items-center gap-1.5 border-b border-slate-200 pb-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:border-slate-800 dark:text-slate-400">
+            <Plug className="size-3.5 text-indigo-500" />
+            Plug Type
+          </div>
+          <div className="grid grid-cols-2 gap-1.5">
+            {PLUG_SYSTEM_LIST.map((p) => {
+              const selected = p.id === plugSystem;
+              return (
+                <button
+                  key={p.id}
+                  type="button"
+                  aria-pressed={selected}
+                  onClick={() => applyPlugSystem(p.id)}
+                  className={`flex items-center gap-1.5 rounded-lg border px-2 py-1.5 text-left text-[10px] font-semibold transition ${
+                    selected
+                      ? 'border-indigo-500 bg-indigo-50 text-indigo-800 dark:border-indigo-500 dark:bg-indigo-950/50 dark:text-indigo-200'
+                      : 'border-slate-200 text-slate-600 hover:bg-slate-50 dark:border-slate-800 dark:text-slate-300 dark:hover:bg-slate-800/60'
+                  }`}
+                >
+                  <span className="text-sm leading-none">{p.flag}</span>
+                  <span className="truncate">{p.shortLabel}</span>
+                </button>
+              );
+            })}
+          </div>
+
+          <p className="mt-2 border-t border-slate-200 pt-1.5 text-[9px] leading-snug text-slate-400 dark:border-slate-800">
+            The electrical standard sets voltage, conductor colours and the rule set used by the
+            compliance checker. Plug type only changes which sockets appear in the palette.
           </p>
         </div>
       )}
