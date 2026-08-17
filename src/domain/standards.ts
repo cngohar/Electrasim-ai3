@@ -22,7 +22,10 @@ import type { PortType } from './types';
 
 // ─── Types ────────────────────────────────────────────────────────────────
 
-export type StandardId = 'uk' | 'us' | 'eu';
+export type StandardId = 'uk' | 'us' | 'eu' | 'au' | 'in' | 'za';
+
+/** Regional plug / socket system (drives which socket palette tiles show). */
+export type PlugSystem = 'bs1363' | 'nema5' | 'schuko' | 'as3112' | 'bs546' | 'schuko-sa';
 
 /** Maximum permissible voltage drop at the furthest point of a final circuit. */
 export interface VoltageDropLimits {
@@ -65,6 +68,10 @@ export interface StandardPreset {
   lightingCircuitAmps: number;
   /** Human-readable wire-colour legend for tooltips/help text. */
   conductorLegend: { live: string; neutral: string; earth: string };
+  /** Regional plug / socket system used for this region. */
+  plugSystem: PlugSystem;
+  /** Sockets relevant to this region (component type ids shown in palette). */
+  regionalSockets: string[];
 }
 
 // ─── Presets ──────────────────────────────────────────────────────────────
@@ -92,6 +99,8 @@ export const STANDARDS: Record<StandardId, StandardPreset> = {
       neutral: 'Blue (Neutral)',
       earth: 'Green/Yellow (CPC)',
     },
+    plugSystem: 'bs1363',
+    regionalSockets: ['socket-3pin', 'double-socket', 'socket-usb'],
   },
   us: {
     id: 'us',
@@ -116,6 +125,8 @@ export const STANDARDS: Record<StandardId, StandardPreset> = {
       neutral: 'White / Gray (Grounded)',
       earth: 'Green / Bare (EGC)',
     },
+    plugSystem: 'nema5',
+    regionalSockets: ['socket-2pin', 'socket-us', 'double-socket-us', 'socket-gfci'],
   },
   eu: {
     id: 'eu',
@@ -139,10 +150,103 @@ export const STANDARDS: Record<StandardId, StandardPreset> = {
       neutral: 'Blue (Neutral)',
       earth: 'Green/Yellow (PE)',
     },
+    plugSystem: 'schuko',
+    regionalSockets: ['socket-schuko', 'socket-schuko-double'],
+  },
+
+  // ─── Australia / New Zealand — AS/NZS 3000 ──────────────────────────────
+  au: {
+    id: 'au',
+    label: 'Australia / New Zealand',
+    shortLabel: 'AU/NZ',
+    citation: 'AS/NZS 3000',
+    flag: '🇦🇺',
+    nominalVoltage: 230,
+    frequencyHz: 50,
+    // AU/NZ use brown live, blue neutral, green/yellow earth (IEC-ish, AS/NZS 3008 colours).
+    wireColors: { live: '#b45309', neutral: '#2563eb', earth: '#16a34a' },
+    wireColorsDark: { live: '#f87171', neutral: '#60a5fa', earth: '#34d399' },
+    voltageDrop: { lightingPercent: 3, powerPercent: 5 },
+    defaultMcbCurve: 'C',
+    motorMcbCurve: 'C',
+    rcdThresholdMa: 30,
+    rcdRequiredOnSockets: true,
+    socketCircuitAmps: 20,
+    lightingCircuitAmps: 10,
+    conductorLegend: {
+      live: 'Brown (Active)',
+      neutral: 'Blue (Neutral)',
+      earth: 'Green/Yellow (Earth)',
+    },
+    plugSystem: 'as3112',
+    regionalSockets: ['socket-as3112', 'socket-as3112-double'],
+  },
+
+  // ─── India — BS 546 / IS 1293 (and BS 1363 for new installs) ───────────
+  in: {
+    id: 'in',
+    label: 'India',
+    shortLabel: 'IN',
+    citation: 'IS 732 / IS 1293 (BS 546 style)',
+    flag: '🇮🇳',
+    nominalVoltage: 230,
+    frequencyHz: 50,
+    // India: red/brown live, black/blue neutral, green/yellow earth (IS 732).
+    wireColors: { live: '#b45309', neutral: '#2563eb', earth: '#16a34a' },
+    wireColorsDark: { live: '#f87171', neutral: '#60a5fa', earth: '#34d399' },
+    voltageDrop: { lightingPercent: 3, powerPercent: 5 },
+    defaultMcbCurve: 'C',
+    motorMcbCurve: 'C',
+    rcdThresholdMa: 30,
+    rcdRequiredOnSockets: true,
+    socketCircuitAmps: 16,
+    lightingCircuitAmps: 10,
+    conductorLegend: {
+      live: 'Red / Brown (Phase)',
+      neutral: 'Black / Blue (Neutral)',
+      earth: 'Green/Yellow (Earth)',
+    },
+    plugSystem: 'bs546',
+    regionalSockets: ['socket-bs546', 'socket-bs546-double', 'socket-3pin'],
+  },
+
+  // ─── South Africa — SANS 10142 (BS 546 / SANS 164 style, Schuko-compatible) ──
+  za: {
+    id: 'za',
+    label: 'South Africa',
+    shortLabel: 'ZA',
+    citation: 'SANS 10142-1',
+    flag: '🇿🇦',
+    nominalVoltage: 230,
+    frequencyHz: 50,
+    // South Africa: brown live, blue neutral, green/yellow earth (SANS 10142).
+    wireColors: { live: '#b45309', neutral: '#2563eb', earth: '#16a34a' },
+    wireColorsDark: { live: '#f87171', neutral: '#60a5fa', earth: '#34d399' },
+    voltageDrop: { lightingPercent: 3, powerPercent: 5 },
+    defaultMcbCurve: 'C',
+    motorMcbCurve: 'C',
+    rcdThresholdMa: 30,
+    rcdRequiredOnSockets: true,
+    socketCircuitAmps: 16,
+    lightingCircuitAmps: 10,
+    conductorLegend: {
+      live: 'Brown (Phase)',
+      neutral: 'Blue (Neutral)',
+      earth: 'Green/Yellow (Earth)',
+    },
+    plugSystem: 'bs546',
+    regionalSockets: ['socket-bs546', 'socket-schuko-double'],
   },
 };
 
-export const STANDARD_LIST: StandardPreset[] = [STANDARDS.uk, STANDARDS.us, STANDARDS.eu];
+export const STANDARD_LIST: StandardPreset[] = [
+  STANDARDS.uk,
+  STANDARDS.us,
+  STANDARDS.eu,
+  STANDARDS.au,
+  STANDARDS.in,
+  STANDARDS.za,
+];
 
 export function getStandard(id: StandardId | undefined | null): StandardPreset {
   return STANDARDS[id ?? 'uk'];

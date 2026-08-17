@@ -81,7 +81,9 @@ test.describe('Dual standard & pro features', () => {
     await expect(page.getByText('Manual Fault Simulation').first()).toBeVisible();
   });
 
-  test('student mode never shows the Fault Lab button or standards selector', async ({ page }) => {
+  test('student mode never shows the Fault Lab button; country selector is universal', async ({
+    page,
+  }) => {
     // Switch to Student mode (Pro toggle visible means we're in pro).
     const proToggle = page.getByRole('button', { name: /^pro$/i });
     if (await proToggle.isVisible().catch(() => false)) {
@@ -91,8 +93,8 @@ test.describe('Dual standard & pro features', () => {
     // The Fault Lab button must not be rendered in student mode (fault
     // injection is Pro-only).
     await expect(page.getByRole('button', { name: /Fault Lab/ })).toHaveCount(0);
-    // Standard selector popover is absent.
-    await expect(page.getByText('Regulation Template')).toHaveCount(0);
+    // The country / region selector is universal (available in all modes).
+    await expect(page.getByRole('banner').getByRole('button', { name: /Region:/ })).toBeVisible();
   });
 
   test('standard selector switches nominal voltage and frequency', async ({ page }) => {
@@ -109,7 +111,9 @@ test.describe('Dual standard & pro features', () => {
     await expect(page.getByText(/120\s*V\s*60\s*Hz/)).toBeVisible({ timeout: 5000 });
 
     // Switch to EU (230 V / 50 Hz).
-    await page.getByRole('button', { name: /regulation template/i }).click({ force: true });
+    await page
+      .getByRole('button', { name: /country \/ region|regulation template/i })
+      .click({ force: true });
     await page.getByRole('button', { name: /european union/i }).click();
     await expect(page.getByText(/230\s*V\s*50\s*Hz/)).toBeVisible({ timeout: 5000 });
   });

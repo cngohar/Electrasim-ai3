@@ -48,6 +48,14 @@ export const DEFAULT_ART_TYPES = new Set([
   'bulb-smart-rgb',
   'led-downlight',
   'tube-light',
+  'socket-us',
+  'double-socket-us',
+  'socket-schuko',
+  'socket-schuko-double',
+  'socket-as3112',
+  'socket-as3112-double',
+  'socket-bs546',
+  'socket-bs546-double',
 ]);
 
 const ART: Record<string, string> = {
@@ -162,6 +170,143 @@ const ART: Record<string, string> = {
     <ellipse cx="44" cy="31.5" rx="1.2" ry="2.2" fill="#334155"/>
     <!-- Shutter line -->
     <rect x="18" y="37" width="28" height="1" fill="#94a3b8" opacity="0.5"/>
+  `),
+
+  // ─── NEMA 5-15 US receptacle ───────────────────────────────────────────
+  'socket-us': S(`
+    <defs>
+      <linearGradient id="${T('socketus')}face" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#e2e8f0"/>
+      </linearGradient>
+    </defs>
+    <rect x="10" y="8" width="44" height="48" rx="9" fill="url(#${T('socketus')}face)" stroke="#94a3b8" stroke-width="2"/>
+    <circle cx="17" cy="13" r="1.6" fill="#cbd5e1"/>
+    <circle cx="47" cy="13" r="1.6" fill="#cbd5e1"/>
+    <circle cx="17" cy="51" r="1.6" fill="#cbd5e1"/>
+    <circle cx="47" cy="51" r="1.6" fill="#cbd5e1"/>
+    <!-- Two vertical slots (duplex) -->
+    <rect x="24" y="18" width="3" height="15" rx="1.5" fill="#0f172a"/>
+    <rect x="37" y="18" width="3" height="15" rx="1.5" fill="#0f172a"/>
+    <!-- Ground hole -->
+    <circle cx="32" cy="27" r="2.2" fill="#0f172a"/>
+    <rect x="24" y="39" width="3" height="15" rx="1.5" fill="#0f172a"/>
+    <rect x="37" y="39" width="3" height="15" rx="1.5" fill="#0f172a"/>
+    <circle cx="32" cy="48" r="2.2" fill="#0f172a"/>
+  `),
+  'double-socket-us': S(`
+    <defs>
+      <linearGradient id="${T('doublesocketus')}face" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#e2e8f0"/>
+      </linearGradient>
+    </defs>
+    <rect x="6" y="8" width="52" height="48" rx="9" fill="url(#${T('doublesocketus')}face)" stroke="#94a3b8" stroke-width="2"/>
+    <rect x="14" y="18" width="3" height="13" rx="1.5" fill="#0f172a"/>
+    <rect x="25" y="18" width="3" height="13" rx="1.5" fill="#0f172a"/>
+    <circle cx="19.5" cy="26" r="2" fill="#0f172a"/>
+    <rect x="14" y="37" width="3" height="13" rx="1.5" fill="#0f172a"/>
+    <rect x="25" y="37" width="3" height="13" rx="1.5" fill="#0f172a"/>
+    <circle cx="19.5" cy="45" r="2" fill="#0f172a"/>
+    <rect x="36" y="18" width="3" height="13" rx="1.5" fill="#0f172a"/>
+    <rect x="47" y="18" width="3" height="13" rx="1.5" fill="#0f172a"/>
+    <circle cx="41.5" cy="26" r="2" fill="#0f172a"/>
+    <rect x="36" y="37" width="3" height="13" rx="1.5" fill="#0f172a"/>
+    <rect x="47" y="37" width="3" height="13" rx="1.5" fill="#0f172a"/>
+    <circle cx="41.5" cy="45" r="2" fill="#0f172a"/>
+  `),
+
+  // ─── Schuko (CEE 7/3) ──────────────────────────────────────────────────
+  'socket-schuko': S(`
+    <defs>
+      <linearGradient id="${T('socketschuko')}face" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#e2e8f0"/>
+      </linearGradient>
+    </defs>
+    <rect x="10" y="8" width="44" height="48" rx="9" fill="url(#${T('socketschuko')}face)" stroke="#94a3b8" stroke-width="2"/>
+    <!-- Recessed round well -->
+    <circle cx="32" cy="30" r="15" fill="#cbd5e1"/>
+    <circle cx="32" cy="30" r="12" fill="#e2e8f0"/>
+    <!-- Two round pin holes + earth clips at top/bottom -->
+    <circle cx="26" cy="30" r="3" fill="#0f172a"/>
+    <circle cx="38" cy="30" r="3" fill="#0f172a"/>
+    <path d="M30 17 v3 M34 17 v3 M30 40 v3 M34 40 v3" stroke="#64748b" stroke-width="1.5" stroke-linecap="round"/>
+  `),
+  'socket-schuko-double': S(`
+    <defs>
+      <linearGradient id="${T('socketschukodouble')}face" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#e2e8f0"/>
+      </linearGradient>
+    </defs>
+    <rect x="6" y="8" width="52" height="48" rx="9" fill="url(#${T('socketschukodouble')}face)" stroke="#94a3b8" stroke-width="2"/>
+    <circle cx="17" cy="30" r="12" fill="#e2e8f0"/>
+    <circle cx="13" cy="30" r="2.6" fill="#0f172a"/>
+    <circle cx="21" cy="30" r="2.6" fill="#0f172a"/>
+    <circle cx="47" cy="30" r="12" fill="#e2e8f0"/>
+    <circle cx="43" cy="30" r="2.6" fill="#0f172a"/>
+    <circle cx="51" cy="30" r="2.6" fill="#0f172a"/>
+  `),
+
+  // ─── AS/NZS 3112 (AU/NZ flat pin) ──────────────────────────────────────
+  'socket-as3112': S(`
+    <defs>
+      <linearGradient id="${T('socketas3112')}face" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#e2e8f0"/>
+      </linearGradient>
+    </defs>
+    <rect x="10" y="8" width="44" height="48" rx="9" fill="url(#${T('socketas3112')}face)" stroke="#94a3b8" stroke-width="2"/>
+    <circle cx="17" cy="13" r="1.6" fill="#cbd5e1"/>
+    <circle cx="47" cy="13" r="1.6" fill="#cbd5e1"/>
+    <circle cx="17" cy="51" r="1.6" fill="#cbd5e1"/>
+    <circle cx="47" cy="51" r="1.6" fill="#cbd5e1"/>
+    <!-- Two angled flat blades (Live/Neutral), V-shape earth at bottom -->
+    <rect x="24" y="24" width="16" height="3" rx="1.5" fill="#0f172a" transform="rotate(-25 32 25)"/>
+    <rect x="24" y="27" width="16" height="3" rx="1.5" fill="#0f172a" transform="rotate(25 32 28)"/>
+    <path d="M32 36 l-5 7 h10 Z" fill="#0f172a"/>
+  `),
+  'socket-as3112-double': S(`
+    <defs>
+      <linearGradient id="${T('socketas3112double')}face" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#e2e8f0"/>
+      </linearGradient>
+    </defs>
+    <rect x="6" y="8" width="52" height="48" rx="9" fill="url(#${T('socketas3112double')}face)" stroke="#94a3b8" stroke-width="2"/>
+    <rect x="20" y="25" width="12" height="2.5" rx="1" fill="#0f172a" transform="rotate(-25 26 26)"/>
+    <rect x="20" y="28" width="12" height="2.5" rx="1" fill="#0f172a" transform="rotate(25 26 29)"/>
+    <path d="M26 36 l-4 5 h8 Z" fill="#0f172a"/>
+    <rect x="34" y="25" width="12" height="2.5" rx="1" fill="#0f172a" transform="rotate(-25 40 26)"/>
+    <rect x="34" y="28" width="12" height="2.5" rx="1" fill="#0f172a" transform="rotate(25 40 29)"/>
+    <path d="M40 36 l-4 5 h8 Z" fill="#0f172a"/>
+  `),
+
+  // ─── BS 546 (India / South Africa round pin) ───────────────────────────
+  'socket-bs546': S(`
+    <defs>
+      <linearGradient id="${T('socketbs546')}face" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#e2e8f0"/>
+      </linearGradient>
+    </defs>
+    <rect x="10" y="8" width="44" height="48" rx="9" fill="url(#${T('socketbs546')}face)" stroke="#94a3b8" stroke-width="2"/>
+    <circle cx="17" cy="13" r="1.6" fill="#cbd5e1"/>
+    <circle cx="47" cy="13" r="1.6" fill="#cbd5e1"/>
+    <circle cx="17" cy="51" r="1.6" fill="#cbd5e1"/>
+    <circle cx="47" cy="51" r="1.6" fill="#cbd5e1"/>
+    <!-- Three round pin holes: top earth, two below -->
+    <circle cx="32" cy="18" r="2.8" fill="#0f172a"/>
+    <circle cx="23" cy="34" r="2.8" fill="#0f172a"/>
+    <circle cx="41" cy="34" r="2.8" fill="#0f172a"/>
+  `),
+  'socket-bs546-double': S(`
+    <defs>
+      <linearGradient id="${T('socketbs546double')}face" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#e2e8f0"/>
+      </linearGradient>
+    </defs>
+    <rect x="6" y="8" width="52" height="48" rx="9" fill="url(#${T('socketbs546double')}face)" stroke="#94a3b8" stroke-width="2"/>
+    <circle cx="19" cy="18" r="2.4" fill="#0f172a"/>
+    <circle cx="13" cy="30" r="2.4" fill="#0f172a"/>
+    <circle cx="25" cy="30" r="2.4" fill="#0f172a"/>
+    <circle cx="45" cy="18" r="2.4" fill="#0f172a"/>
+    <circle cx="39" cy="30" r="2.4" fill="#0f172a"/>
+    <circle cx="51" cy="30" r="2.4" fill="#0f172a"/>
   `),
 
   // ─── Wall rocker switch ────────────────────────────────────────────────

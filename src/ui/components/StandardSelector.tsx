@@ -70,8 +70,8 @@ export function StandardSelector({ compact = false }: Props) {
         data-standard-selector
         onClick={() => setOpen((v) => !v)}
         className="flex items-center gap-1.5 rounded-full border border-indigo-200 bg-indigo-50 px-2.5 py-1 text-[11px] font-semibold text-indigo-700 shadow-sm transition hover:bg-indigo-100 dark:border-indigo-900 dark:bg-indigo-950/60 dark:text-indigo-300 dark:hover:bg-indigo-900/70"
-        title={`Regulation template: ${current.citation}. Click to switch UK / US / EU.`}
-        aria-label={`Regulation template: ${current.shortLabel}. Click to switch UK / US / EU.`}
+        title={`Region: ${current.citation}. Click to switch country / region.`}
+        aria-label={`Region: ${current.shortLabel}. Click to switch country / region.`}
         aria-haspopup="listbox"
         aria-expanded={open}
       >
@@ -90,7 +90,7 @@ export function StandardSelector({ compact = false }: Props) {
         >
           <div className="mb-1.5 flex items-center gap-1.5 border-b border-slate-200 pb-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:border-slate-800 dark:text-slate-400">
             <ShieldCheck className="size-3.5 text-emerald-500" />
-            Regulation Template
+            Country / Region
           </div>
           {STANDARD_LIST.map((s) => {
             const selected = s.id === regulationStandard;

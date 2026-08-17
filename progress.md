@@ -17,6 +17,20 @@ Format per entry:
 
 ---
 
+## 2026-08-17 (follow-up 12) — International country / region support
+
+User asked to target international users without ballooning the palette. Implemented a **country/region selector** that reuses the existing standards engine (which already handled UK/US/EU voltage, wire colours, and compliance).
+
+**Done:**
+- Added 3 new regions to `standards.ts`: **Australia/NZ (AS/NZS 3000, 230V)**, **India (IS 732/BS 546, 230V)**, **South Africa (SANS 10142, 230V)** — each with proper voltage, frequency, wire colours, RCD threshold, circuit ratings, and a `plugSystem` + `regionalSockets` set. `StandardId` widened to `'uk' | 'us' | 'eu' | 'au' | 'in' | 'za'`; compliance logic already treats non-US as RCD-based so no engine change needed.
+- **Country / Region selector** mounted in the top app bar (all modes), built on the existing `StandardSelector` (which now lists all 6 regions with flag, voltage, Hz, ΔU, RCD). Removed the old Pro-only sub-header duplicate.
+- **Region-aware palette**: shows only the selected country's sockets + universal components via a `regionalSockets` set + a `REGIONAL_SOCKET_TYPES` filter list (universal types like switched/USB/GFCI/industrial stay visible everywhere).
+- **New regional socket components + SVG art**: NEMA 5-15 (US), Schuko CEE 7/3 (EU), AS/NZS 3112 (AU), BS 546 (IN/ZA) — singles + doubles. Registered in the palette and `componentArt`.
+
+**Verified:** AU → AS/NZS shown, UK 13A & Schuko hidden; US → NEMA shown, UK 13A hidden; UK → 13A + switched shown, AS/NZS hidden. Country selector shows all 6 regions; supply voltage updates (AU→230V). Gates: typecheck clean, chromium e2e 39 passed, 317 unit pass. Committed.
+
+---
+
 ## 2026-08-17 (follow-up 11) — Component-aware analytics, wire-joint coverage, motor & selection clarity
 
 User feedback fixes:

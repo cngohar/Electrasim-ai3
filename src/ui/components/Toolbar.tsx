@@ -34,6 +34,7 @@ import { redo, undo, useUiStore } from '../../store';
 import { useSettingsStore } from '../../store/settingsStore';
 import { useResolvedTheme } from '../hooks/useResolvedTheme';
 import { IconBtn } from './IconBtn';
+import { StandardSelector } from './StandardSelector';
 
 interface Props {
   isPhone: boolean;
@@ -97,7 +98,14 @@ export function Toolbar({ isPhone, simRunning, dashboardOpen, onToggleDashboard 
       <IconBtn icon={Undo2} title="Undo (Ctrl+Z)" onClick={undo} />
       <IconBtn icon={Redo2} title="Redo (Ctrl+Shift+Z)" onClick={redo} />
 
-      {!isPhone && <Sep />}
+      {/* Country / region selector — sets voltage, wire colours, ratings, and
+          the regional socket set. Always visible (not Pro-only). */}
+      {!isPhone && (
+        <>
+          <StandardSelector compact />
+          <Sep />
+        </>
+      )}
 
       {/* Guided circuits */}
       <button

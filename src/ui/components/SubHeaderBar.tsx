@@ -3,8 +3,6 @@ import { useEffect, useRef, useState } from 'react';
 import { COMPONENT_DEFS } from '../../domain/components';
 import { getStandard } from '../../domain/standards';
 import { useCircuitStore, useSettingsStore, useUiStore } from '../../store';
-import { StandardSelector } from './StandardSelector';
-
 const VOLTAGE_PRESETS = [
   { label: '12V DC', val: 12 },
   { label: '24V DC', val: 24 },
@@ -20,12 +18,8 @@ export function SubHeaderBar() {
   const setGlobalSupplyVoltage = useCircuitStore((s) => s.setGlobalSupplyVoltage);
   const simResult = useUiStore((s) => s.simResult);
 
-  // The regulatory standard selector only surfaces when the user is in Pro
-  // Electrician Mode. (Manual fault injection is now armed through the Fault
-  // Lab button in the top app bar, not a separate sub-header toggle.)
-  const appMode = useSettingsStore((s) => s.appMode);
+  // The regulatory standard selector lives in the top app bar (all modes).
   const regulationStandard = useSettingsStore((s) => s.regulationStandard);
-  const isPro = appMode === 'pro';
   const standard = getStandard(regulationStandard);
 
   const selectedComponentIds = useCircuitStore((s) => s.selectedComponentIds);
@@ -307,13 +301,6 @@ export function SubHeaderBar() {
       )}
 
       <div className="h-3 w-px bg-slate-200 dark:bg-slate-700" />
-
-      {isPro && (
-        <>
-          {/* Regulation template quick-switch (UK / US / EU) */}
-          <StandardSelector />
-        </>
-      )}
 
       {/* Simulation Running status indicator */}
       <div className="flex items-center gap-1.5">

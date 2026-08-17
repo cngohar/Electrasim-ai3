@@ -4,6 +4,8 @@
  * Split verbatim from the former monolithic `circuitValidation.ts`.
  */
 
+import type { StandardId } from './standards';
+
 export type ValidationSeverity = 'error' | 'warning' | 'info';
 
 export type QuickFixType =
@@ -89,7 +91,7 @@ export interface ValidationReport {
    */
   blockingErrorsCount?: number;
   /** Regulation standard the report was validated against. */
-  standard?: 'uk' | 'us' | 'eu';
+  standard?: StandardId;
 }
 
 /**

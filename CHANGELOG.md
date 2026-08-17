@@ -11,6 +11,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — Session 2026-08-17 (follow-up 12): International country / region support
+- **Country / Region selector** in the top app bar (always visible, all modes). Selects one of **6 regions**: UK (BS 7671), US (NEC), EU (IEC 60364), **Australia/NZ (AS/NZS 3000)**, **India (IS 732 / BS 546)**, **South Africa (SANS 10142)**. Each sets voltage, frequency, wire colours, circuit ratings, RCD/GFCI thresholds and the compliance standard (reuses the existing standards engine).
+- **Palette is now region-aware** — it shows only the selected country's regional sockets (UK 13A, US NEMA 5-15, EU Schuko, AU AS/NZS 3112, India/South-Africa BS 546) plus universal components, keeping the palette relevant instead of bloated.
+- **New regional socket components + near-realistic SVG art:** `socket-us` / `double-socket-us` (NEMA 5-15), `socket-schuko` / `socket-schuko-double` (CEE 7/3), `socket-as3112` / `socket-as3112-double` (AU/NZ), `socket-bs546` / `socket-bs546-double` (India/South Africa).
+- Removed the duplicate standard selector from the sub-header (it now lives once in the app bar for everyone). Updated pro-features e2e accordingly.
+
 ### Changed — Session 2026-08-17 (follow-up 11): Component-aware analytics, wire-joint coverage, motor & selection clarity
 - **Analytics / DSO tab is now component-aware.** Previously the Live Measurements + waveform were circuit-level only, so selecting a different component didn't change them. Now, when a single component is selected, the analytics scope to that component's live V/A/W (with a component chip shown), and fall back to circuit totals when nothing is selected.
 - **Auto wire-joint now applies to all wire kinds** — bezier, orthogonal, and custom (hand-placed) wires all get a joint dot where they cross (previously bezier-only).

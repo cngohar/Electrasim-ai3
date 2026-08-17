@@ -7,6 +7,7 @@
 import { ChevronLeft, ChevronRight, Layers, Search, X } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { COMPONENT_DEFS } from '../../domain';
+import { getStandard } from '../../domain/standards';
 import { useUiStore } from '../../store';
 import { useSettingsStore } from '../../store/settingsStore';
 import { getDefaultArt } from '../canvas/componentArt';
@@ -23,6 +24,24 @@ interface Group {
   category: string;
   items: PaletteEntry[];
 }
+
+/** Regional socket types that get filtered by the selected country/region.
+ *  Universal socket types (switched, USB, GFCI, industrial) are excluded and
+ *  always shown. */
+const REGIONAL_SOCKET_TYPES = new Set([
+  'socket-3pin',
+  'socket-2pin',
+  'double-socket',
+  'socket-us',
+  'double-socket-us',
+  'socket-schuko',
+  'socket-schuko-double',
+  'socket-as3112',
+  'socket-as3112-double',
+  'socket-bs546',
+  'socket-bs546-double',
+  'socket-usb',
+]);
 
 const CATEGORY_ORDER = [
   'supply',
@@ -70,13 +89,21 @@ const PRIMARY_PALETTE_TYPES = new Set([
   'double-gang-switch',
   'push-button',
   'cooker-unit',
-  // Sockets
+  // Sockets (regional variants surfaced dynamically)
   'socket-3pin',
   'double-socket',
   'switched-socket',
   'socket-usb',
   'socket-gfci',
   'socket-industrial',
+  'socket-us',
+  'double-socket-us',
+  'socket-schuko',
+  'socket-schuko-double',
+  'socket-as3112',
+  'socket-as3112-double',
+  'socket-bs546',
+  'socket-bs546-double',
   // Lighting
   'bulb',
   'led-downlight',
@@ -210,8 +237,16 @@ export function Palette({ open, isPhone }: Props) {
   const groups = useMemo(buildGroups, []);
   const placingType = useUiStore((s) => s.placingType);
   const appMode = useSettingsStore((s) => s.appMode);
+  const regulationStandard = useSettingsStore((s) => s.regulationStandard);
   const [query, setQuery] = useState('');
   const [isCollapsed, setIsCollapsed] = useState(false);
+
+  // Regional socket set — only show the country's regional sockets (plus
+  // universal components). Keeps the palette relevant, not bloated.
+  const regionalSockets = useMemo(
+    () => new Set(getStandard(regulationStandard).regionalSockets),
+    [regulationStandard],
+  );
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -220,12 +255,15 @@ export function Palette({ open, isPhone }: Props) {
         ...g,
         items: g.items.filter((it) => {
           if (appMode === 'basic' && it.tier === 'pro') return false;
+          // Region-filter regional sockets only. Universal socket types
+          // (switched-socket, USB, GFCI, industrial) stay visible everywhere.
+          if (REGIONAL_SOCKET_TYPES.has(it.type) && !regionalSockets.has(it.type)) return false;
           if (!q) return true;
           return it.label.toLowerCase().includes(q) || it.type.toLowerCase().includes(q);
         }),
       }))
       .filter((g) => g.items.length > 0);
-  }, [groups, query, appMode]);
+  }, [groups, query, appMode, regionalSockets]);
 
   if (!open) {
     if (isPhone) return null;

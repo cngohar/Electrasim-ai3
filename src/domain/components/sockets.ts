@@ -99,4 +99,124 @@ export const SOCKET_DEFS: Record<string, ComponentDef> = {
     ],
     icon: '🔌',
   },
+
+  // ─── US / NEMA 5-15 ─────────────────────────────────────────────────────
+  'socket-us': {
+    label: 'NEMA 5-15R Receptacle (15A)',
+    description: 'Standard North American 120V grounded duplex-style single receptacle.',
+    category: 'socket',
+    isSocket: true,
+    powerWatts: 1800,
+    recommendedCableMm2: 2.5,
+    ports: [
+      { type: 'live', relX: 0, relY: 0.25, label: 'L' },
+      { type: 'neutral', relX: 0, relY: 0.5, label: 'N' },
+      { type: 'earth', relX: 0, relY: 0.75, label: 'E' },
+    ],
+    icon: '⏚',
+  },
+  'double-socket-us': {
+    label: 'NEMA 5-15R Duplex (15A)',
+    description: 'Twin North American 120V grounded receptacle on a shared yoke.',
+    category: 'socket',
+    isSocket: true,
+    powerWatts: 3600,
+    recommendedCableMm2: 2.5,
+    ports: [
+      { type: 'live', relX: 0, relY: 0.25, label: 'L' },
+      { type: 'neutral', relX: 0, relY: 0.5, label: 'N' },
+      { type: 'earth', relX: 0, relY: 0.75, label: 'E' },
+    ],
+    icon: '🔌',
+  },
+
+  // ─── EU / Schuko (CEE 7/3) ─────────────────────────────────────────────
+  'socket-schuko': {
+    label: 'Schuko Socket (CEE 7/3) 16A',
+    description: 'Standard continental European 230V grounded socket with earth clips.',
+    category: 'socket',
+    isSocket: true,
+    powerWatts: 3680,
+    recommendedCableMm2: 2.5,
+    ports: [
+      { type: 'live', relX: 0, relY: 0.25, label: 'L' },
+      { type: 'neutral', relX: 0, relY: 0.5, label: 'N' },
+      { type: 'earth', relX: 0, relY: 0.75, label: 'E' },
+    ],
+    icon: '⏚',
+  },
+  'socket-schuko-double': {
+    label: 'Schuko Double Socket (CEE 7/3) 16A',
+    description: 'Twin continental European 230V grounded Schuko outlets.',
+    category: 'socket',
+    isSocket: true,
+    powerWatts: 7360,
+    recommendedCableMm2: 2.5,
+    ports: [
+      { type: 'live', relX: 0, relY: 0.25, label: 'L' },
+      { type: 'neutral', relX: 0, relY: 0.5, label: 'N' },
+      { type: 'earth', relX: 0, relY: 0.75, label: 'E' },
+    ],
+    icon: '🔌',
+  },
+
+  // ─── Australia / NZ (AS/NZS 3112) ──────────────────────────────────────
+  'socket-as3112': {
+    label: 'AS/NZS 3112 Socket (10A)',
+    description: 'Standard Australian / NZ 230V flat-pin grounded socket.',
+    category: 'socket',
+    isSocket: true,
+    powerWatts: 2400,
+    recommendedCableMm2: 2.5,
+    ports: [
+      { type: 'live', relX: 0, relY: 0.25, label: 'L' },
+      { type: 'neutral', relX: 0, relY: 0.5, label: 'N' },
+      { type: 'earth', relX: 0, relY: 0.75, label: 'E' },
+    ],
+    icon: '⏚',
+  },
+  'socket-as3112-double': {
+    label: 'AS/NZS 3112 Twin Socket',
+    description: 'Twin Australian / NZ flat-pin grounded outlets.',
+    category: 'socket',
+    isSocket: true,
+    powerWatts: 4800,
+    recommendedCableMm2: 2.5,
+    ports: [
+      { type: 'live', relX: 0, relY: 0.25, label: 'L' },
+      { type: 'neutral', relX: 0, relY: 0.5, label: 'N' },
+      { type: 'earth', relX: 0, relY: 0.75, label: 'E' },
+    ],
+    icon: '🔌',
+  },
+
+  // ─── India / BS 546 ────────────────────────────────────────────────────
+  'socket-bs546': {
+    label: 'BS 546 Socket (15A / 5A)',
+    description: 'Classic round-pin 3-pin socket common in India and South Africa.',
+    category: 'socket',
+    isSocket: true,
+    powerWatts: 3450,
+    recommendedCableMm2: 2.5,
+    ports: [
+      { type: 'live', relX: 0, relY: 0.25, label: 'L' },
+      { type: 'neutral', relX: 0, relY: 0.5, label: 'N' },
+      { type: 'earth', relX: 0, relY: 0.75, label: 'E' },
+    ],
+    icon: '⏚',
+  },
+  'socket-bs546-double': {
+    label: 'BS 546 Twin Socket',
+    description: 'Twin round-pin 3-pin sockets for India / South Africa.',
+    category: 'socket',
+    isSocket: true,
+    powerWatts: 6900,
+    recommendedCableMm2: 2.5,
+    ports: [
+      { type: 'live', relX: 0, relY: 0.25, label: 'L' },
+      { type: 'neutral', relX: 0, relY: 0.5, label: 'N' },
+      { type: 'earth', relX: 0, relY: 0.75, label: 'E' },
+    ],
+    icon: '🔌',
+  },
 };
