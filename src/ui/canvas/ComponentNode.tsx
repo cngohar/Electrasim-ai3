@@ -14,6 +14,7 @@ import {
   type ComponentInstance,
   type SimulationResult,
   checkFastCompatibility,
+  instanceLabel,
 } from '../../domain';
 import { useSettingsStore, useUiStore } from '../../store';
 import { getComponentIcon, getComponentImage } from '../components/componentImages';
@@ -184,6 +185,10 @@ export function ComponentNode({
   onContextMenu,
 }: ComponentNodeProps) {
   const definition = COMPONENT_DEFS[component.type];
+  // Catalogue labels embed a *default* rating ("RCBO (32A 30mA)"); an instance
+  // may override it via `state.customMaxAmps`. Draw the instance's real rating
+  // so the canvas agrees with the inspector, the brief and the Diagnosis Lab.
+  const displayLabel = instanceLabel(component);
   if (!definition) return null;
 
   const isOn = component.state.on === true;
@@ -321,7 +326,7 @@ export function ComponentNode({
         data-component-hitbox
         data-component-type={component.type}
         tabIndex={0}
-        aria-label={`${definition.label} ${component.id}${selected ? ', selected' : ''}${
+        aria-label={`${displayLabel} ${component.id}${selected ? ', selected' : ''}${
           definition.isSwitch
             ? definition.isMomentary
               ? `, ${isOn ? 'pressed' : 'released'}`
@@ -794,8 +799,8 @@ export function ComponentNode({
             >
               {fitLabel(
                 autoLabelsEnabled && component.state.autoLabel
-                  ? `[${component.state.autoLabel}] ${definition.label}`
-                  : definition.label,
+                  ? `[${component.state.autoLabel}] ${displayLabel}`
+                  : displayLabel,
                 9,
               )}
             </text>

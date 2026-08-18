@@ -1,9 +1,9 @@
 /**
  * Challenge domain barrel.
  *
- * Exposes the circuit generator foundation (Phase A/B) and Challenge Mode
- * (Phase C) per plan §51. Diagnosis Lab and Ohmageddon are added in later
- * phases and will be exported from here too.
+ * Exposes the circuit generator foundation (Phase A/B), Challenge Mode
+ * (Phase C) and the Diagnosis Lab (Phase D) per plan §51. Ohmageddon is added
+ * in a later phase and will be exported from here too.
  */
 
 export * from './types';
@@ -18,3 +18,10 @@ export * from './challenge/scenario';
 export * from './challenge/comparison';
 export * from './challenge/evaluator';
 export * from './challenge/scoring';
+export * from './faults/eligibility';
+export * from './faults/injection';
+export * from './faults/labels';
+export * from './faults/verification';
+export * from './diagnosis/scenario';
+export * from './diagnosis/evaluator';
+export * from './diagnosis/scoring';

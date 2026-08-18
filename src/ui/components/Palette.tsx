@@ -285,7 +285,12 @@ export function Palette({ open, isPhone }: Props) {
       .filter((g) => g.items.length > 0);
   }, [groups, query, appMode, regionalSockets]);
 
+  // The phone branch returns before the desktop `if (!open)` guard below, so
+  // it must honour `open` itself — otherwise the bottom sheet is permanently
+  // mounted on phones and covers the canvas and every other bottom-docked
+  // panel (Guided Circuits, Challenge Mode, the Diagnosis Lab).
   if (isPhone) {
+    if (!open) return null;
     return (
       <>
         {/* Backdrop — tap outside to close */}

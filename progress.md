@@ -2897,3 +2897,56 @@ Formula: 2 spinning icons × 13 steps/sec × 16 filter regions = ~416 filter rep
 **Gates:** 317 unit ✓, e2e per-file + full suite pending final run, `vite build` ✓.
 
 **Remaining:** FINAL wrap — full gates on the tip, regenerate the git bundle, push (token step with the user).
+
+---
+
+## Session 2026-08-18 (part 12) — Phase D: Diagnosis Lab
+
+**Scope:** plan §11–§22, §33, §41, §57 — fault injection over generated circuits, the
+two-part diagnosis answer, repair verification, hints, scoring, persistence, and the
+`DiagnosisPanel` UI. Decisions in [ADR 0004](./docs/decisions/0004-diagnosis-lab.md).
+
+**Domain:** `challenges/faults/{eligibility,injection,verification,labels}.ts` and
+`challenges/diagnosis/{scenario,evaluator,scoring}.ts`. Faults are injected only on top
+of generated circuits (`Circuit.faults` only, §13) — the core generator is untouched per
+§57. `open-earth` is excluded as behaviourally silent; every scenario asserts
+`symptom.observable` before a learner sees it.
+
+**§16 (a correct guess is never enough) is enforced structurally.** Three-state verdict:
+wrong ⇒ `failure`, right-but-unrepaired ⇒ `incomplete`, right-and-simulation-recovers ⇒
+`success`. Success is measured by re-simulating the learner's circuit, never by trusting
+that the fault object disappeared.
+
+**Four defects worth recording — none caught by the unit suite:**
+
+1. *Delete-as-repair loophole.* `isFaultResolved` returns true when the target is
+   deleted, so deleting the faulty wire "fixed" it while leaving the load dead.
+   `describeStructuralGap` now chains after `describeRecoveryGap`; delete ⇒ `incomplete`,
+   delete-and-replace ⇒ `success`.
+2. *Answer leak through the UI.* The repair button was gated on `faultAtSelection`, so it
+   only enabled on the genuinely faulty item — a perfect oracle. Now gated on `canSubmit`.
+3. *Palette guard ordering.* `Palette.tsx` had `if (isPhone) return …` **above**
+   `if (!open) return null`, so the Add-Component sheet was permanently mounted on phones
+   and covered the canvas.
+4. *Canvas framing (§33).* `CircuitCanvas` has a fixed 1200×720 `viewBox` with
+   `xMidYMid meet`, so pixels ≠ user units. `zoomToFit` takes user units and no origin;
+   feeding it `getBoundingClientRect()` applied the meet-scale twice (0.325 on a phone)
+   and centred on the whole canvas — the circuit hid under the panel on desktop and
+   collapsed to ~12px on phone. New `src/ui/canvas/fitRegion.ts` converts to user units,
+   subtracts the *measured* rects of `[data-canvas-occluder]` elements and centres in the
+   largest remaining strip. Note `[role="region"]` cannot match a named `<section>`'s
+   implicit role — that selector silently matched nothing.
+
+Defects 3 and 4 were found only by reading rendered screenshots at each viewport; static
+review and 767 passing tests caught neither. Component labels also had to be centralised
+in `src/domain/componentLabel.ts` (`COMPONENT_DEFS[type].label` embeds a catalogue default
+rating that contradicts `state.customMaxAmps`).
+
+**Tests:** +18 unit files this phase (incl. `fitRegion.test.ts`, negative-control verified),
+`e2e/diagnosis-lab.spec.ts` 8 tests × chromium + mobile-chrome, and
+`scripts/stress-diagnosis.ts` (`npm run stress:diagnosis`) — 600 scenarios / ~11 000
+evaluations asserting observability, the exhaustive decoy-rejection property, no answer
+leak, determinism, and score monotonicity.
+
+**Gates:** typecheck ✓, biome ✓ (4 pre-existing `Editor.tsx` warnings), 59 files / 785
+unit ✓, all three stress harnesses ✓, `vite build` ✓.

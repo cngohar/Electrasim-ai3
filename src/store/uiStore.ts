@@ -73,6 +73,7 @@ export const useUiStore = create<UiState>()(
     templatesOpen: false,
     activeGuideId: null,
     challengeOpen: false,
+    diagnosisOpen: false,
     guideHidden: false,
     welcomeOpen: !hasWelcomed() && !mobileSuitabilityInitiallyOpen,
     mobileSuitabilityOpen: mobileSuitabilityInitiallyOpen,
@@ -674,6 +675,14 @@ export const useUiStore = create<UiState>()(
     setChallengeOpen: (open) =>
       set((s) => {
         s.challengeOpen = open;
+        // Challenge Mode and the Diagnosis Lab both dock to the same edge and
+        // both drive the editor's circuit, so only one may be live at a time.
+        if (open) s.diagnosisOpen = false;
+      }),
+    setDiagnosisOpen: (open) =>
+      set((s) => {
+        s.diagnosisOpen = open;
+        if (open) s.challengeOpen = false;
       }),
     setTemplatesOpen: (open) =>
       set((s) => {

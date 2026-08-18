@@ -16,6 +16,7 @@ import {
   Mail,
   RefreshCcw,
   Settings,
+  Stethoscope,
   Target,
   Trash2,
   Unlink,
@@ -49,6 +50,15 @@ export function MenuOverlay({ open, onClose }: Props) {
       portColor: 'bg-amber-500',
       action: () => {
         useUiStore.getState().setChallengeOpen(true);
+      },
+    },
+    {
+      icon: Stethoscope,
+      label: 'Diagnosis Lab',
+      description: 'Find and clear the fault on a generated circuit',
+      portColor: 'bg-amber-500',
+      action: () => {
+        useUiStore.getState().setDiagnosisOpen(true);
       },
     },
     {

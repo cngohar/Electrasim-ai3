@@ -160,6 +160,8 @@ export interface UiState {
   activeGuideId: string | null;
   /** Challenge Mode panel mounted (plan §32). Session state lives in challengeStore. */
   challengeOpen: boolean;
+  /** Diagnosis Lab panel mounted (plan §32). Session state lives in diagnosisStore. */
+  diagnosisOpen: boolean;
   /**
    * The active guide's checklist is temporarily hidden so the canvas it
    * overlays becomes reachable again. Distinct from `activeGuideId: null`
@@ -287,6 +289,7 @@ export interface UiState {
   setContactOpen: (open: boolean) => void;
   setTemplatesOpen: (open: boolean) => void;
   setChallengeOpen: (open: boolean) => void;
+  setDiagnosisOpen: (open: boolean) => void;
   setActiveGuideId: (id: string | null) => void;
   setGuideHidden: (hidden: boolean) => void;
   setWelcomeOpen: (open: boolean) => void;

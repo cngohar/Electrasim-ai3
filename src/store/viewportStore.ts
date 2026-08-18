@@ -32,8 +32,10 @@ interface ViewportState {
   ) => void;
 }
 
-const MIN_ZOOM = 0.25;
-const MAX_ZOOM = 4;
+// Exported so callers that compute their own fit (see ui/canvas/fitRegion)
+// clamp to exactly the same range as the store's own helpers.
+export const MIN_ZOOM = 0.25;
+export const MAX_ZOOM = 4;
 
 export const useViewportStore = create<ViewportState>()(
   immer<ViewportState>((set) => ({

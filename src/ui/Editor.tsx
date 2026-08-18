@@ -33,6 +33,9 @@ const GuidedCircuitPanel = lazy(() =>
 const ChallengePanel = lazy(() =>
   import('./components/ChallengePanel').then((m) => ({ default: m.ChallengePanel })),
 );
+const DiagnosisPanel = lazy(() =>
+  import('./components/DiagnosisPanel').then((m) => ({ default: m.DiagnosisPanel })),
+);
 const MobileSuitabilityModal = lazy(() =>
   import('./components/MobileSuitabilityModal').then((m) => ({
     default: m.MobileSuitabilityModal,
@@ -188,6 +191,7 @@ export function Editor() {
   const templatesOpen = useUiStore((s) => s.templatesOpen);
   const activeGuideId = useUiStore((s) => s.activeGuideId);
   const challengeOpen = useUiStore((s) => s.challengeOpen);
+  const diagnosisOpen = useUiStore((s) => s.diagnosisOpen);
   const mobileSuitabilityOpen = useUiStore((s) => s.mobileSuitabilityOpen);
   const welcomeOpen = useUiStore((s) => s.welcomeOpen);
   const menuOpen = useUiStore((s) => s.menuOpen);
@@ -288,6 +292,11 @@ export function Editor() {
       {challengeOpen && (
         <Suspense fallback={null}>
           <ChallengePanel isPhone={isPhone} />
+        </Suspense>
+      )}
+      {diagnosisOpen && (
+        <Suspense fallback={null}>
+          <DiagnosisPanel isPhone={isPhone} />
         </Suspense>
       )}
       {!isPhone && (
