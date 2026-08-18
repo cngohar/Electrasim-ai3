@@ -128,6 +128,16 @@ for (const difficulty of DIFFICULTIES) {
         fail(`${tag}: the true fault type is missing from the choices`);
       }
     }
+    // Two options that read identically are not an answerable question: the
+    // learner can be graded wrong for a distinction the UI never showed them.
+    // (Found on screen — a socket's live and neutral drops both render as
+    // "Wire: RCBO (20 A) → Single 3-Pin Socket (13A)".)
+    const labels = scenario.locationChoices.map((c) => c.label);
+    const duplicate = labels.find((label, index) => labels.indexOf(label) !== index);
+    if (duplicate) {
+      fail(`${tag}: two location choices share the label "${duplicate}"`);
+    }
+
     // A plain (non-rage) exercise is single-fault by definition (§14).
     if (scenario.faults.length !== 1) {
       fail(`${tag}: expected exactly one fault, got ${scenario.faults.length}`);

@@ -67,12 +67,20 @@ function withoutFaults(circuit: Circuit): Circuit {
 /**
  * Hop distance from the fault to the nearest declared load.
  *
- * With several faults in play this reports the *smallest* distance: the
- * closest fault is the one the learner trips over first, so it is what
- * actually sets the difficulty floor. Taking a mean would let one very remote
- * fault disguise a second one sitting on the lamp.
+ * With several faults in play, `nearest` (the default) reports the *smallest*
+ * distance: the closest fault is the one the learner trips over first, so it
+ * is what actually sets the difficulty floor. Taking a mean would let one very
+ * remote fault disguise a second one sitting on the lamp.
+ *
+ * `primary` instead reports the distance of the first-selected fault, which is
+ * the only one `remoteFault` ranks. The two are reported side by side because
+ * they answer different questions: "is this tier hard?" and "did remoteFault
+ * do its job?".
  */
-function faultDistance(scenario: DiagnosisScenario): number {
+function faultDistance(
+  scenario: DiagnosisScenario,
+  which: 'nearest' | 'primary' = 'nearest',
+): number {
   const adjacency = new Map<string, string[]>();
   for (const wire of scenario.healthyCircuit.wires) {
     for (const [a, b] of [
@@ -99,7 +107,12 @@ function faultDistance(scenario: DiagnosisScenario): number {
     }
   }
   let nearest = Number.POSITIVE_INFINITY;
-  for (const entry of scenario.faults) {
+  // `primary` looks only at the fault the seed selected first — the one
+  // `remoteFault` actually ranked. `nearest` looks at all of them, which is
+  // the honest difficulty floor: the closest fault is the one a learner trips
+  // over first.
+  const considered = which === 'primary' ? scenario.faults.slice(0, 1) : scenario.faults;
+  for (const entry of considered) {
     const target = entry.fault.target;
     let hops: number;
     if (target.type === 'wire') {
@@ -119,7 +132,10 @@ function faultDistance(scenario: DiagnosisScenario): number {
 interface TierStats {
   built: number;
   distanceSum: number;
+  primaryDistanceSum: number;
   hintSum: number;
+  faultSum: number;
+  multiCount: number;
   decoyCount: number;
   applied: Map<string, number>;
 }
@@ -128,7 +144,16 @@ const stats = new Map<string, TierStats>();
 function statsFor(key: string): TierStats {
   let entry = stats.get(key);
   if (!entry) {
-    entry = { built: 0, distanceSum: 0, hintSum: 0, decoyCount: 0, applied: new Map() };
+    entry = {
+      built: 0,
+      distanceSum: 0,
+      primaryDistanceSum: 0,
+      hintSum: 0,
+      faultSum: 0,
+      multiCount: 0,
+      decoyCount: 0,
+      applied: new Map(),
+    };
     stats.set(key, entry);
   }
   return entry;
@@ -162,7 +187,10 @@ for (const difficulty of DIFFICULTIES) {
       scenarios += 1;
       entry.built += 1;
       entry.distanceSum += faultDistance(scenario);
+      entry.primaryDistanceSum += faultDistance(scenario, 'primary');
       entry.hintSum += scenario.hints.length;
+      entry.faultSum += scenario.faults.length;
+      if (scenario.faults.length >= 2) entry.multiCount += 1;
 
       // ── 7. §24: normal mode never receives modifiers ──────────────────
       if (!tier) {
@@ -231,6 +259,15 @@ for (const difficulty of DIFFICULTIES) {
         fail(`${key} seed ${seed}: two faults share a location key`);
       }
 
+      // Two options that read identically are unanswerable — see the same
+      // check in stress-diagnosis.ts. Rage matters most here: a red-herring
+      // splice adds wires between already-connected devices.
+      const labels = scenario.locationChoices.map((c) => c.label);
+      const duplicate = labels.find((label, index) => labels.indexOf(label) !== index);
+      if (duplicate) {
+        fail(`${key} seed ${seed}: two location choices share the label "${duplicate}"`);
+      }
+
       // ── 4. a decoy is never the fault ─────────────────────────────────
       const decoys = new Set(scenario.rage?.decoyComponentIds ?? []);
       if (decoys.size > 0) {
@@ -269,8 +306,26 @@ for (const difficulty of DIFFICULTIES) {
         if (unrepaired.verdict !== 'incomplete') {
           fail(`${key} seed ${seed}: truthful answer, no repair gave "${unrepaired.verdict}"`);
         }
-        if (!unrepaired.diagnosisCorrect) {
-          fail(`${key} seed ${seed}: fault ${index + 1} was not recognised as correct`);
+        // `diagnosisCorrect` means *every* fault has been named, so it is only
+        // expected on the last iteration. What must hold at every step is that
+        // this submission matched a real fault and moved the hunt forward.
+        if (unrepaired.matchedFaultId !== entry.fault.id) {
+          fail(
+            `${key} seed ${seed}: fault ${index + 1} matched ${unrepaired.matchedFaultId ?? 'nothing'}`,
+          );
+        }
+        if (!unrepaired.progressed) {
+          fail(`${key} seed ${seed}: naming fault ${index + 1} was not counted as progress`);
+        }
+        if (unrepaired.diagnosisCorrect !== last) {
+          fail(
+            `${key} seed ${seed}: diagnosisCorrect ${unrepaired.diagnosisCorrect} at fault ${index + 1}/${scenario.faults.length}`,
+          );
+        }
+        if (unrepaired.outstandingCount !== scenario.faults.length - index - 1) {
+          fail(
+            `${key} seed ${seed}: outstanding ${unrepaired.outstandingCount} after fault ${index + 1}`,
+          );
         }
 
         // On a fully repaired circuit, the final fault closes the exercise and
@@ -351,10 +406,15 @@ for (const difficulty of DIFFICULTIES) {
       // badge tooltip would hand over the answer.
       if (scenario.rage) {
         const notes = scenario.rage.applications.map((a) => a.note).join(' ');
+        // Whole-token, not substring: ids share a prefix, so `includes` reports
+        // a leak of `...-w-1` whenever a note legitimately mentions `...-w-10`.
+        // (Observed on advanced/rage-3 seed 910698 — a false positive, and a
+        // weak check is worse than none because it trains you to ignore it.)
+        const noteTokens = new Set(notes.split(/[^A-Za-z0-9_-]+/));
         for (const entry of scenario.faults) {
           const target = entry.fault.target;
           const targetId = target.type === 'port' ? target.componentId : target.id;
-          if (notes.includes(targetId)) {
+          if (noteTokens.has(targetId)) {
             fail(`${key} seed ${seed}: rage note names the fault target ${targetId}`);
           }
         }
@@ -368,17 +428,26 @@ for (const difficulty of DIFFICULTIES) {
 // ---------------------------------------------------------------------------
 
 for (const difficulty of DIFFICULTIES) {
-  const avg = (tier: string, field: 'distanceSum' | 'hintSum') => {
+  const avg = (tier: string, field: 'distanceSum' | 'primaryDistanceSum' | 'hintSum') => {
     const entry = stats.get(`${difficulty}/${tier}`);
     if (!entry || entry.built === 0) return 0;
     return entry[field] / entry.built;
   };
 
   // remoteFault runs in rage-2 and rage-3; both must beat normal.
+  //
+  // Measured on the *primary* fault, not the nearest one. `remoteFault` ranks
+  // the pool the first fault is drawn from; `multiFault` then adds a second
+  // from the wider pool, which may legitimately sit next to the dead load. On
+  // a two-fault tier the min-distance figure therefore reports the second
+  // fault and says nothing about whether remoteFault worked — it dropped to
+  // 0.00 at beginner/rage-3 while the primary fault was as remote as ever.
+  // Asserting on it would have forced a real modifier to be weakened to
+  // satisfy a metric that had stopped measuring it.
   for (const tier of ['rage-2', 'rage-3']) {
-    if (avg(tier, 'distanceSum') <= avg('normal', 'distanceSum')) {
+    if (avg(tier, 'primaryDistanceSum') <= avg('normal', 'primaryDistanceSum')) {
       fail(
-        `${difficulty}: ${tier} mean fault distance ${avg(tier, 'distanceSum').toFixed(2)} does not exceed normal ${avg('normal', 'distanceSum').toFixed(2)}`,
+        `${difficulty}: ${tier} mean primary fault distance ${avg(tier, 'primaryDistanceSum').toFixed(2)} does not exceed normal ${avg('normal', 'primaryDistanceSum').toFixed(2)}`,
       );
     }
   }
@@ -388,6 +457,25 @@ for (const difficulty of DIFFICULTIES) {
   }
   if (!(avg('rage-2', 'hintSum') < avg('normal', 'hintSum'))) {
     fail(`${difficulty}: rage-2 does not ration hints below normal`);
+  }
+  // §27 Rage 3 is "2 faults". A tier that promises two and ships one is the
+  // §24 misrepresentation this harness exists to catch, so the bar is high:
+  // the overwhelming majority of seeds must land a second fault.
+  const rage3 = stats.get(`${difficulty}/rage-3`);
+  if (rage3 && rage3.built > 0) {
+    const rate = rage3.multiCount / rage3.built;
+    if (rate < 0.9) {
+      fail(
+        `${difficulty}: rage-3 shipped two faults in only ${(rate * 100).toFixed(1)}% of scenarios`,
+      );
+    }
+  }
+  // Tiers that do not list multiFault must never produce a second fault.
+  for (const tier of ['normal', 'rage-1', 'rage-2']) {
+    const entry = stats.get(`${difficulty}/${tier}`);
+    if (entry && entry.multiCount > 0) {
+      fail(`${difficulty}: ${tier} produced ${entry.multiCount} multi-fault scenario(s)`);
+    }
   }
   // rage-1 and rage-3 must actually place decoys.
   for (const tier of ['rage-1', 'rage-3']) {
@@ -412,7 +500,9 @@ console.log(
   `build p95                 : ${buildP95.toFixed(2)} ms (budget ${BUILD_P95_BUDGET_MS})`,
 );
 console.log('');
-console.log('tier                       built  meanDist  meanHints  decoys  modifiers');
+console.log(
+  'tier                       built  meanDist  meanPrim  meanHints  meanFaults  2+  decoys  modifiers',
+);
 for (const [key, entry] of [...stats.entries()].sort()) {
   const applied = [...entry.applied.entries()]
     .sort()
@@ -421,7 +511,10 @@ for (const [key, entry] of [...stats.entries()].sort()) {
   console.log(
     `${key.padEnd(26)} ${String(entry.built).padStart(5)}  ` +
       `${(entry.distanceSum / Math.max(1, entry.built)).toFixed(2).padStart(8)}  ` +
+      `${(entry.primaryDistanceSum / Math.max(1, entry.built)).toFixed(2).padStart(8)}  ` +
       `${(entry.hintSum / Math.max(1, entry.built)).toFixed(2).padStart(9)}  ` +
+      `${(entry.faultSum / Math.max(1, entry.built)).toFixed(2).padStart(10)}  ` +
+      `${String(entry.multiCount).padStart(3)}  ` +
       `${String(entry.decoyCount).padStart(6)}  ${applied}`,
   );
 }

@@ -18,6 +18,7 @@
  * three values are all that persistence needs (§21).
  */
 
+import { COMPONENT_DEFS } from '../../components';
 import { getFaultDefinition } from '../../faults';
 import { simulate } from '../../simulation/simulate';
 import type { Circuit, FaultTarget, FaultType, InjectedFault, SimulationResult } from '../../types';
@@ -41,6 +42,7 @@ import {
   applyCandidateStage,
   applyCircuitStage,
   applyPresentationStage,
+  applySelectionStage,
   buildRageSummary,
 } from '../rage/runner';
 import { getRageTier, rageProfileKey } from '../rage/tiers';
@@ -305,7 +307,12 @@ function tryBuildScenario(request: {
     return { ok: false, reason: 'rage-modified baseline is not clean' };
   }
 
-  let candidates = collectFaultCandidates(healthyCircuit, scenarioInfo);
+  const allCandidates = collectFaultCandidates(healthyCircuit, scenarioInfo);
+  let candidates = allCandidates;
+  // The unranked-but-decoy-filtered pool a second fault may fall back to.
+  // Starts as the full list and is replaced by the candidate stage, which is
+  // the thing that knows which candidates touch a decoy.
+  let selectionPool: readonly FaultCandidate[] = allCandidates;
   if (candidates.length === 0) {
     return { ok: false, reason: 'no eligible fault candidates' };
   }
@@ -322,16 +329,36 @@ function tryBuildScenario(request: {
       decoyComponentIds,
     });
     candidates = ranked.candidates;
+    selectionPool = ranked.pool;
     rageApplications.push(...ranked.applications);
   }
 
   const candidate = selectFaultCandidate(candidates, rng);
   if (!candidate) return { ok: false, reason: 'fault selection produced nothing' };
 
-  // The selected candidates, in the order they were chosen. F1 ships exactly
-  // one; the plural shape is what lets §27's Rage 3/4 add a second without
-  // reworking the grader.
-  const selected: FaultCandidate[] = [candidate];
+  // The selected candidates, in the order they were chosen. A normal scenario
+  // has exactly one; §27's Rage 3/4 add a second through the selection stage
+  // below, which proposes and never replaces.
+  let selected: FaultCandidate[] = [candidate];
+  // Standby proposals, best first, used when one fails the §12 gate below.
+  let alternatives: FaultCandidate[] = [];
+
+  // ── Ohmageddon stage ②b — add further faults ─────────────────────────────
+  if (rageTier) {
+    const chosen = applySelectionStage({
+      circuit: healthyCircuit,
+      candidates,
+      pool: selectionPool,
+      selected,
+      loadComponentIds: scenarioInfo.loadComponentIds,
+      difficulty,
+      tier: rageTier,
+      rng: rng.fork('rage-selection'),
+    });
+    selected = chosen.selected;
+    alternatives = chosen.alternatives;
+    rageApplications.push(...chosen.applications);
+  }
 
   const challengeId = generated.metadata.identity.displayId;
   const loadIds = scenarioInfo.loadComponentIds;
@@ -341,17 +368,53 @@ function tryBuildScenario(request: {
   // about: a fault whose entire effect is masked by a sibling is not a puzzle,
   // it is a trick, and §26 forbids "claiming a fault exists when it does not"
   // in spirit as well as in letter.
+  //
+  // The *first* fault is mandatory: if it is unobservable the seed is simply a
+  // bad one and the caller retries with the next. A fault added by a modifier
+  // is different — it has standbys, so a masked proposal is swapped out rather
+  // than costing the whole scenario. That is the only asymmetry here.
   const scenarioFaults: ScenarioFault[] = [];
-  for (const chosen of selected) {
+  const queue: FaultCandidate[] = [...selected];
+  const standby: FaultCandidate[] = [...alternatives];
+  const usedLocations = new Set<string>();
+
+  while (queue.length > 0) {
+    // Non-empty by the loop condition.
+    const chosen = queue.shift()!;
+    const primary = scenarioFaults.length === 0;
+
+    const locationKey = locationKeyFor(chosen);
+    if (usedLocations.has(locationKey)) continue;
+
     const fault = createScenarioFault(challengeId, chosen);
     const soloCircuit = withScenarioFaults(healthyCircuit, [fault]);
     const solo = simulate(soloCircuit, { appMode: 'pro' });
     const soloSymptom = diffSymptom(baseline, solo, loadIds);
+
     if (!soloSymptom.observable) {
-      return { ok: false, reason: `${chosen.type} produced no observable symptom` };
+      if (primary) {
+        return { ok: false, reason: `${chosen.type} produced no observable symptom` };
+      }
+      // Swap in the next standby and try again.
+      const replacement = standby.shift();
+      if (replacement) queue.push(replacement);
+      continue;
     }
-    scenarioFaults.push({ fault, locationKey: locationKeyFor(chosen), symptom: soloSymptom });
+
+    usedLocations.add(locationKey);
+    scenarioFaults.push({ fault, locationKey, symptom: soloSymptom });
   }
+
+  // Recorded so the summary reflects what actually shipped rather than what
+  // was proposed — a multiFault run whose second fault was masked away is a
+  // single-fault run, and §24 says the mode must not misrepresent itself.
+  selected = scenarioFaults.map((entry) => {
+    const match = [...selected, ...alternatives].find(
+      (c) => locationKeyFor(c) === entry.locationKey && c.type === entry.fault.type,
+    );
+    // Every scenario fault came from one of those two lists.
+    return match!;
+  });
 
   const faults = scenarioFaults.map((entry) => entry.fault);
   const faultedCircuit = withScenarioFaults(healthyCircuit, faults);
@@ -606,7 +669,91 @@ function buildLocationChoices(
   }
 
   choices.sort((a, b) => (a.key < b.key ? -1 : a.key > b.key ? 1 : 0));
-  return choices;
+  return disambiguate(circuit, choices);
+}
+
+/**
+ * Make every location label unique.
+ *
+ * Identical option rows are not an answerable question: the learner can be
+ * graded wrong for a distinction the UI never showed them. Two cases occur on
+ * real generated circuits, and neither is rare:
+ *
+ *   - **Two wires between the same pair of devices** — the live and neutral
+ *     legs of a socket drop. Caught on screen at 390×844, where "Wire: RCBO
+ *     (20 A) → Single 3-Pin Socket (13A)" appeared twice in a row.
+ *   - **Two identical devices** — a recipe with two branches, each ending in
+ *     the same 60 W bulb. This also duplicates their terminal options.
+ *
+ * Two qualifiers are tried, weakest first, and only on the rows that actually
+ * collide — a unique label is never touched:
+ *
+ *   1. For a wire, the terminal names it lands on ("L-out → L"), which the
+ *      component registry already carries.
+ *   2. Failing that, the component's canvas id. The canvas prints that id
+ *      under every component, so this is the one qualifier guaranteed to be
+ *      both unique and visible; the learner can match the option to the thing
+ *      on screen rather than guessing.
+ *
+ * Neither qualifier discloses anything about *which* location is faulty — both
+ * are already on screen for every component, faulty or not.
+ */
+function disambiguate(circuit: Circuit, choices: FaultLocationChoice[]): FaultLocationChoice[] {
+  const collisions = (list: readonly FaultLocationChoice[]): Set<string> => {
+    const counts = new Map<string, number>();
+    for (const choice of list) counts.set(choice.label, (counts.get(choice.label) ?? 0) + 1);
+    return new Set([...counts.entries()].filter(([, n]) => n > 1).map(([label]) => label));
+  };
+
+  let duplicated = collisions(choices);
+  if (duplicated.size === 0) return choices;
+
+  const portLabel = (componentId: string, portIndex: number): string | null => {
+    const component = circuit.components.find((c) => c.id === componentId);
+    if (!component) return null;
+    return COMPONENT_DEFS[component.type]?.ports[portIndex]?.label ?? null;
+  };
+
+  // Pass 1 — terminal names, wires only.
+  let result = choices.map((choice) => {
+    if (!duplicated.has(choice.label) || choice.kind !== 'wire') return choice;
+    const wire = circuit.wires.find((w) => w.id === choice.wireId);
+    if (!wire) return choice;
+    const from = portLabel(wire.fromComponentId, wire.fromPortIndex);
+    const to = portLabel(wire.toComponentId, wire.toPortIndex);
+    if (!from && !to) return choice;
+    return { ...choice, label: `${choice.label} (${from ?? '?'} → ${to ?? '?'})` };
+  });
+
+  // Pass 2 — the canvas id, for anything still ambiguous.
+  duplicated = collisions(result);
+  if (duplicated.size === 0) return result;
+
+  result = result.map((choice) => {
+    if (!duplicated.has(choice.label)) return choice;
+    const id =
+      choice.kind === 'wire'
+        ? choice.wireId
+        : choice.kind === 'component'
+          ? choice.componentId
+          : choice.componentId;
+    if (!id) return choice;
+    return { ...choice, label: `${choice.label} [${shortId(id)}]` };
+  });
+
+  return result;
+}
+
+/**
+ * The distinctive tail of a generated id.
+ *
+ * Ids look like `gen-679711-1-branch-load-1`; the `gen-<hash>-<n>-` prefix is
+ * identical for every component in the circuit and only makes the option
+ * harder to read. The tail is what tells two devices apart, and it is a
+ * substring of what the canvas prints, so it is still matchable on screen.
+ */
+function shortId(id: string): string {
+  return id.replace(/^gen-\d+-\d+-/, '');
 }
 
 /**
@@ -669,7 +816,7 @@ function buildHints(
   const def = getFaultDefinition(candidate.type);
   const extra = candidates.length - 1;
 
-  const observation =
+  const baseObservation =
     symptom.primary === 'load-dead'
       ? `${deadLoadLabels[0] ?? 'A load'} has no complete electrical path — something in its circuit is interrupted or diverted.`
       : symptom.primary === 'tripped'
@@ -682,10 +829,18 @@ function buildHints(
   // one, but not what or where. Withholding the count would not make the
   // exercise harder in an honest way — it would make a complete repair look
   // like a failed one, which §26 rules out.
+  //
+  // The count rides on the level-1 *observation*, not only on the later hints,
+  // because `limitedHints` truncates the ladder to a single hint at rage-3 —
+  // exactly the tier that ships two faults. Carrying the disclosure only at
+  // level 2 meant the harshest tier silently withheld it. The count reveals
+  // neither a type nor a location, so it is safe at level 1 under §17.
   const plural =
     extra > 0
       ? ` This installation has more than one thing wrong with it — ${extra + 1} in total.`
       : '';
+
+  const observation = `${baseObservation}${plural}`;
 
   const direction = `${directionHint(candidate.type, def.category)}${plural}`;
 

@@ -169,6 +169,77 @@ test.describe('Ohmageddon Mode', () => {
     await expect(page.getByRole('button', { name: /^Rage [123]$/ })).toHaveCount(0);
   });
 
+  /**
+   * The Phase F2 gate: a Rage 3 exercise really has two faults, and the
+   * learner can finish it through the ordinary one-answer form.
+   *
+   * The walkthrough is deliberately brute-force — try each fault type against
+   * each location until the panel says the answer was right — because that is
+   * the only information a real learner has. Reading the scenario out of the
+   * store to "know" the answer would test the store, not the exercise, and
+   * would pass even if the panel never surfaced the second fault.
+   */
+  test('a Rage 3 exercise takes two findings to complete (§27, §53)', async ({ page }) => {
+    test.slow();
+    await page.goto('/');
+    await enableOhmageddon(page);
+    await openDiagnosisLab(page);
+
+    const panel = page.getByRole('region', { name: 'Diagnosis Lab' });
+    await panel.getByRole('button', { name: 'Rage 3' }).click();
+    await panel.getByRole('button', { name: /Beginner/ }).click();
+
+    const active = page.getByRole('region', { name: 'Diagnosis Lab' });
+    // The tally only renders for a genuinely multi-fault scenario, so its
+    // presence *is* the assertion that multiFault reached the user.
+    const tally = active.getByText(/^Faults found: \d+ of \d+$/);
+    await expect(tally).toBeVisible();
+    const total = Number(((await tally.textContent()) ?? '').match(/of (\d+)/)?.[1] ?? '0');
+    expect(total).toBeGreaterThanOrEqual(2);
+
+    // §26: the learner is told there is more than one fault rather than being
+    // left to think a correct repair had failed.
+    await expect(active.getByText(/More than one thing is wrong here/i)).toBeVisible();
+
+    const typeRadios = active.locator('input[name="diagnosis-fault-type"]');
+    const locationRadios = active.locator('input[name="diagnosis-location"]');
+    const typeCount = await typeRadios.count();
+    const locationCount = await locationRadios.count();
+
+    const found = async () =>
+      Number(
+        ((await active.getByText(/^Faults found: \d+ of \d+$/).textContent()) ?? '').match(
+          /found: (\d+)/,
+        )?.[1] ?? '0',
+      );
+
+    for (let t = 0; t < typeCount; t++) {
+      for (let l = 0; l < locationCount; l++) {
+        // A completed exercise swaps the panel out entirely.
+        if ((await active.count()) === 0) break;
+        const before = await found();
+        if (before >= total) break;
+
+        await typeRadios.nth(t).check();
+        await locationRadios.nth(l).check();
+        await active.getByRole('button', { name: /Carry out this repair/ }).click();
+        await active.getByRole('button', { name: /Submit diagnosis/ }).click();
+        await page.waitForTimeout(120);
+      }
+      if ((await active.count()) === 0) break;
+      if ((await found()) >= total) break;
+    }
+
+    // Every fault named and every fault repaired => the §28 success screen.
+    const done = page.getByRole('region', { name: 'Diagnosis complete' });
+    await expect(done).toBeVisible({ timeout: 15_000 });
+    // Plural headline, and one "correctly identified" line per fault: the
+    // summary must account for every fault, not just the one that happened to
+    // be named last.
+    await expect(done.getByText(/found them all/i)).toBeVisible();
+    await expect(done.getByText(/correctly identified/i)).toHaveCount(total);
+  });
+
   test('the decoy never identifies itself on the canvas (§14)', async ({ page }) => {
     await page.goto('/');
     await enableOhmageddon(page);

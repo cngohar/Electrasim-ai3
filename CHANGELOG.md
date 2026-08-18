@@ -11,6 +11,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — Session 2026-08-18 (v2 Phase F2): two faults at once 😈😈
+
+`multiFault` (§25, §26, §27, §53.3) is now implemented, so Rage 3 ships the two faults §27 always specified for it — on 120/120 seeds at every difficulty. Both faults are ordinary eligible candidates, really injected and really simulated: the difficulty is in the search, not in a lie.
+
+- **A new selection stage** (`selectFaults`), between candidate ranking and presentation. None of the three existing hooks could express "and another one" — `rankCandidates` re-orders a pool that exactly one fault is then drawn from — so multi-fault gets its own hook that *proposes* additions after the first fault is chosen.
+- **The runner owns the invariants, not the modifier.** Nothing already selected is ever removed; no duplicate fault and no duplicate `locationKey` (two faults sharing a location would collapse into one answer in §15's grader); a hard ceiling of three faults. Proposals arrive in preference order, and `tryBuildScenario` drives each one through §12's solo-observability gate, swapping in a standby when a proposal turns out to be masked rather than discarding the whole scenario.
+- **Two faults never share a device.** Two faults on the same wire — or on a wire and the terminal it lands on — read as a single defect, so a learner who correctly repaired "that connection" would be told they were wrong for a distinction they cannot see. A *different fault type* is preferred for the same reason: two open-circuits read as one repeated mistake.
+- **Falls back to the full (decoy-filtered) pool** when the ranked band offers nothing separable. `remoteFault` narrows to a single distance band, which on a typical circuit is a cluster of wires around one node; without the fallback the two modifiers cancelled each other out and Rage 3 quietly shipped one fault (measured: 0 of 8 seeds). The ranked pool is still tried first, so the second fault tends to be remote too.
+- **Rage 4 still does not ship.** §27 defines it as two faults *plus a compound symptom*, and `compoundFault` — faults that interact, so clearing one changes what the other looks like — remains honestly unimplementable. Labelling a tier "compound" that is not would be exactly the §24 misrepresentation the mode is supposed to avoid.
+
+### Fixed — Session 2026-08-18 (v2 Phase F2)
+
+- **Duplicate location options made some exercises unanswerable (§15).** Two different wires could render as an identical option row — a socket's live and neutral drops both read "Wire: RCBO (20 A) → Single 3-Pin Socket (13A)" — as could two identical bulbs on separate branches, and their terminals. The answer form takes one location, so the learner could be graded wrong for a distinction the UI never showed them. Colliding rows are now qualified by the terminal names the wire lands on ("L-out → N"), falling back to the canvas id; labels that were already unique are left exactly as they were. **Pre-existing, not introduced by F2**, and caught on screen at 390×844 rather than by any test — now locked by both stress harnesses and a seed sweep.
+- **The multi-fault disclosure was withheld from the one tier that needed it.** The "more than one thing is wrong" line rode on hints 2–3, but `limitedHints` truncates Rage 3 to a single hint — so the only tier with two faults was the only one that never said so, making a complete repair look like a failed one (§26). Moved onto the level-1 observation, which reveals neither a type nor a location.
+- **The rage-summary leak check produced a false positive.** `notes.includes(targetId)` reported a leak of `…-w-1` whenever a note legitimately named `…-w-10`. Now matched on whole tokens — a weak check is worse than none, because it trains you to ignore it.
+- **`remoteFault`'s stress metric had stopped measuring `remoteFault`.** Mean fault distance is taken over the *nearest* fault, which on a two-fault tier reports the second one; it read 0.00 at beginner/rage-3 while the primary fault was as remote as ever. Distance is now reported for both roles (`meanDist` and `meanPrim`) and the escalation gate asserts on the primary, so a working modifier is not weakened to satisfy a stale metric.
+
+**Gates:** 861 unit tests (was 844) across 60 files; e2e **112 passed / 14 skipped** including a real two-fault Rage 3 walkthrough driven entirely through clicks; all four stress harnesses green at full seed counts (Rage 3: 2.00 mean faults, 120/120 multi-fault, 2.89 mean primary hops at intermediate); typecheck clean; `vite build` clean.
+
 ### Changed — Session 2026-08-18 (v2 Phase F1): plural-fault scenario shape
 
 Phase F's first slice (§53). Phase E had to register `multiFault` and `compoundFault` as `implemented: false` for one structural reason: a `DiagnosisScenario` carried exactly one `fault`. F1 removes that ceiling everywhere *before* any modifier tries to use it, so the two-fault work that follows is a modifier change rather than a rewrite.

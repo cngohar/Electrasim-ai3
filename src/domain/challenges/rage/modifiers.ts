@@ -17,6 +17,7 @@ import { COMPONENT_DEFS } from '../../components';
 import { COMP_H, COMP_W, GRID_SIZE } from '../../components';
 import type { Circuit, ComponentInstance, WireInstance } from '../../types';
 import type { FaultCandidate } from '../faults/eligibility';
+import { candidateKey } from '../faults/eligibility';
 import type {
   RageCandidateInput,
   RageCandidatePatch,
@@ -26,6 +27,8 @@ import type {
   RageModifier,
   RageModifierId,
   RagePresentation,
+  RageSelectionInput,
+  RageSelectionPatch,
 } from './types';
 
 // ---------------------------------------------------------------------------
@@ -348,6 +351,121 @@ const remoteFault: RageModifier = {
 };
 
 // ---------------------------------------------------------------------------
+// multiFault — two independent things wrong at once
+// ---------------------------------------------------------------------------
+
+/**
+ * The location key a candidate would occupy, mirroring `locationKeyFor`.
+ *
+ * Duplicated here as a three-line local rather than imported from
+ * `diagnosis/scenario.ts`, because `rage/**` must not depend on the diagnosis
+ * layer that consumes it — the dependency runs one way, and the runner
+ * re-checks the same property anyway. If the key format ever changes, the
+ * runner's own de-duplication still holds the invariant.
+ */
+function locationKeyOf(candidate: FaultCandidate): string {
+  const target = candidate.target;
+  if (target.type === 'port') return `port:${target.componentId}:${target.portIndex}`;
+  return `${target.type}:${target.id}`;
+}
+
+/** Components a candidate physically touches — both ends, for a wire. */
+function touchedComponentIds(circuit: Circuit, candidate: FaultCandidate): string[] {
+  const target = candidate.target;
+  if (target.type === 'component') return [target.id];
+  if (target.type === 'port') return [target.componentId];
+  // Hoisted for the same narrowing reason as `candidateDistance`.
+  const wireId = target.id;
+  const wire = circuit.wires.find((w) => w.id === wireId);
+  return wire ? [wire.fromComponentId, wire.toComponentId] : [];
+}
+
+/**
+ * **multiFault** — two independent faults in one installation.
+ *
+ * §26 audit: *allowed*, and listed verbatim under "Multiple faults". Nothing
+ * about either fault is fabricated: both are ordinary candidates from the
+ * ordinary eligibility list, both are really injected, and the symptom the
+ * learner sees is still measured by the simulator from the circuit that
+ * actually contains them. The difficulty comes from the search, not from a
+ * lie — the learner finds one fault, repairs it, and the installation is
+ * *still* wrong.
+ *
+ * Two rules make it a fair puzzle rather than a trap:
+ *
+ * 1. **Separation.** The second fault must not share a component with the
+ *    first. Two faults on the same wire — or on a wire and the terminal it
+ *    lands on — read as one defect, so the learner who correctly repairs
+ *    "that connection" is told they are wrong for a distinction they cannot
+ *    see. The scenario builder additionally requires distinct location keys;
+ *    this goes further and requires distinct *devices*.
+ *
+ * 2. **Independent observability.** This modifier only *proposes*. Every
+ *    proposed fault is then driven through §12's solo-observability gate in
+ *    `tryBuildScenario` exactly like the first one, and a scenario whose
+ *    second fault is masked by the first is rejected outright rather than
+ *    shipped. That is why the proposal is a list, in preference order: the
+ *    runner takes the first that survives.
+ *
+ * Only one extra fault is proposed. §27 asks for "2 faults" at Rage 3 and
+ * Rage 4, not "as many as fit", and each additional fault multiplies the
+ * chance that the combined symptom masks one of them.
+ */
+const multiFault: RageModifier = {
+  id: 'multiFault',
+  label: 'Multiple faults',
+  description: 'Two independent faults in one installation — fixing one is not enough.',
+  implemented: true,
+
+  selectFaults(input: RageSelectionInput, ctx: RageContext): RageSelectionPatch | null {
+    const { circuit, candidates, pool, selected } = input;
+    if (selected.length === 0) return null;
+
+    const takenKeys = new Set(selected.map((c) => candidateKey(c.type, c.target)));
+    const takenLocations = new Set(selected.map(locationKeyOf));
+    const takenComponents = new Set(selected.flatMap((c) => touchedComponentIds(circuit, c)));
+
+    const separable = (candidate: FaultCandidate): boolean => {
+      if (takenKeys.has(candidateKey(candidate.type, candidate.target))) return false;
+      if (takenLocations.has(locationKeyOf(candidate))) return false;
+      // Rule 1: no shared device with an already-selected fault.
+      return !touchedComponentIds(circuit, candidate).some((id) => takenComponents.has(id));
+    };
+
+    // Prefer the ranked pool — a second fault that is *also* remote makes a
+    // better Rage 3 — but fall back to the full eligible set, because
+    // `remoteFault` narrows to one distance band and a band is typically a
+    // cluster of wires around a single node, none of them separable from the
+    // first fault. Without the fallback the two modifiers cancel out and
+    // Rage 3 quietly ships one fault. (Measured: 0 of 8 seeds produced a
+    // second fault from the ranked pool alone.)
+    const fromRanked = candidates.filter(separable);
+    const eligible = fromRanked.length > 0 ? fromRanked : pool.filter(separable);
+    if (eligible.length === 0) return null;
+
+    // Prefer a *different kind* of fault. Two open-circuits read as one
+    // repeated mistake; an open circuit plus a jammed breaker reads as an
+    // installation with two genuinely different problems, which is the
+    // §27 intent and also stops the fault-type choice list from collapsing.
+    const takenTypes = new Set(selected.map((c) => c.type));
+    const distinctType = eligible.filter((c) => !takenTypes.has(c.type));
+    const preferred = distinctType.length > 0 ? distinctType : eligible;
+
+    // Ordered, not single: the runner tries these in turn and keeps the first
+    // that clears §12's solo-observability gate, so a masked candidate costs
+    // an attempt rather than the whole scenario.
+    const ordered = ctx.rng.shuffle([...preferred]);
+
+    return {
+      additional: ordered,
+      note: `proposed ${ordered.length} second-fault candidate(s) from the ${
+        fromRanked.length > 0 ? 'ranked' : 'full'
+      } pool, ${distinctType.length} of a different type`,
+    };
+  },
+};
+
+// ---------------------------------------------------------------------------
 // limitedHints — ration the safety net
 // ---------------------------------------------------------------------------
 
@@ -397,10 +515,12 @@ const limitedHints: RageModifier = {
  * separate document, because the reason is a *technical* constraint discovered
  * in Phases B–D, not a scheduling choice:
  *
- *   - `multiFault` / `compoundFault` — `DiagnosisScenario.fault` is singular,
- *     and §15's two-part answer grades one type + one location. Supporting two
- *     simultaneous faults means a plural scenario shape and a plural evaluator,
- *     which is Phase F work (§53 items 3 and 6), not a modifier hook.
+ *   - `compoundFault` — needs two faults that *interact*, so that clearing one
+ *     changes what the other looks like. `multiFault` deliberately picks two
+ *     faults that do NOT share a device, which is the opposite property;
+ *     shipping an interacting pair additionally requires proving the second
+ *     symptom is still observable after the first repair, at build time. §53
+ *     item 6.
  *   - `misleadingSymptom` — must be achieved by *selecting* a fault whose true
  *     symptom misleads (e.g. a fault upstream that kills a downstream load),
  *     never by rewriting symptom text, which §26 explicitly forbids. That
@@ -410,12 +530,6 @@ const limitedHints: RageModifier = {
  *     `timeLimitSeconds`, so it lands without an interface change.
  */
 const notYetImplemented: RageModifier[] = [
-  {
-    id: 'multiFault',
-    label: 'Multiple faults',
-    description: 'Two independent faults in one installation.',
-    implemented: false,
-  },
   {
     id: 'misleadingSymptom',
     label: 'Misleading symptom',
@@ -443,6 +557,7 @@ const notYetImplemented: RageModifier[] = [
 export const RAGE_MODIFIERS: Record<RageModifierId, RageModifier> = {
   redHerring,
   remoteFault,
+  multiFault,
   limitedHints,
   ...Object.fromEntries(notYetImplemented.map((m) => [m.id, m])),
 } as Record<RageModifierId, RageModifier>;

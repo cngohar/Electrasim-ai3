@@ -23,7 +23,7 @@
 import { simulate } from '../../simulation';
 import type { Circuit } from '../../types';
 import { getDifficultyProfile } from '../difficulty/profiles';
-import type { FaultCandidate } from '../faults/eligibility';
+import { type FaultCandidate, candidateKey } from '../faults/eligibility';
 import type { Rng } from '../generator/seed';
 import { validateCandidate } from '../generator/validator';
 import type { ChallengeDifficulty, GeneratedScenario } from '../types';
@@ -187,6 +187,16 @@ export interface ApplyCandidateStageInput {
 
 export interface ApplyCandidateStageResult {
   candidates: FaultCandidate[];
+  /**
+   * Every candidate that survived the decoy filter, *before* any modifier
+   * narrowed the field.
+   *
+   * Returned separately because the selection stage needs a fallback pool for
+   * a second fault, and it must be the decoy-filtered one: reaching past this
+   * to the raw eligibility list would let a red herring host the second fault,
+   * which is precisely the guarantee this stage exists to make.
+   */
+  pool: FaultCandidate[];
   applications: RageApplication[];
 }
 
@@ -219,8 +229,8 @@ export function applyCandidateStage(input: ApplyCandidateStageInput): ApplyCandi
   // which case the herring has cornered every option and the honest move is
   // to leave selection alone rather than ship a scenario with no fault.
   const withoutDecoys = input.candidates.filter((c) => !touchesDecoy(c));
-  let candidates: FaultCandidate[] =
-    withoutDecoys.length > 0 ? withoutDecoys : [...input.candidates];
+  const pool: FaultCandidate[] = withoutDecoys.length > 0 ? withoutDecoys : [...input.candidates];
+  let candidates: FaultCandidate[] = [...pool];
 
   for (const id of tier.modifiers) {
     const modifier = getRageModifier(id);
@@ -251,8 +261,159 @@ export function applyCandidateStage(input: ApplyCandidateStageInput): ApplyCandi
     applications.push({ id, label: modifier.label, applied: true, note: patch.note });
   }
 
-  return { candidates, applications };
+  return { candidates, pool, applications };
 }
+
+// ---------------------------------------------------------------------------
+// Stage ②b — fault selection
+// ---------------------------------------------------------------------------
+
+export interface ApplySelectionStageInput {
+  circuit: Circuit;
+  /** The ranked pool the first fault was drawn from. */
+  candidates: readonly FaultCandidate[];
+  /** Every eligible candidate, before ranking narrowed the field. */
+  pool: readonly FaultCandidate[];
+  /** Already-chosen candidates — never removed, only added to. */
+  selected: readonly FaultCandidate[];
+  loadComponentIds: readonly string[];
+  difficulty: ChallengeDifficulty;
+  tier: RageTierId;
+  rng: Rng;
+}
+
+export interface ApplySelectionStageResult {
+  /**
+   * The chosen candidates plus any accepted additions, in order. The first
+   * entry is always the originally selected fault.
+   */
+  selected: FaultCandidate[];
+  /**
+   * Fallback candidates for each addition, in preference order, so the caller
+   * can retry when a proposal fails §12's solo-observability gate. Parallel to
+   * nothing — it is simply the remaining proposals, best first.
+   */
+  alternatives: FaultCandidate[];
+  applications: RageApplication[];
+}
+
+/**
+ * Let modifiers add further faults to the scenario (plan §26 "Multiple faults").
+ *
+ * The runner, not the modifier, owns the invariants — a modifier only proposes:
+ *
+ *   - **Nothing is ever removed.** The first fault is the one the seeded
+ *     selection chose, and a modifier that returned a shorter list would be
+ *     silently overriding `selectFaultCandidate`'s placement weighting.
+ *   - **No duplicate fault, and no duplicate location.** Two faults sharing a
+ *     `locationKey` would collapse into one answer in §15's two-part grader,
+ *     so the learner could "find" both with one submission.
+ *   - **A cap of three.** Beyond that the odds of one fault masking another
+ *     rise sharply and the exercise stops being a diagnosis and becomes an
+ *     inventory. §27 asks for two.
+ *
+ * Observability is deliberately *not* checked here: it needs the simulator and
+ * the baseline, both of which live in `tryBuildScenario`. This stage hands back
+ * `alternatives` precisely so that caller can reject a masked proposal and try
+ * the next one without losing the whole scenario.
+ */
+export function applySelectionStage(input: ApplySelectionStageInput): ApplySelectionStageResult {
+  const profile = getDifficultyProfile(input.difficulty);
+  const tier = getRageTier(input.tier);
+  const applications: RageApplication[] = [];
+
+  const selected: FaultCandidate[] = [...input.selected];
+  const alternatives: FaultCandidate[] = [];
+
+  const keyOf = (c: FaultCandidate) => candidateKey(c.type, c.target);
+  const locationOf = (c: FaultCandidate) =>
+    c.target.type === 'port'
+      ? `port:${c.target.componentId}:${c.target.portIndex}`
+      : `${c.target.type}:${c.target.id}`;
+
+  for (const id of tier.modifiers) {
+    const modifier = getRageModifier(id);
+    if (!modifier.selectFaults) continue;
+    if (!modifier.implemented) {
+      applications.push({ id, label: modifier.label, applied: false, note: 'not implemented' });
+      continue;
+    }
+
+    const ctx: RageContext = {
+      difficulty: input.difficulty,
+      profile,
+      tier: input.tier,
+      rng: input.rng.fork(`rage:selection:${id}`),
+    };
+
+    const patch = modifier.selectFaults(
+      {
+        circuit: input.circuit,
+        candidates: input.candidates,
+        pool: input.pool,
+        selected,
+        loadComponentIds: input.loadComponentIds,
+      },
+      ctx,
+    );
+    if (!patch || patch.additional.length === 0) {
+      applications.push({ id, label: modifier.label, applied: false, note: 'no opportunity' });
+      continue;
+    }
+
+    const takenKeys = new Set(selected.map(keyOf));
+    const takenLocations = new Set(selected.map(locationOf));
+    const accepted: FaultCandidate[] = [];
+
+    for (const candidate of patch.additional) {
+      const key = keyOf(candidate);
+      const location = locationOf(candidate);
+      if (takenKeys.has(key) || takenLocations.has(location)) continue;
+      if (selected.length + accepted.length >= MAX_SCENARIO_FAULTS) break;
+
+      if (accepted.length === 0) {
+        accepted.push(candidate);
+        takenKeys.add(key);
+        takenLocations.add(location);
+        continue;
+      }
+      // Everything past the first accepted proposal is a standby, kept for the
+      // caller's observability retry rather than injected.
+      alternatives.push(candidate);
+      takenKeys.add(key);
+      takenLocations.add(location);
+    }
+
+    if (accepted.length === 0) {
+      applications.push({
+        id,
+        label: modifier.label,
+        applied: false,
+        note: 'every proposal duplicated an existing fault',
+      });
+      continue;
+    }
+
+    selected.push(...accepted);
+    applications.push({
+      id,
+      label: modifier.label,
+      applied: true,
+      note: `${patch.note}; accepted ${accepted.length}, ${alternatives.length} in reserve`,
+    });
+  }
+
+  return { selected, alternatives, applications };
+}
+
+/**
+ * Hard ceiling on faults per scenario.
+ *
+ * §27 asks for two. Three is the headroom a future `compoundFault` might want;
+ * past that, every extra fault raises the chance one masks another and the
+ * `tryBuildScenario` rejection rate with it.
+ */
+export const MAX_SCENARIO_FAULTS = 3;
 
 // ---------------------------------------------------------------------------
 // Stage ③ — presentation

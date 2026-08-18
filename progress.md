@@ -3097,3 +3097,83 @@ reinstall — `npx playwright install chromium` before any e2e run in a fresh se
 seam in `tryBuildScenario`. The second fault needs a distinct `locationKey` and a
 distinct `candidateKey`, and must clear the same per-fault solo-observability gate the
 loop below already enforces.
+
+---
+
+## Session 2026-08-18 — v2 Phase F2: `multiFault`
+
+Rage 3 now ships two faults, which is what §27 always specified for it. 120/120
+seeds at every difficulty, mean 2.00 faults per scenario.
+
+**The seam was not where F1 predicted.** F1 left a note pointing at
+`selected: FaultCandidate[] = [candidate]`, and that is indeed where the second
+fault lands — but no *existing* modifier hook could put it there. `rankCandidates`
+re-orders a pool that exactly one candidate is then drawn from, so a modifier
+wanting two faults could only return a two-element pool and hope. Multi-fault
+therefore got its own stage, `selectFaults`, which runs after selection and
+proposes additions rather than replacing the choice.
+
+The division of responsibility is the point: the modifier proposes an *ordered*
+list, the runner enforces the invariants (nothing removed, no duplicate fault or
+location, ceiling of three), and `tryBuildScenario` enforces §12 by driving each
+proposal through the same solo-observability gate the first fault faces. A masked
+proposal costs one standby, not the whole scenario. This is why a seed whose
+second fault is invisible is silently, correctly downgraded to one fault instead
+of being rejected — and why the rage badge reports `multiFault` as *applied* only
+when a second fault actually shipped (§24).
+
+**The interaction bug worth remembering.** With `remoteFault` also in the tier,
+the first implementation shipped one fault on every seed. `remoteFault` keeps only
+the most distant distance band, and on a real circuit that band is a cluster of
+wires around one node — all sharing a device, so every candidate in it was
+rejected by the "no shared device" rule. Two individually correct modifiers
+cancelled out. The fix is a fallback to the full decoy-filtered pool; the ranked
+pool is still tried first, so the second fault is usually remote too. Note the
+fallback is the *decoy-filtered* pool, not the raw eligibility list — reaching
+past that filter would have let a red herring host the second fault, which is the
+one guarantee the candidate stage exists to make. Getting that wrong was caught by
+an existing test, which is the argument for stage-level guarantees over
+per-modifier discipline.
+
+**Three defects the gates caught, in ascending order of embarrassment:**
+
+1. `limitedHints` truncates Rage 3 to a single hint, but the "there is more than
+   one fault" disclosure only lived on hints 2–3. The only tier with two faults
+   was the only one that never said so — which turns a complete repair into what
+   looks like a failed one (§26). The count now rides on the level-1 observation;
+   it names neither a type nor a location, so §17 is satisfied.
+2. The rage-note leak check used `notes.includes(targetId)` and so reported a leak
+   of `…-w-1` whenever a note legitimately mentioned `…-w-10`. Whole-token match
+   now. A check that cries wolf is worse than no check.
+3. `remoteFault`'s escalation gate failed — mean fault distance at beginner/rage-3
+   had dropped to 0.00. It would have been easy to "fix" the modifier. The metric
+   was wrong: it takes the *nearest* fault, which on a two-fault tier reports the
+   second one and says nothing about the fault `remoteFault` actually ranked. Both
+   figures are now reported (`meanDist`, `meanPrim`) and the gate asserts on the
+   primary. **A failing gate is a hypothesis, not a verdict.**
+
+**And one pre-existing fairness bug, found on screen.** The 390×844 screenshot of
+a mid-exercise panel showed two location options rendering *identically*: "Wire:
+RCBO (20 A) → Single 3-Pin Socket (13A)", twice — the live and neutral drops to
+the same socket. The answer form takes one location, so a learner picking the
+wrong twin is graded wrong for a distinction the UI never showed them. Sweeping
+seeds found the same class of defect for two identical bulbs on separate branches
+and for their terminals. Colliding rows are now qualified by terminal name
+("L-out → N") and, failing that, by the canvas id the renderer already prints
+under every component; unique labels are untouched. This predates F2 entirely and
+no unit test had ever looked at it — that is now three sessions running where
+reading the rendered screen found something the whole suite missed.
+
+**Gates:** typecheck ✓, biome ✓ (same 4 pre-existing `Editor.tsx` warnings), 60
+files / **861** unit tests ✓ (was 844), all four stress harnesses ✓ at full seed
+counts, `vite build` ✓, **e2e 112 passed / 14 skipped** — including a new Rage 3
+walkthrough that brute-forces the choice grid exactly as a learner would, with no
+peeking at the store, and asserts the completion screen accounts for *every*
+fault.
+
+**Next:** F3 — `compoundFault` (§53.6): two faults that *interact*, so clearing
+one changes what the other looks like. Note this is the opposite property from
+`multiFault`, which deliberately picks two faults that share no device. It needs
+a build-time proof that the second symptom is still observable *after* the first
+repair — a third simulator pass per candidate pair — before it can be honest
+enough to ship. Only then can Rage 4 exist.

@@ -8,7 +8,7 @@
  *
  * So there is no rage generator, no rage recipe set and no rage circuit model.
  * A rage scenario is an ordinary diagnosis scenario that a short, ordered list
- * of *composable modifiers* has been allowed to reshape at three well-defined
+ * of *composable modifiers* has been allowed to reshape at four well-defined
  * points in the existing build pipeline:
  *
  *   generateChallenge()            ← untouched, locked by §57
@@ -16,6 +16,7 @@
  *   ① transformCircuit             ← add red herrings, extra branches
  *          ↓ re-validated circuit
  *   ② rankCandidates               ← push the fault away from the symptom
+ *   ②b selectFaults                ← add a second, independent fault
  *          ↓ chosen fault + measured symptom
  *   ③ adjustPresentation           ← ration hints, tighten the clock
  *          ↓
@@ -155,6 +156,53 @@ export interface RageCandidatePatch {
 }
 
 // ---------------------------------------------------------------------------
+// ②b Selection stage
+// ---------------------------------------------------------------------------
+
+/**
+ * Input to the stage that decides *how many* faults the scenario carries.
+ *
+ * This stage exists because none of the other three can express "and another
+ * one". `rankCandidates` re-orders a pool from which exactly one candidate is
+ * then drawn; a modifier that wanted two faults could only ever have returned
+ * a two-element pool and hoped, which is not a mechanism. So multi-fault is
+ * its own hook, run *after* selection has produced the first fault, and it
+ * proposes additions rather than replacing the choice.
+ */
+export interface RageSelectionInput {
+  circuit: Circuit;
+  /** The ranked pool the first fault was drawn from. */
+  candidates: readonly FaultCandidate[];
+  /**
+   * Every eligible candidate, before `rankCandidates` narrowed the field.
+   *
+   * Needed because ranking is *deliberately* narrowing: `remoteFault` keeps
+   * only the most distant band, and on a typical circuit that band is a
+   * handful of wires around one node — all sharing a device, so a second fault
+   * drawn from it would always be rejected as inseparable. The ranked pool is
+   * still tried first (a remote second fault is a better puzzle); this is the
+   * fallback that stops the two modifiers cancelling each other out.
+   */
+  pool: readonly FaultCandidate[];
+  /** Already-chosen candidates, in the order they were chosen. */
+  selected: readonly FaultCandidate[];
+  /** Declared loads — the things whose failure the learner actually notices. */
+  loadComponentIds: readonly string[];
+}
+
+/**
+ * A selection-stage result: candidates to add *alongside* the existing ones.
+ *
+ * A modifier never removes or replaces an already-selected fault. The runner
+ * additionally rejects any addition that duplicates a selected candidate or
+ * sits at a location one already occupies — see {@link RageSelectionInput}.
+ */
+export interface RageSelectionPatch {
+  additional: FaultCandidate[];
+  note: string;
+}
+
+// ---------------------------------------------------------------------------
 // ③ Presentation stage
 // ---------------------------------------------------------------------------
 
@@ -198,6 +246,7 @@ export interface RageModifier {
 
   transformCircuit?(input: RageCircuitInput, ctx: RageContext): RageCircuitPatch | null;
   rankCandidates?(input: RageCandidateInput, ctx: RageContext): RageCandidatePatch | null;
+  selectFaults?(input: RageSelectionInput, ctx: RageContext): RageSelectionPatch | null;
   adjustPresentation?(input: RagePresentation, ctx: RageContext): RagePresentation | null;
 }
 

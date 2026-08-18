@@ -6,13 +6,14 @@
  * difficulty curve, no XP and no unlock tree — three tiers, each a named
  * combination of the modifiers defined in `modifiers.ts`.
  *
- * The plan lists four tiers. Only the first three ship in Phase E, because
- * Rage 4 needs `compoundFault` and `timeLimit`, both of which are honestly
- * unimplementable today (see `modifiers.ts`). Rage 3 is also trimmed: §27 lists
- * it as `2 faults + remote fault + red herring`, and the two-fault half of that
- * is Phase F work, so the shipped Rage 3 is the single-fault version of the
- * same shape. The tier is labelled accordingly rather than pretending — §24's
- * rule that the mode must never mislead the user cuts both ways.
+ * The plan lists four tiers. Three shipped in Phase E; Phase F completes Rage 3
+ * by adding the second fault §27 always specified for it. Rage 4 is still held
+ * back, because §27 defines it as `2 faults + compound symptom + limited hints
+ * + optional timer` and `compoundFault` remains honestly unimplementable — two
+ * faults that *interact* is a different property from two that are independent,
+ * and shipping the tier without it would mean labelling something "compound"
+ * that is not. §24's rule that the mode must never mislead the user cuts both
+ * ways, so the tier waits rather than pretending.
  */
 
 import type { RageTier, RageTierId } from './types';
@@ -41,10 +42,20 @@ export const RAGE_TIERS: Record<RageTierId, RageTier> = {
   'rage-3': {
     id: 'rage-3',
     label: 'Rage 3',
-    blurb: 'A remote fault, a decoy in the way, and one hint if you are lucky.',
-    // §27 Rage 3 minus the second fault (Phase F), plus the hint rationing
-    // that makes the combination bite.
-    modifiers: ['redHerring', 'remoteFault', 'limitedHints'],
+    blurb: 'Two faults, one of them a long way off, a decoy in the way, and one hint.',
+    /**
+     * §27 Rage 3 — "2 faults + remote fault + red herring" — now complete.
+     * `limitedHints` is kept from the Phase E shape: with two faults to find,
+     * a full hint ladder that names one location makes the tier easier than
+     * Rage 2, and a difficulty curve that dips is worse than one that is
+     * merely steep.
+     *
+     * Order matters. `multiFault` runs after `remoteFault` has narrowed the
+     * pool, so the *first* fault is the remote one and the second is drawn
+     * from the same ranked list — which is why the second fault tends to be
+     * remote too rather than sitting conveniently next to the dead load.
+     */
+    modifiers: ['redHerring', 'remoteFault', 'multiFault', 'limitedHints'],
   },
 };
 

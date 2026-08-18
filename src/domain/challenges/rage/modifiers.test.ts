@@ -25,7 +25,13 @@ import { collectFaultCandidates } from '../faults/eligibility';
 import { generateChallenge } from '../generator/generator';
 import { createSeededRng } from '../generator/seed';
 import { RAGE_MODIFIERS, getRageModifier, implementedRageModifiers } from './modifiers';
-import { applyCandidateStage, applyCircuitStage, applyPresentationStage } from './runner';
+import {
+  MAX_SCENARIO_FAULTS,
+  applyCandidateStage,
+  applyCircuitStage,
+  applyPresentationStage,
+  applySelectionStage,
+} from './runner';
 import { RAGE_TIERS, RAGE_TIER_IDS, getRageTier, isRageTierId, rageProfileKey } from './tiers';
 import { RAGE_MODIFIER_IDS, type RageContext, type RagePresentation } from './types';
 
@@ -55,12 +61,15 @@ describe('rage modifier registry (plan §25)', () => {
     }
   });
 
-  it('ships exactly the three modifiers §52 nominates first', () => {
+  it("ships §52's three modifiers plus multiFault", () => {
+    // §52's first three, plus `multiFault` once Phase F1 gave the scenario a
+    // plural fault list. `compoundFault`, `misleadingSymptom` and `timeLimit`
+    // must stay unimplemented until they can be supported truthfully (§25).
     expect(
       implementedRageModifiers()
         .map((m) => m.id)
         .sort(),
-    ).toEqual(['limitedHints', 'redHerring', 'remoteFault']);
+    ).toEqual(['limitedHints', 'multiFault', 'redHerring', 'remoteFault']);
   });
 
   it('never marks an unimplemented modifier as having hooks', () => {
@@ -69,6 +78,7 @@ describe('rage modifier registry (plan §25)', () => {
       if (modifier.implemented) continue;
       expect(modifier.transformCircuit).toBeUndefined();
       expect(modifier.rankCandidates).toBeUndefined();
+      expect(modifier.selectFaults).toBeUndefined();
       expect(modifier.adjustPresentation).toBeUndefined();
     }
   });
@@ -630,5 +640,278 @@ describe('Ohmageddon modifiers are deterministic (plan §57)', () => {
         'ES-DIAG-',
       ),
     ).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// multiFault (plan §26 "Multiple faults", §27 Rage 3)
+// ---------------------------------------------------------------------------
+
+describe('multiFault (plan §26, §27)', () => {
+  /** Build a real generated circuit and its candidate pool. */
+  function poolFor(seed: number, difficulty: (typeof DIFFICULTIES)[number] = 'intermediate') {
+    const generated = generateChallenge({ seed, difficulty, mode: 'rage' });
+    const candidates = collectFaultCandidates(generated.circuit, generated.scenario);
+    return { circuit: generated.circuit, scenario: generated.scenario, candidates };
+  }
+
+  function selectionFor(seed: number, difficulty: (typeof DIFFICULTIES)[number] = 'intermediate') {
+    const { circuit, scenario, candidates } = poolFor(seed, difficulty);
+    // Candidates always exist for a generated rage circuit; skip if a seed
+    // ever produced none rather than asserting on an empty pool.
+    if (candidates.length === 0) return null;
+    return applySelectionStage({
+      circuit,
+      candidates,
+      pool: candidates,
+      selected: [candidates[0]!],
+      loadComponentIds: scenario.loadComponentIds,
+      difficulty,
+      tier: 'rage-3',
+      rng: createSeededRng({ generatorVersion: 1, seed, difficulty, mode: 'rage' }),
+    });
+  }
+
+  it('never drops or replaces the already-selected fault', () => {
+    for (let seed = 1; seed <= 25; seed++) {
+      const { candidates } = poolFor(seed);
+      if (candidates.length === 0) continue;
+      const result = selectionFor(seed);
+      expect(result).not.toBeNull();
+      // Structural, not identity: `poolFor` rebuilds the circuit each call.
+      expect(result!.selected[0]).toStrictEqual(candidates[0]);
+    }
+  });
+
+  it('adds a second fault that shares no component with the first', () => {
+    let sawTwo = 0;
+    for (let seed = 1; seed <= 25; seed++) {
+      const { circuit } = poolFor(seed);
+      const result = selectionFor(seed);
+      if (!result || result.selected.length < 2) continue;
+      sawTwo++;
+
+      const componentsOf = (target: (typeof result.selected)[number]['target']): string[] => {
+        if (target.type === 'component') return [target.id];
+        if (target.type === 'port') return [target.componentId];
+        const wireId = target.id;
+        const wire = circuit.wires.find((w) => w.id === wireId);
+        return wire ? [wire.fromComponentId, wire.toComponentId] : [];
+      };
+
+      const first = new Set(componentsOf(result.selected[0]!.target));
+      for (const extra of result.selected.slice(1)) {
+        for (const id of componentsOf(extra.target)) {
+          // Two faults on the same device read as one defect (§15's grader
+          // keys on location), so the learner would be told they are wrong
+          // for a distinction they cannot see.
+          expect(first.has(id), `seed ${seed}: second fault reuses ${id}`).toBe(false);
+        }
+      }
+    }
+    // The property is worthless if no seed ever produced a second fault.
+    expect(sawTwo).toBeGreaterThan(10);
+  });
+
+  it('never exceeds the scenario fault ceiling', () => {
+    for (let seed = 1; seed <= 25; seed++) {
+      const result = selectionFor(seed);
+      if (!result) continue;
+      expect(result.selected.length).toBeLessThanOrEqual(MAX_SCENARIO_FAULTS);
+    }
+  });
+
+  it('gives every selected fault a distinct location key', () => {
+    for (let seed = 1; seed <= 25; seed++) {
+      const result = selectionFor(seed);
+      if (!result) continue;
+      const keys = result.selected.map((c) =>
+        c.target.type === 'port'
+          ? `port:${c.target.componentId}:${c.target.portIndex}`
+          : `${c.target.type}:${c.target.id}`,
+      );
+      expect(new Set(keys).size).toBe(keys.length);
+    }
+  });
+
+  it('does not run for tiers that do not list it', () => {
+    const { circuit, scenario, candidates } = poolFor(7);
+    for (const tier of ['rage-1', 'rage-2'] as const) {
+      const result = applySelectionStage({
+        circuit,
+        candidates,
+        pool: candidates,
+        selected: [candidates[0]!],
+        loadComponentIds: scenario.loadComponentIds,
+        difficulty: 'intermediate',
+        tier,
+        rng: createSeededRng({
+          generatorVersion: 1,
+          seed: 7,
+          difficulty: 'intermediate',
+          mode: 'rage',
+        }),
+      });
+      expect(result.selected).toHaveLength(1);
+      expect(result.applications).toHaveLength(0);
+    }
+  });
+
+  it('is a no-op when the pool offers nothing separable', () => {
+    const { circuit, scenario, candidates } = poolFor(11);
+    const only = candidates[0]!;
+    const result = applySelectionStage({
+      circuit,
+      // A pool containing only the already-selected candidate cannot yield a
+      // second fault, and the modifier must say so rather than duplicating it.
+      candidates: [only],
+      pool: [only],
+      selected: [only],
+      loadComponentIds: scenario.loadComponentIds,
+      difficulty: 'intermediate',
+      tier: 'rage-3',
+      rng: createSeededRng({
+        generatorVersion: 1,
+        seed: 11,
+        difficulty: 'intermediate',
+        mode: 'rage',
+      }),
+    });
+    expect(result.selected).toHaveLength(1);
+    expect(result.applications[0]?.applied).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Rage 3 end to end: two faults, still honest (plan §26, §27, §12)
+// ---------------------------------------------------------------------------
+
+describe('Rage 3 ships two faults without lying (plan §12, §26, §27)', () => {
+  const seeds = [3, 8, 14, 19, 26, 31, 44, 57];
+
+  it('usually carries two faults, and never more than the ceiling', () => {
+    let twoOrMore = 0;
+    for (const seed of seeds) {
+      const scenario = buildDiagnosisScenario({
+        seed,
+        difficulty: 'intermediate',
+        rageTier: 'rage-3',
+      });
+      expect(scenario.faults.length).toBeLessThanOrEqual(MAX_SCENARIO_FAULTS);
+      if (scenario.faults.length >= 2) twoOrMore++;
+    }
+    // Not "always": a seed whose second fault is masked by the first is
+    // correctly downgraded to a single-fault scenario rather than shipped.
+    expect(twoOrMore).toBeGreaterThanOrEqual(seeds.length - 2);
+  });
+
+  it('every fault is independently observable (§12)', () => {
+    for (const seed of seeds) {
+      const scenario = buildDiagnosisScenario({
+        seed,
+        difficulty: 'intermediate',
+        rageTier: 'rage-3',
+      });
+      for (const entry of scenario.faults) {
+        expect(entry.symptom.observable, `seed ${seed}: ${entry.fault.type} is invisible`).toBe(
+          true,
+        );
+      }
+    }
+  });
+
+  it('the faulted circuit really contains every declared fault (§26)', () => {
+    for (const seed of seeds) {
+      const scenario = buildDiagnosisScenario({
+        seed,
+        difficulty: 'intermediate',
+        rageTier: 'rage-3',
+      });
+      const live = new Set((scenario.faultedCircuit.faults ?? []).map((f) => f.id));
+      for (const entry of scenario.faults) {
+        // §26 forbids "claiming a fault exists when it does not".
+        expect(live.has(entry.fault.id)).toBe(true);
+      }
+      expect(live.size).toBe(scenario.faults.length);
+    }
+  });
+
+  it('the healthy circuit stays clean and valid under two faults (§26)', () => {
+    for (const seed of seeds) {
+      const scenario = buildDiagnosisScenario({
+        seed,
+        difficulty: 'intermediate',
+        rageTier: 'rage-3',
+      });
+      const healthy = simulate(scenario.healthyCircuit, { appMode: 'pro' });
+      expect(healthy.errors).toEqual([]);
+      // The same production validators the generator runs, not a rage variant.
+      expect(
+        validateCircuitRules(scenario.healthyCircuit, 'basic').filter(
+          (d) => d.severity === 'error',
+        ),
+      ).toEqual([]);
+      expect(
+        validateCircuit(scenario.healthyCircuit, healthy, 'uk').issues.filter(
+          (i) => i.severity === 'error',
+        ),
+      ).toEqual([]);
+    }
+  });
+
+  it('tells the learner how many faults there are, without saying where (§17, §26)', () => {
+    const multi = seeds
+      .map((seed) =>
+        buildDiagnosisScenario({ seed, difficulty: 'intermediate', rageTier: 'rage-3' }),
+      )
+      .find((s) => s.faults.length >= 2);
+    expect(multi).toBeDefined();
+
+    // Hiding the count would make a complete repair look like a failed one.
+    const text = multi!.hints.map((h) => h.text).join(' ');
+    expect(text).toMatch(/more than one/i);
+  });
+
+  it('offers a location choice for every fault (§15)', () => {
+    for (const seed of seeds) {
+      const scenario = buildDiagnosisScenario({
+        seed,
+        difficulty: 'intermediate',
+        rageTier: 'rage-3',
+      });
+      const offered = new Set(scenario.locationChoices.map((c) => c.key));
+      for (const entry of scenario.faults) {
+        // An answer the learner cannot select is not an answerable question.
+        expect(offered.has(entry.locationKey), `seed ${seed}: ${entry.locationKey}`).toBe(true);
+      }
+    }
+  });
+
+  it('offers a fault-type choice for every fault (§15)', () => {
+    for (const seed of seeds) {
+      const scenario = buildDiagnosisScenario({
+        seed,
+        difficulty: 'intermediate',
+        rageTier: 'rage-3',
+      });
+      const offered = new Set(scenario.faultTypeChoices.map((c) => c.type));
+      for (const entry of scenario.faults) {
+        expect(offered.has(entry.fault.type), `seed ${seed}: ${entry.fault.type}`).toBe(true);
+      }
+    }
+  });
+
+  it('reports multiFault in the rage summary only when it landed (§24)', () => {
+    for (const seed of seeds) {
+      const scenario = buildDiagnosisScenario({
+        seed,
+        difficulty: 'intermediate',
+        rageTier: 'rage-3',
+      });
+      const entry = scenario.rage?.applications.find((a) => a.id === 'multiFault');
+      expect(entry).toBeDefined();
+      // The badge must describe what shipped, not what was attempted.
+      expect(entry!.applied).toBe(scenario.faults.length >= 2);
+    }
   });
 });

@@ -187,3 +187,49 @@ describe('locationKeyFor', () => {
     }
   });
 });
+
+describe('location choices are individually selectable (plan §15)', () => {
+  /**
+   * Two options that render identically make the exercise unfair: the answer
+   * form takes one location, so a learner who picks the wrong twin is marked
+   * wrong for a distinction the UI never showed them.
+   *
+   * Both real causes are covered by sweeping seeds rather than by a fixture,
+   * because both arise from ordinary generator output — a socket's live and
+   * neutral drops between the same two devices, and a recipe with two
+   * identical bulbs on separate branches.
+   */
+  it('never offers two options with the same label', () => {
+    for (const difficulty of ['beginner', 'intermediate', 'advanced'] as const) {
+      for (let i = 0; i < 40; i++) {
+        const seed = i * 7919 + 13;
+        const scenario = buildDiagnosisScenario({ seed, difficulty });
+        const labels = scenario.locationChoices.map((c) => c.label);
+        expect(new Set(labels).size, `${difficulty}/${seed}`).toBe(labels.length);
+      }
+    }
+  });
+
+  it('leaves already-unique labels untouched', () => {
+    // The qualifier is a targeted repair, not a blanket rename: a circuit with
+    // no collisions must read exactly as it did before.
+    const scenario = buildDiagnosisScenario({ seed: 13, difficulty: 'beginner' });
+    const labels = scenario.locationChoices.map((c) => c.label);
+    expect(new Set(labels).size).toBe(labels.length);
+    expect(labels.some((label) => label.includes('['))).toBe(false);
+  });
+
+  it('keeps every fault answerable, including the disambiguated ones', () => {
+    for (let i = 0; i < 40; i++) {
+      const scenario = buildDiagnosisScenario({
+        seed: i * 7919 + 13,
+        difficulty: 'advanced',
+        rageTier: 'rage-3',
+      });
+      for (const entry of scenario.faults) {
+        // Rewriting a label must not break the key the grader matches on.
+        expect(scenario.locationChoices.some((c) => c.key === entry.locationKey)).toBe(true);
+      }
+    }
+  });
+});
