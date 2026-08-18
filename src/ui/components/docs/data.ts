@@ -22,6 +22,8 @@ export const SHORTCUTS: Array<[key: string, action: string]> = [
   ['Escape', 'Cancel placement / wire / close modal / deselect'],
   ['Ctrl+Z', 'Undo'],
   ['Ctrl+Shift+Z', 'Redo (or Ctrl+Y)'],
+  ['Ctrl+K', 'Open the command palette'],
+  ['?', 'Open the keyboard shortcuts overlay'],
 ];
 
 export const DOCS_TOC: Array<{ id: string; label: string; icon: LucideIcon }> = [

@@ -164,6 +164,7 @@ export function dropComponentAt(canvasX: number, canvasY: number, gridSize: numb
   useCircuitStore.getState().selectComponent(id);
   ui.setPlacingType(null);
   ui.addLog(`Placed ${def.label}.`, 'info');
+  useSettingsStore.getState().recordRecentComponent(ui.placingType);
   return true;
 }
 
@@ -426,22 +427,27 @@ export function confirmPendingDeletion(): void {
     case 'component':
       cs.removeComponent(pending.id);
       ui.addLog('Component deleted.', 'info');
+      ui.showUndoToast('Component deleted');
       break;
     case 'components':
       cs.removeComponents(pending.ids);
       ui.addLog(`Deleted ${pending.ids.length} components.`, 'info');
+      ui.showUndoToast(`Deleted ${pending.ids.length} components`);
       break;
     case 'wire':
       cs.removeWire(pending.id);
       ui.addLog('Wire deleted.', 'info');
+      ui.showUndoToast('Wire deleted');
       break;
     case 'clear-wires':
       cs.clearAllWires();
       ui.addLog('All wires cleared.', 'info');
+      ui.showUndoToast('All wires cleared');
       break;
     case 'clear-all':
       cs.clearAllComponents();
       ui.addLog('All components and wires cleared.', 'info');
+      ui.showUndoToast('All components and wires cleared');
       break;
     case 'reset':
       cs.setCircuit(buildSeedCircuit());

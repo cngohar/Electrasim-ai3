@@ -221,6 +221,10 @@ export interface UiState {
   commandPaletteOpen: boolean;
   /** Workbench experiment: dedicated Fault Lab panel open flag. */
   faultLabOpen: boolean;
+  /** Keyboard shortcuts overlay (? key). */
+  shortcutsOpen: boolean;
+  /** A transient undo toast, e.g. after a delete. { message, id }. */
+  undoToast: { message: string; id: number } | null;
 
   // Actions ───────────────────────────────────────────────────────────────
   setSimRunning: (v: boolean) => void;
@@ -257,10 +261,16 @@ export interface UiState {
   togglePalette: () => void;
   toggleLog: () => void;
   toggleInspector: () => void;
+  setPaletteOpen: (open: boolean) => void;
+  setLogOpen: (open: boolean) => void;
   setCommandPaletteOpen: (open: boolean) => void;
   toggleCommandPalette: () => void;
   setFaultLabOpen: (open: boolean) => void;
   toggleFaultLab: () => void;
+  setShortcutsOpen: (open: boolean) => void;
+  toggleShortcuts: () => void;
+  showUndoToast: (message: string) => void;
+  clearUndoToast: () => void;
   setInspectorOpen: (open: boolean) => void;
   setInspectorCollapsed: (collapsed: boolean) => void;
   setPendingWireFrom: (p: PortRef | null) => void;

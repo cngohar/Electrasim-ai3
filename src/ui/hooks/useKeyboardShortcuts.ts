@@ -55,6 +55,11 @@ export function useKeyboardShortcuts() {
           ui.setFaultLabOpen(false);
           return;
         }
+        if (ui.shortcutsOpen) {
+          e.preventDefault();
+          ui.setShortcutsOpen(false);
+          return;
+        }
         if (ui.contextMenu) {
           e.preventDefault();
           ui.setContextMenu(null);
@@ -178,6 +183,13 @@ export function useKeyboardShortcuts() {
       if (meta && (e.key === 'k' || e.key === 'K')) {
         e.preventDefault();
         useUiStore.getState().toggleCommandPalette();
+        return;
+      }
+
+      // Keyboard shortcuts overlay (? key). Must not fire inside an input.
+      if (e.key === '?') {
+        e.preventDefault();
+        useUiStore.getState().toggleShortcuts();
         return;
       }
 

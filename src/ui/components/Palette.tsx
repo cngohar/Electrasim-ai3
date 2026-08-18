@@ -238,8 +238,9 @@ export function Palette({ open, isPhone }: Props) {
   const placingType = useUiStore((s) => s.placingType);
   const appMode = useSettingsStore((s) => s.appMode);
   const plugSystem = useSettingsStore((s) => s.plugSystem);
+  const recentComponents = useSettingsStore((s) => s.recentComponents);
+  const setPaletteOpen = useUiStore((s) => s.setPaletteOpen);
   const [query, setQuery] = useState('');
-  const [isCollapsed, setIsCollapsed] = useState(false);
 
   // Regional socket set — only show the selected plug type's sockets (plus
   // universal components). Keeps the palette relevant, not bloated.
@@ -261,20 +262,6 @@ export function Palette({ open, isPhone }: Props) {
       }))
       .filter((g) => g.items.length > 0);
   }, [groups, query, appMode, regionalSockets]);
-
-  if (!open) {
-    if (isPhone) return null;
-    return (
-      <button
-        type="button"
-        onClick={() => useUiStore.getState().togglePalette()}
-        className="fixed left-4 top-20 z-10 flex items-center gap-1.5 rounded-full border border-white/80 bg-white/75 px-3 py-2 text-xs font-medium text-slate-700 shadow-lg ring-1 ring-slate-900/5 backdrop-blur-xl hover:bg-white dark:border-slate-700/80 dark:bg-slate-900/80 dark:text-slate-300 dark:hover:bg-slate-800"
-      >
-        <Layers className="size-3.5" />
-        Components
-      </button>
-    );
-  }
 
   if (isPhone) {
     return (
@@ -375,7 +362,8 @@ export function Palette({ open, isPhone }: Props) {
     );
   }
 
-  if (isCollapsed) {
+  if (!open) {
+    if (isPhone) return null;
     return (
       <aside
         className="fixed left-0 top-[84px] bottom-0 z-20 flex w-12 flex-col items-center justify-between border-r border-slate-200/80 bg-white/90 p-2 shadow-xl backdrop-blur-xl dark:border-slate-800 dark:bg-slate-900/90"
@@ -384,7 +372,7 @@ export function Palette({ open, isPhone }: Props) {
         <div className="flex flex-col items-center gap-3 pt-3">
           <button
             type="button"
-            onClick={() => setIsCollapsed(false)}
+            onClick={() => setPaletteOpen(true)}
             className="flex size-8 items-center justify-center rounded-xl bg-blue-50 text-blue-600 shadow-xs hover:bg-blue-100 dark:bg-blue-950/80 dark:text-blue-400 dark:hover:bg-blue-900"
             title="Expand Component Library"
             aria-label="Expand Component Library"
@@ -415,7 +403,7 @@ export function Palette({ open, isPhone }: Props) {
         <div className="flex items-center gap-1 flex-shrink-0">
           <button
             type="button"
-            onClick={() => setIsCollapsed(true)}
+            onClick={() => setPaletteOpen(false)}
             className="rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-200"
             title="Collapse panel"
             aria-label="Collapse panel"
@@ -447,6 +435,44 @@ export function Palette({ open, isPhone }: Props) {
           )}
         </div>
       </div>
+
+      {/* Recent components */}
+      {!query && recentComponents.length > 0 && (
+        <div className="border-b border-slate-100 px-2.5 pb-2 pt-2 dark:border-slate-700/60">
+          <div className="px-1 pb-1 text-[10px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+            Recent
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            {recentComponents.map((type) => {
+              const def = COMPONENT_DEFS[type];
+              if (!def) return null;
+              const active = placingType === type;
+              const isLighting =
+                def.category.toLowerCase() === 'lighting' ||
+                type.startsWith('bulb') ||
+                type === 'led-downlight' ||
+                type === 'tube-light';
+              return (
+                <button
+                  key={type}
+                  type="button"
+                  title={`Click to place ${def.label} on canvas`}
+                  onClick={() => useUiStore.getState().setPlacingType(active ? null : type)}
+                  className={[
+                    'flex flex-col items-center gap-1 rounded-xl border px-2 py-2.5 text-[10px] font-medium shadow-sm transition hover:scale-[1.02]',
+                    active
+                      ? 'border-blue-400 bg-blue-50 text-blue-700 ring-2 ring-blue-200 dark:bg-blue-950/60 dark:text-blue-400 dark:border-blue-600 dark:ring-blue-900'
+                      : 'border-indigo-200/70 bg-indigo-50/40 text-slate-700 hover:border-indigo-300 hover:bg-white hover:text-blue-700 dark:border-indigo-900/60 dark:bg-indigo-950/20 dark:text-slate-300 dark:hover:border-indigo-600 dark:hover:bg-slate-800/60 dark:hover:text-blue-400',
+                  ].join(' ')}
+                >
+                  <TileIcon type={type} label={def.label} icon={def.icon} isLighting={isLighting} />
+                  <span className="truncate text-center w-full px-1">{def.label}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Categories & Components */}
       <div className="flex-1 overflow-y-auto p-2.5">

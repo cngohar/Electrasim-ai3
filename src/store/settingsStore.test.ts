@@ -87,6 +87,10 @@ describe('settingsStore — Phase 6.1', () => {
       stressZonesEnabled: false,
       autoWireJoints: false,
       plugSystem: 'bs1363',
+      paletteOpen: true,
+      inspectorCollapsed: true,
+      logOpen: false,
+      recentComponents: [],
     });
 
     expect(parsed).not.toHaveProperty('injected');
@@ -147,5 +151,21 @@ describe('settingsStore — Phase 6.1', () => {
     useSettingsStore.getState().resetSettings();
     expect(useSettingsStore.getState().confirmDelete).toBe(true);
     expect(useSettingsStore.getState().activeLoadEffects).toBe(true);
+  });
+
+  it('records recent components, de-duplicating and capping at 6', () => {
+    useSettingsStore.getState().recordRecentComponent('bulb');
+    useSettingsStore.getState().recordRecentComponent('mcb');
+    useSettingsStore.getState().recordRecentComponent('bulb'); // move to front
+    useSettingsStore.getState().recordRecentComponent('socket-3pin');
+    useSettingsStore.getState().recordRecentComponent('motor');
+    useSettingsStore.getState().recordRecentComponent('rcd');
+    useSettingsStore.getState().recordRecentComponent('fan');
+    useSettingsStore.getState().recordRecentComponent('fuse'); // 7th
+
+    const recents = useSettingsStore.getState().recentComponents;
+    expect(recents).toHaveLength(6);
+    expect(recents[0]).toBe('fuse');
+    expect(recents.filter((t) => t === 'bulb')).toHaveLength(1); // de-duped
   });
 });

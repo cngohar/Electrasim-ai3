@@ -17,6 +17,21 @@ Format per entry:
 
 ---
 
+## 2026-08-18 (follow-up 16) — UI / UX polish batch (server restarted)
+
+Restarted the dev server (node_modules/browsers wiped between sessions → reinstalled + relaunched on :3000). Implemented the UI/UX improvement list:
+
+1. **Panel layout persistence** — `paletteOpen`, `inspectorCollapsed`, `logOpen` persisted in settingsStore; Editor applies saved layout on mount and writes changes back. Refactored the Palette so collapse is driven by the store's `paletteOpen` (not a separate local `isCollapsed`), and added `setPaletteOpen`/`setLogOpen` actions. Verified collapse/expand survives reload both ways.
+2. **Command palette scope tabs** — `All / Actions / Components` filter tabs (the component list is now ~80, so tabs keep it scannable).
+3. **Keyboard shortcuts overlay** — new `ShortcutsOverlay` opened with `?`, Esc/outside closes; `?` + `Ctrl+K` added to the docs SHORTCUTS.
+4. **Undo toast** — `showUndoToast`/`clearUndoToast` in uiStore; `UndoToast` component appears after deletes with an Undo button → existing `undo()`.
+5. **Zoom % clickable to reset** in the status bar.
+6. **Recent components in palette** — `recentComponents` setting (persisted, de-duped, capped 6), recorded in `dropComponentAt`, shown in a "Recent" section.
+
+Gates: typecheck clean, 327 unit + 39 e2e pass. Committed.
+
+---
+
 ## 2026-08-17 (follow-up 15) — Region-aware demo circuit
 
 User pointed out the demo circuit was still the fixed UK one — switching region only updated voltage/wire-colours/compliance/faults, but the demo's components (notably the UK 13A socket) stayed the same.

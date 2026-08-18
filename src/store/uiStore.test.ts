@@ -134,3 +134,29 @@ describe('mobile suitability onboarding', () => {
     expect(useUiStore.getState().welcomeOpen).toBe(false);
   });
 });
+
+describe('uiStore — panel layout & undo toast', () => {
+  it('shows an undo toast and auto-dismisses it', () => {
+    vi.useFakeTimers();
+    useUiStore.getState().showUndoToast('Component deleted');
+    expect(useUiStore.getState().undoToast?.message).toBe('Component deleted');
+    expect(useUiStore.getState().undoToast?.id).toBeGreaterThan(0);
+
+    vi.advanceTimersByTime(4500);
+    expect(useUiStore.getState().undoToast).toBeNull();
+    vi.useRealTimers();
+  });
+
+  it('clears the undo toast on demand', () => {
+    useUiStore.getState().showUndoToast('Wire deleted');
+    useUiStore.getState().clearUndoToast();
+    expect(useUiStore.getState().undoToast).toBeNull();
+  });
+
+  it('toggles the shortcuts overlay', () => {
+    useUiStore.getState().setShortcutsOpen(true);
+    expect(useUiStore.getState().shortcutsOpen).toBe(true);
+    useUiStore.getState().toggleShortcuts();
+    expect(useUiStore.getState().shortcutsOpen).toBe(false);
+  });
+});

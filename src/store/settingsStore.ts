@@ -144,6 +144,12 @@ export interface UserSettings {
    * 'nema5' | 'schuko' | 'as3112' | 'bs546' | 'all'. Persisted.
    */
   plugSystem: PlugSystemId;
+  /** Panel layout persistence — remembered across reloads. */
+  paletteOpen: boolean;
+  inspectorCollapsed: boolean;
+  logOpen: boolean;
+  /** Recently placed component types (max ~6) — shown at the top of the palette. */
+  recentComponents: string[];
 }
 
 const DEFAULTS: UserSettings = {
@@ -168,6 +174,10 @@ const DEFAULTS: UserSettings = {
   stressZonesEnabled: false,
   autoWireJoints: false,
   plugSystem: 'bs1363',
+  paletteOpen: true,
+  inspectorCollapsed: true,
+  logOpen: false,
+  recentComponents: [],
 };
 
 interface SettingsState extends UserSettings {
@@ -175,6 +185,8 @@ interface SettingsState extends UserSettings {
   hydrated: boolean;
   setSetting: <K extends keyof UserSettings>(key: K, value: UserSettings[K]) => void;
   resetSettings: () => void;
+  /** Record a placed component type in the recents (dedup, cap at 6). */
+  recordRecentComponent: (type: string) => void;
 }
 
 interface PersistedSettings {
@@ -260,6 +272,12 @@ function parsePersistedSettings(value: unknown): UserSettings | null {
     ).includes(stored.plugSystem as PlugSystemId)
       ? (stored.plugSystem as PlugSystemId)
       : DEFAULTS.plugSystem,
+    paletteOpen: booleanOrDefault(stored.paletteOpen, DEFAULTS.paletteOpen),
+    inspectorCollapsed: booleanOrDefault(stored.inspectorCollapsed, DEFAULTS.inspectorCollapsed),
+    logOpen: booleanOrDefault(stored.logOpen, DEFAULTS.logOpen),
+    recentComponents: Array.isArray(stored.recentComponents)
+      ? stored.recentComponents.filter((t) => typeof t === 'string').slice(0, 6)
+      : DEFAULTS.recentComponents,
   };
 }
 
@@ -277,6 +295,10 @@ export const useSettingsStore = create<SettingsState>()(
     resetSettings: () =>
       set((s) => {
         Object.assign(s, DEFAULTS);
+      }),
+    recordRecentComponent: (type) =>
+      set((s) => {
+        s.recentComponents = [type, ...s.recentComponents.filter((t) => t !== type)].slice(0, 6);
       }),
   })),
 );
@@ -335,6 +357,10 @@ function snapshot(state: SettingsState): UserSettings {
     stressZonesEnabled: state.stressZonesEnabled,
     autoWireJoints: state.autoWireJoints,
     plugSystem: state.plugSystem,
+    paletteOpen: state.paletteOpen,
+    inspectorCollapsed: state.inspectorCollapsed,
+    logOpen: state.logOpen,
+    recentComponents: state.recentComponents,
   };
 }
 
@@ -379,7 +405,12 @@ export async function startSettingsPersistence(): Promise<void> {
       state.manualFaultInjection === prev.manualFaultInjection &&
       state.stressZonesEnabled === prev.stressZonesEnabled &&
       state.autoWireJoints === prev.autoWireJoints &&
-      state.plugSystem === prev.plugSystem
+      state.plugSystem === prev.plugSystem &&
+      state.paletteOpen === prev.paletteOpen &&
+      state.inspectorCollapsed === prev.inspectorCollapsed &&
+      state.logOpen === prev.logOpen &&
+      state.recentComponents.length === prev.recentComponents.length &&
+      state.recentComponents.every((t, i) => t === prev.recentComponents[i])
     ) {
       return;
     }

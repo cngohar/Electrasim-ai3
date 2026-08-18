@@ -56,10 +56,12 @@ import { MenuOverlay } from './components/MenuOverlay';
 import { MiniMap } from './components/MiniMap';
 import { Palette } from './components/Palette';
 import { PhoneDock } from './components/PhoneDock';
+import { ShortcutsOverlay } from './components/ShortcutsOverlay';
 import { StatusPill } from './components/StatusPill';
 import { SubHeaderBar } from './components/SubHeaderBar';
 import { ToolDock } from './components/ToolDock';
 import { Toolbar } from './components/Toolbar';
+import { UndoToast } from './components/UndoToast';
 import { ValidationDetailsModal } from './components/ValidationDetailsModal';
 import { WhatHappenedModal } from './components/WhatHappenedModal';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
@@ -198,6 +200,37 @@ export function Editor() {
     if (pendingDeletion) setSkipDeleteConfirmation(false);
   }, [pendingDeletion]);
 
+  // Persist panel layout (palette / inspector / console) so it survives reloads.
+  const savedPaletteOpen = useSettingsStore((s) => s.paletteOpen);
+  const savedInspectorCollapsed = useSettingsStore((s) => s.inspectorCollapsed);
+  const savedLogOpen = useSettingsStore((s) => s.logOpen);
+
+  const appliedLayoutRef = useRef(false);
+  useEffect(() => {
+    // Apply saved panel layout once on mount (not on a phone).
+    if (appliedLayoutRef.current) return;
+    appliedLayoutRef.current = true;
+    if (!isPhone) {
+      useUiStore.getState().setPaletteOpen(savedPaletteOpen);
+      useUiStore.getState().setInspectorCollapsed(savedInspectorCollapsed);
+      useUiStore.getState().setLogOpen(savedLogOpen);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    setSetting('paletteOpen', paletteOpen);
+  }, [paletteOpen, setSetting]);
+
+  useEffect(() => {
+    setSetting('logOpen', logOpen);
+  }, [logOpen, setSetting]);
+
+  const inspectorCollapsed = useUiStore((s) => s.inspectorCollapsed);
+  useEffect(() => {
+    setSetting('inspectorCollapsed', inspectorCollapsed);
+  }, [inspectorCollapsed, setSetting]);
+
   const selectedComp = selectedId ? (components.find((c) => c.id === selectedId) ?? null) : null;
   const selectedWireIds = useCircuitStore((s) => s.selectedWireIds);
   const selectedWire =
@@ -327,6 +360,8 @@ export function Editor() {
       <FaultAlertModal />
       <CommandPalette />
       <FaultLabPanel />
+      <ShortcutsOverlay />
+      <UndoToast />
       <WhatHappenedModal />
       <ValidationDetailsModal />
       <ComponentInfoModal />

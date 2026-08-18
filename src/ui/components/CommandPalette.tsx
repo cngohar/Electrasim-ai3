@@ -41,17 +41,19 @@ export function CommandPalette() {
   const setOpen = useUiStore((s) => s.setCommandPaletteOpen);
   const [query, setQuery] = useState('');
   const [activeIndex, setActiveIndex] = useState(0);
+  const [scope, setScope] = useState<'all' | 'actions' | 'components'>('all');
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (open) {
       setQuery('');
       setActiveIndex(0);
+      setScope('all');
       requestAnimationFrame(() => inputRef.current?.focus());
     }
   }, [open]);
 
-  const commands = useMemo<Command[]>(() => {
+  const commands = useMemo<{ actions: Command[]; components: Command[] }>(() => {
     const ui = useUiStore.getState;
     const setPlace = (type: string) => {
       ui().setPlacingType(useUiStore.getState().placingType === type ? null : type);
@@ -198,19 +200,26 @@ export function CommandPalette() {
         run: () => setPlace(type),
       }));
 
-    return [...actionCommands, ...addCommands];
+    return { actions: actionCommands, components: addCommands };
   }, [setOpen]);
 
   if (!open) return null;
 
   const q = query.trim().toLowerCase();
+  const scopeList =
+    scope === 'actions'
+      ? commands.actions
+      : scope === 'components'
+        ? commands.components
+        : [...commands.actions, ...commands.components];
+
   const filtered = q
-    ? commands.filter((c) => {
+    ? scopeList.filter((c) => {
         const tokens = q.split(/\s+/);
         const haystack = `${c.label} ${c.keywords ?? ''}`.toLowerCase();
         return tokens.every((t) => haystack.includes(t));
       })
-    : commands;
+    : scopeList;
 
   const safeActive = filtered.length === 0 ? 0 : Math.min(activeIndex, filtered.length - 1);
 
@@ -259,6 +268,33 @@ export function CommandPalette() {
           <kbd className="rounded border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-[10px] font-medium text-slate-400 dark:border-slate-700 dark:bg-slate-800">
             Esc
           </kbd>
+        </div>
+        {/* Scope tabs — filter the command list to Actions vs Components */}
+        <div className="flex items-center gap-1 border-b border-slate-100 px-3 py-1.5 dark:border-slate-800">
+          {(
+            [
+              ['all', `All (${commands.actions.length + commands.components.length})`],
+              ['actions', `Actions (${commands.actions.length})`],
+              ['components', `Components (${commands.components.length})`],
+            ] as const
+          ).map(([key, label]) => (
+            <button
+              key={key}
+              type="button"
+              onClick={() => {
+                setScope(key);
+                setActiveIndex(0);
+              }}
+              className={[
+                'rounded-full px-2.5 py-1 text-[10px] font-semibold transition',
+                scope === key
+                  ? 'bg-blue-600 text-white shadow-sm'
+                  : 'bg-slate-100 text-slate-500 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:hover:bg-slate-700',
+              ].join(' ')}
+            >
+              {label}
+            </button>
+          ))}
         </div>
         <div className="max-h-80 overflow-y-auto p-2">
           {filtered.length === 0 && (

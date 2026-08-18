@@ -42,6 +42,8 @@ export {
 
 const MAX_LOGS = 100;
 let nextLogId = 0;
+let nextToastId = 0;
+let toastTimer: ReturnType<typeof setTimeout> | null = null;
 let validationTimer: ReturnType<typeof setTimeout> | null = null;
 let validationRevision = 0;
 
@@ -92,6 +94,8 @@ export const useUiStore = create<UiState>()(
     inspectorCollapsed: true,
     commandPaletteOpen: false,
     faultLabOpen: false,
+    shortcutsOpen: false,
+    undoToast: null,
 
     setSimRunning: (v) =>
       set((s) => {
@@ -544,9 +548,17 @@ export const useUiStore = create<UiState>()(
       set((s) => {
         s.paletteOpen = !s.paletteOpen;
       }),
+    setPaletteOpen: (open) =>
+      set((s) => {
+        s.paletteOpen = open;
+      }),
     toggleLog: () =>
       set((s) => {
         s.logOpen = !s.logOpen;
+      }),
+    setLogOpen: (open) =>
+      set((s) => {
+        s.logOpen = open;
       }),
     toggleInspector: () =>
       set((s) => {
@@ -567,6 +579,29 @@ export const useUiStore = create<UiState>()(
     toggleFaultLab: () =>
       set((s) => {
         s.faultLabOpen = !s.faultLabOpen;
+      }),
+    setShortcutsOpen: (open) =>
+      set((s) => {
+        s.shortcutsOpen = open;
+      }),
+    toggleShortcuts: () =>
+      set((s) => {
+        s.shortcutsOpen = !s.shortcutsOpen;
+      }),
+    showUndoToast: (message) =>
+      set((s) => {
+        s.undoToast = { message, id: ++nextToastId };
+        if (toastTimer) clearTimeout(toastTimer);
+        toastTimer = setTimeout(() => {
+          useUiStore.setState((st) => {
+            st.undoToast = null;
+          });
+        }, 4000);
+      }),
+    clearUndoToast: () =>
+      set((s) => {
+        s.undoToast = null;
+        if (toastTimer) clearTimeout(toastTimer);
       }),
     setInspectorOpen: (open) =>
       set((s) => {

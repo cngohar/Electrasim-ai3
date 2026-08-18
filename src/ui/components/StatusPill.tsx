@@ -199,7 +199,15 @@ export function StatusPill({
         >
           <ScanSearch className="size-3 text-slate-400" />
           <span className="text-slate-500 dark:text-slate-400">Zoom:</span>
-          <span className="font-mono font-bold text-slate-700 dark:text-slate-200">
+          <span
+            className="font-mono font-bold text-slate-700 hover:text-blue-600 dark:text-slate-200 dark:hover:text-blue-400"
+            onClick={(e) => {
+              // Clicking the % value resets to 1:1.
+              e.stopPropagation();
+              useViewportStore.getState().resetView();
+            }}
+            title="Click to reset to 100%"
+          >
             {Math.round(zoom * 100)}%
           </span>
         </button>

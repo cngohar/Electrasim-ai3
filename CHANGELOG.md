@@ -11,6 +11,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — Session 2026-08-18 (follow-up 16): UI / UX polish batch
+- **Panel layout persistence** — the palette (expanded/collapsed), inspector, and console drawer state are now remembered across reloads (previously reset every time). The palette collapse is now tied to the store's `paletteOpen`, and the Editor applies saved layout on mount.
+- **Command palette scope tabs** — the Ctrl+K palette now has **All / Actions / Components** filter tabs, so with ~80 components it's easy to browse just actions or just the addable components.
+- **Keyboard shortcuts overlay** — press **`?`** anywhere to open a compact in-editor shortcuts reference (Esc/outside to close). Added `?` and `Ctrl+K` to the docs shortcuts list.
+- **Undo toast** — after a delete (component/wire/clear) a transient "Undo (Ctrl+Z)" toast appears at the bottom with an Undo button that invokes the existing undo action.
+- **Status-bar zoom % is now clickable** to reset to 100% (the magnifier icon still does Zoom-to-Fit).
+- **Recent components in the palette** — the last ~6 placed component types appear in a "Recent" section at the top of the palette (persisted, de-duped).
+
 ### Changed — Session 2026-08-17 (follow-up 15): Region-aware demo circuit
 - The demo seed circuit now **adapts its socket to the selected plug type.** Previously the demo was a fixed UK circuit, so switching to the US/EU/AU/India showed UK 13A sockets even in the wrong region.
 - `buildSeedCircuit(socketType)` is now deterministic (ids reset each call) and parameterised by socket type. A new `swapDemoSocketForPlug(socketType)` circuit-store action rebuilds the seed with the region's socket **only while the circuit is still the unmodified demo** — once the user edits their circuit it is left untouched (no silent rewrite). Detected via a `sameCircuitShape` comparison.
