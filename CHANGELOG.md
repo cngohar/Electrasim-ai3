@@ -11,6 +11,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — Session 2026-08-18 (v2 Phase A): Deterministic challenge circuit generator
+
+Foundation for the ElectraSim v2 learning modes (Circuit Generator → Challenge Mode → Diagnosis Lab → Ohmageddon). **Phase A only** — the generator stops at a valid circuit; no faults, no challenge scoring, no Ohmageddon (v2 plan §7, §51).
+
+- **New domain area `src/domain/challenges/`**, exported through the `src/domain` barrel:
+  - `generator/seed.ts` — mulberry32 PRNG + FNV-1a hashing. `Math.random()` is banned in this tree and a unit test enforces it. `GENERATOR_VERSION = 1`.
+  - `difficulty/profiles.ts` — beginner / intermediate / advanced profiles carrying both generator shape knobs (component budget, branch count, run lengths, switching complexity) and the declarative learning knobs later phases consume (hint budget, diagnostic choice count, max fault distance, par time).
+  - `generator/recipes.ts` — **12 curated circuit recipes** (4 beginner / 5 intermediate / 3 advanced) with randomised parameters: protected load, switched lighting point, RCBO-protected socket, bell push, two-way staircase lighting, branched lighting, socket + lighting spur, fan + regulator, timed lighting with override, consumer unit with protected branches, mixed socket/lighting installation, contactor-controlled lighting.
+  - `generator/topology.ts` — port-checked circuit builder (rejects unknown types, rail mismatches, self-loops, duplicate wires, excessive fan-out).
+  - `generator/layout.ts` — deterministic grid-snapped layout using the editor's own `GRID_SIZE` / `COMP_W` / `COMP_H`.
+  - `generator/validator.ts` — four baseline gates composing the **existing** engines: structure → `validateCircuitRules()` → `simulate()` (basic *and* pro) → `validateCircuit()` → expected-behaviour check.
+  - `generator/generator.ts` — the §7 pipeline with **bounded retries** (max 12, no infinite loop) and a structured failure carrying every rejection reason.
+- **API:** `generateChallenge({ seed, difficulty, mode, generatorVersion, rageProfile }) → { circuit, scenario, metadata }`. Pure — no clock, no storage, no store, no React; safe to call from the existing sim worker (no second worker added).
+- **Challenge identity (§29):** `hash(generatorVersion, seed, difficulty, mode, rageProfile)` rendered as `ES-CHAL-482917` / `ES-DIAG-482917` / `ES-RAGE-482917`. `dailyChallengeSeed(isoDate)` exists as the §31 hook only; nothing consumes it and no backend is introduced.
+- **Generator-safe electrical envelope** (documented in ADR 0002): every generated circuit carries explicit `customCableMm2` and short `lengthMeters` on all wires, caps protective devices at 20 A, and declares diversified socket loads — so the conservative assumptions in `circuitValidation.ts` and `compliance.ts` are satisfied without weakening any existing rule.
+- **Tests: +160** (43 files / 487 tests total, up from 36/327). Includes 100 seeds per difficulty run end-to-end through generate → validate → baseline-simulate, determinism and generator-versioning replay, bounded-retry failure, and purity guards.
+- **ADR:** `docs/decisions/0002-challenge-generator-foundation.md`.
+
 ### Added — Session 2026-08-18 (follow-up 17): Missing real-world components (audit resolution)
 - Implemented all components recommended in `COMPONENT_AUDIT_REPORT.md`. Registry grew 91 → **115 components**.
 - **Fixed circuits / loads:** `electric-shower` (8.5kW), `immersion-heater` (3kW), `smoke-alarm` (BS 5839-6), `kwh-meter` (supply entry), `extractor-hood`, `underfloor-heating`, `storage-heater`, `heat-pump`, white goods (`dishwasher`, `washing-machine`, `tumble-dryer`, `fridge-freezer`), `burglar-alarm`.

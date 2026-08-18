@@ -17,6 +17,34 @@ Format per entry:
 
 ---
 
+## 2026-08-18 — ElectraSim v2 Phase A — Circuit Generator Foundation
+
+Started the ElectraSim v2 plan (Circuit Generator → Challenge → Diagnosis → Ohmageddon). This session covers **Phase A only**, which the plan ends with a hard STOP before Challenge Mode (§51).
+
+**Inspection first (§58 / §51 step 1).** Read the existing `Circuit` model, the 115-component registry (dumped every candidate type's ports/flags/ratings to verify what actually exists), `simulate.ts` + `traversal.ts` + `indexing.ts`, `circuitValidation.ts`, `compliance.ts`, `electrical/{rules,terminals,validation,components}.ts`, `electricalCalculations.ts`, `faults.ts`, `templates.ts`, persistence and the settings store. Three findings shaped the design:
+
+1. `src/store/seed.ts` is the demo **circuit** builder, not a PRNG — the project had no deterministic random source, so one had to be written.
+2. `circuitValidation.ts` assumes 1.5 mm² for any wire declaring a `lengthMeters`, making any device rated > 20 A an *error* (`mcb_overrated_group`). `rcd` (80 A), `main-switch` (100 A), `isolator-switch` (100 A) and `mcb-type-c` (32 A) are therefore outside the generatable envelope.
+3. `compliance.ts` walks every path from a load to *any* source when estimating voltage drop, and `simulate.ts` compares one circuit-wide current against every breaker — so generated circuits must keep loads small and runs short. Socket outlets rate at their full 13 A capacity in the registry, so generated ones declare a diversified connected load instead.
+
+**Done:**
+- **ADR 0002** (`docs/decisions/0002-challenge-generator-foundation.md`) recording the module layout, the PRNG choice, the identity scheme, the reuse-don't-reimplement rule and the electrical envelope with its rationale.
+- `src/domain/challenges/` — `types.ts`, `difficulty/profiles.ts`, `generator/{seed,recipes,topology,layout,validator,generator}.ts`, `index.ts`, wired into the `src/domain` barrel.
+- **PRNG:** mulberry32 seeded from `fnv1a32("v1|s<seed>|d<difficulty>|m<mode>|r<rage>")`, with `int/float/bool/pick/pickWeighted/shuffle/fork`. Verified uniform to ±0.15 % over 100k draws and weight-accurate to 0.1 %. `Math.random` banned by test.
+- **12 recipes** across the three tiers, all first-attempt-valid: 40/40 seeds per recipe, 300/300 seeds per difficulty, **zero retries**, ~0.4–0.9 ms per generation.
+- **Bounded retries** (max 12) with per-attempt forked RNG so retries stay deterministic; exhaustion returns the plan's exact §37 message and throws `ChallengeGenerationError` carrying all rejections.
+- **Two recipe fixes found by the stress run:** the mixed-installation socket tripped the 5 % voltage-drop ceiling (fixed with diversified socket wattage), and the contactor recipe undershot the advanced component budget (fixed by giving the control and power circuits their own protective devices — which is also the more correct panel arrangement).
+
+**Gates:** typecheck clean, biome clean on all new files, **43 test files / 487 tests pass** (baseline 36/327 — +160, no regressions).
+
+**Next:** Phase B — seed-stress script (§56), timing measurement, regression seeds, then FOUNDATION LOCK. Only after that does Phase C (Challenge Mode) begin.
+
+**Blockers / Notes:** §57 Generator Foundation Gate is fully satisfied — determinism, versioning, all three difficulties, structural + electrical + baseline-simulation validation, bounded retries, 100-seed batches, graceful failure, and no challenge/diagnosis/fault/Ohmageddon logic in the generator.
+
+**Perf:** beginner 0.37 ms/gen, intermediate 0.47 ms/gen, advanced 0.93 ms/gen (300 seeds each, zero retries).
+
+---
+
 ## 2026-08-18 (follow-up 17) — Missing real-world components (audit resolution)
 
 Implemented every component recommended in `COMPONENT_AUDIT_REPORT.md`. Registry 91 → 115.
