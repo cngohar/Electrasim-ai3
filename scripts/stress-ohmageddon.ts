@@ -33,6 +33,7 @@ import {
   type RageTierId,
   buildDiagnosisScenario,
   evaluateDiagnosis,
+  primaryScenarioFault,
 } from '../src/domain/challenges';
 import { validateCircuit } from '../src/domain/circuitValidation';
 import { validateCircuitRules } from '../src/domain/electrical/validation';
@@ -63,7 +64,14 @@ function withoutFaults(circuit: Circuit): Circuit {
   return { ...circuit, faults: [] };
 }
 
-/** Hop distance from the fault to the nearest declared load. */
+/**
+ * Hop distance from the fault to the nearest declared load.
+ *
+ * With several faults in play this reports the *smallest* distance: the
+ * closest fault is the one the learner trips over first, so it is what
+ * actually sets the difficulty floor. Taking a mean would let one very remote
+ * fault disguise a second one sitting on the lamp.
+ */
 function faultDistance(scenario: DiagnosisScenario): number {
   const adjacency = new Map<string, string[]>();
   for (const wire of scenario.healthyCircuit.wires) {
@@ -90,14 +98,22 @@ function faultDistance(scenario: DiagnosisScenario): number {
       queue.push(next);
     }
   }
-  const target = scenario.fault.target;
-  if (target.type === 'wire') {
-    const wire = scenario.healthyCircuit.wires.find((w) => w.id === target.id);
-    if (!wire) return 0;
-    return Math.min(distance.get(wire.fromComponentId) ?? 0, distance.get(wire.toComponentId) ?? 0);
+  let nearest = Number.POSITIVE_INFINITY;
+  for (const entry of scenario.faults) {
+    const target = entry.fault.target;
+    let hops: number;
+    if (target.type === 'wire') {
+      const wire = scenario.healthyCircuit.wires.find((w) => w.id === target.id);
+      hops = wire
+        ? Math.min(distance.get(wire.fromComponentId) ?? 0, distance.get(wire.toComponentId) ?? 0)
+        : 0;
+    } else {
+      const id = target.type === 'component' ? target.id : target.componentId;
+      hops = distance.get(id) ?? 0;
+    }
+    nearest = Math.min(nearest, hops);
   }
-  const id = target.type === 'component' ? target.id : target.componentId;
-  return distance.get(id) ?? 0;
+  return Number.isFinite(nearest) ? nearest : 0;
 }
 
 interface TierStats {
@@ -195,52 +211,99 @@ for (const difficulty of DIFFICULTIES) {
         fail(`${key} seed ${seed}: BS 7671 error ${reportErrors[0]?.id}`);
       }
 
-      // ── 2. §12: the fault must be observable ──────────────────────────
+      // ── 2. §12: every fault must be observable ────────────────────────
+      // The combined symptom is checked here; each fault is separately proven
+      // observable *on its own* by `tryBuildScenario`, which is the property
+      // that stops a second fault from being an unfindable freebie.
       if (!scenario.symptom.observable) {
-        fail(`${key} seed ${seed}: fault ${scenario.fault.type} is not observable`);
+        fail(
+          `${key} seed ${seed}: fault ${primaryScenarioFault(scenario).fault.type} not observable`,
+        );
+      }
+      if (scenario.faults.length < 1) {
+        fail(`${key} seed ${seed}: scenario carries no faults`);
+      }
+      // Two faults must never share a location: the answer form takes one
+      // type and one place, so a duplicate location would make the second
+      // fault unanswerable.
+      const locationKeys = new Set(scenario.faults.map((entry) => entry.locationKey));
+      if (locationKeys.size !== scenario.faults.length) {
+        fail(`${key} seed ${seed}: two faults share a location key`);
       }
 
       // ── 4. a decoy is never the fault ─────────────────────────────────
       const decoys = new Set(scenario.rage?.decoyComponentIds ?? []);
       if (decoys.size > 0) {
-        const target = scenario.fault.target;
-        let onDecoy = false;
-        if (target.type === 'component') onDecoy = decoys.has(target.id);
-        else if (target.type === 'port') onDecoy = decoys.has(target.componentId);
-        else {
-          const wire = scenario.healthyCircuit.wires.find((w) => w.id === target.id);
-          onDecoy = !!wire && (decoys.has(wire.fromComponentId) || decoys.has(wire.toComponentId));
+        for (const entry of scenario.faults) {
+          const target = entry.fault.target;
+          let onDecoy = false;
+          if (target.type === 'component') onDecoy = decoys.has(target.id);
+          else if (target.type === 'port') onDecoy = decoys.has(target.componentId);
+          else {
+            const wire = scenario.healthyCircuit.wires.find((w) => w.id === target.id);
+            onDecoy =
+              !!wire && (decoys.has(wire.fromComponentId) || decoys.has(wire.toComponentId));
+          }
+          if (onDecoy) fail(`${key} seed ${seed}: a fault was placed on a decoy`);
         }
-        if (onDecoy) fail(`${key} seed ${seed}: the fault was placed on a decoy`);
       }
 
-      // ── 3. the three verdicts ─────────────────────────────────────────
-      const truthful = { faultType: scenario.fault.type, locationKey: scenario.faultLocationKey };
+      // ── 3. the three verdicts, walked as a learner would ──────────────
+      //
+      // This is the Phase F gate: the scenario must be *completable* by naming
+      // its faults one at a time, which is the only route the one-answer form
+      // offers. A single-fault scenario runs exactly one iteration and behaves
+      // as it always did.
+      const identified: string[] = [];
+      let finished = false;
+      for (const [index, entry] of scenario.faults.entries()) {
+        const truthful = { faultType: entry.fault.type, locationKey: entry.locationKey };
+        const last = index === scenario.faults.length - 1;
 
-      const repaired = evaluateDiagnosis(
-        scenario,
-        withoutFaults(scenario.faultedCircuit),
-        truthful,
-      );
-      evaluations += 1;
-      if (repaired.verdict !== 'success') {
-        fail(
-          `${key} seed ${seed}: truthful answer + repair gave "${repaired.verdict}" (${repaired.recoveryGap ?? 'no gap'})`,
+        // Naming a real fault while the installation is still broken must
+        // never be graded a failure — the learner was right.
+        const unrepaired = evaluateDiagnosis(scenario, scenario.faultedCircuit, truthful, {
+          identifiedFaultIds: identified,
+        });
+        evaluations += 1;
+        if (unrepaired.verdict !== 'incomplete') {
+          fail(`${key} seed ${seed}: truthful answer, no repair gave "${unrepaired.verdict}"`);
+        }
+        if (!unrepaired.diagnosisCorrect) {
+          fail(`${key} seed ${seed}: fault ${index + 1} was not recognised as correct`);
+        }
+
+        // On a fully repaired circuit, the final fault closes the exercise and
+        // every earlier one keeps it open.
+        const repaired = evaluateDiagnosis(
+          scenario,
+          withoutFaults(scenario.faultedCircuit),
+          truthful,
+          { identifiedFaultIds: identified },
         );
+        evaluations += 1;
+        const want = last ? 'success' : 'incomplete';
+        if (repaired.verdict !== want) {
+          fail(
+            `${key} seed ${seed}: fault ${index + 1}/${scenario.faults.length} + repair gave "${repaired.verdict}", want "${want}" (${repaired.recoveryGap ?? 'no gap'})`,
+          );
+        }
+        if (last) finished = repaired.verdict === 'success';
+        identified.splice(0, identified.length, ...repaired.identifiedFaultIds);
+      }
+      if (!finished) {
+        fail(`${key} seed ${seed}: scenario could not be completed fault-by-fault`);
       }
 
-      const unrepaired = evaluateDiagnosis(scenario, scenario.faultedCircuit, truthful);
-      evaluations += 1;
-      if (unrepaired.verdict !== 'incomplete') {
-        fail(`${key} seed ${seed}: truthful answer, no repair gave "${unrepaired.verdict}"`);
-      }
-
+      // An answer naming nothing that is wrong is still a plain failure, even
+      // part-way through a multi-fault run.
+      const primary = primaryScenarioFault(scenario);
       const wrongLocation = scenario.locationChoices.find(
-        (choice) => choice.key !== scenario.faultLocationKey,
+        (choice) => !locationKeys.has(choice.key),
       );
       if (wrongLocation) {
         const wrong = evaluateDiagnosis(scenario, withoutFaults(scenario.faultedCircuit), {
-          faultType: scenario.fault.type,
+          faultType: primary.fault.type,
           locationKey: wrongLocation.key,
         });
         evaluations += 1;
@@ -277,19 +340,23 @@ for (const difficulty of DIFFICULTIES) {
       ]
         .join(' ')
         .toLowerCase();
-      const typeWord = scenario.fault.type.replace(/-/g, ' ');
-      if (leakZone.includes(scenario.fault.type) || leakZone.includes(typeWord)) {
-        fail(`${key} seed ${seed}: fault type "${scenario.fault.type}" leaked into visible copy`);
+      for (const entry of scenario.faults) {
+        const typeWord = entry.fault.type.replace(/-/g, ' ');
+        if (leakZone.includes(entry.fault.type) || leakZone.includes(typeWord)) {
+          fail(`${key} seed ${seed}: fault type "${entry.fault.type}" leaked into visible copy`);
+        }
       }
       // The rage summary must also not name the fault's location: the decoy
       // note mentions a wire id, and if that id were ever the faulted one the
       // badge tooltip would hand over the answer.
       if (scenario.rage) {
         const notes = scenario.rage.applications.map((a) => a.note).join(' ');
-        const target = scenario.fault.target;
-        const targetId = target.type === 'port' ? target.componentId : target.id;
-        if (notes.includes(targetId)) {
-          fail(`${key} seed ${seed}: rage note names the fault target ${targetId}`);
+        for (const entry of scenario.faults) {
+          const target = entry.fault.target;
+          const targetId = target.type === 'port' ? target.componentId : target.id;
+          if (notes.includes(targetId)) {
+            fail(`${key} seed ${seed}: rage note names the fault target ${targetId}`);
+          }
         }
       }
     }

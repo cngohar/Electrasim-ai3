@@ -65,11 +65,7 @@ test.describe('Ohmageddon Mode', () => {
     await page.goto('/');
     await enableOhmageddon(page);
 
-    await page.reload();
-
     // Read the real IndexedDB record rather than trusting the rendered state.
-    // Polled, because the settings store debounces its write by 150 ms and a
-    // single read straight after reload races it under parallel workers.
     const readFlag = () =>
       page.evaluate(async (key) => {
         const request = indexedDB.open('keyval-store');
@@ -87,6 +83,17 @@ test.describe('Ohmageddon Mode', () => {
         });
       }, SETTINGS_KEY);
 
+    // Wait for the write to actually land *before* reloading. The settings
+    // store debounces by 150 ms, so reloading immediately can tear down the
+    // page mid-write and the record never appears — which reads as "the
+    // setting did not persist" when in truth it was never saved. Polling here
+    // separates the two failures: this assertion covers "the toggle is
+    // written", the one after the reload covers "the write survives".
+    await expect.poll(readFlag, { timeout: 10_000 }).toBe(true);
+
+    await page.reload();
+
+    // Still there after a full reload, read back from real IndexedDB.
     await expect.poll(readFlag, { timeout: 10_000 }).toBe(true);
 
     await openSimulationSettings(page);

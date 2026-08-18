@@ -15,6 +15,7 @@ vi.mock('idb-keyval', () => ({
   }),
 }));
 
+import { primaryScenarioFault } from '../domain/challenges';
 import { useCircuitStore } from './circuitStore';
 import { useDiagnosisStore } from './diagnosisStore';
 
@@ -24,15 +25,15 @@ const flush = () => new Promise((resolve) => setTimeout(resolve, 0));
 function answerCorrectly() {
   const { scenario, selectFaultType, selectLocation } = useDiagnosisStore.getState();
   if (!scenario) throw new Error('no scenario');
-  selectFaultType(scenario.fault.type);
-  selectLocation(scenario.faultLocationKey);
+  selectFaultType(primaryScenarioFault(scenario).fault.type);
+  selectLocation(primaryScenarioFault(scenario).locationKey);
 }
 
 /** Clear the injected fault in the editor, as the "repair" button would. */
 function repairInEditor() {
   const { scenario } = useDiagnosisStore.getState();
   if (!scenario) throw new Error('no scenario');
-  useCircuitStore.getState().removeFault(scenario.fault.id);
+  useCircuitStore.getState().removeFault(primaryScenarioFault(scenario).fault.id);
 }
 
 beforeEach(async () => {
@@ -57,7 +58,7 @@ describe('start', () => {
     expect(editor.components.length).toBeGreaterThan(0);
     // The learner must receive the *broken* installation (§14).
     expect(editor.faults?.length ?? 0).toBe(1);
-    expect(editor.faults?.[0].id).toBe(state.scenario?.fault.id);
+    expect(editor.faults?.[0].id).toBe(primaryScenarioFault(state.scenario!).fault.id);
   });
 
   it('is deterministic for a given seed (§5)', async () => {
@@ -67,8 +68,10 @@ describe('start', () => {
     await useDiagnosisStore.getState().start('intermediate', 4242);
     const second = useDiagnosisStore.getState().scenario;
     expect(second?.challengeId).toBe(first?.challengeId);
-    expect(second?.fault.type).toBe(first?.fault.type);
-    expect(second?.faultLocationKey).toBe(first?.faultLocationKey);
+    expect(primaryScenarioFault(second!).fault.type).toBe(primaryScenarioFault(first!).fault.type);
+    expect(primaryScenarioFault(second!).locationKey).toBe(
+      primaryScenarioFault(first!).locationKey,
+    );
   });
 
   it('never leaks the answer into the visible brief (§14)', async () => {
@@ -76,7 +79,7 @@ describe('start', () => {
     const { scenario } = useDiagnosisStore.getState();
     if (!scenario) throw new Error('no scenario');
     const visible = `${scenario.complaint} ${scenario.brief}`.toLowerCase();
-    expect(visible).not.toContain(scenario.fault.type);
+    expect(visible).not.toContain(primaryScenarioFault(scenario).fault.type);
   });
 
   it('persists a resumable record without the circuit (§21)', async () => {
@@ -95,9 +98,11 @@ describe('submit', () => {
     expect(useDiagnosisStore.getState().submit()).toBeNull();
 
     const { scenario } = useDiagnosisStore.getState();
-    useDiagnosisStore.getState().selectFaultType(scenario?.fault.type ?? 'open-circuit');
+    useDiagnosisStore
+      .getState()
+      .selectFaultType(primaryScenarioFault(scenario!).fault.type ?? 'open-circuit');
     expect(useDiagnosisStore.getState().canSubmit()).toBe(false);
-    useDiagnosisStore.getState().selectLocation(scenario?.faultLocationKey ?? '');
+    useDiagnosisStore.getState().selectLocation(primaryScenarioFault(scenario!).locationKey ?? '');
     expect(useDiagnosisStore.getState().canSubmit()).toBe(true);
   });
 
@@ -106,9 +111,9 @@ describe('submit', () => {
     const { scenario } = useDiagnosisStore.getState();
     if (!scenario) throw new Error('no scenario');
     const wrongLocation = scenario.locationChoices.find(
-      (choice) => choice.key !== scenario.faultLocationKey,
+      (choice) => choice.key !== primaryScenarioFault(scenario).locationKey,
     );
-    useDiagnosisStore.getState().selectFaultType(scenario.fault.type);
+    useDiagnosisStore.getState().selectFaultType(primaryScenarioFault(scenario).fault.type);
     useDiagnosisStore.getState().selectLocation(wrongLocation?.key ?? 'nope');
 
     const evaluation = useDiagnosisStore.getState().submit();
@@ -134,7 +139,7 @@ describe('submit', () => {
     expect(state.misdiagnoses).toBe(0);
     expect(state.score).toBeNull();
     // The selection is kept — the diagnosis was right, only the repair is missing.
-    expect(state.selectedFaultType).toBe(state.scenario?.fault.type);
+    expect(state.selectedFaultType).toBe(primaryScenarioFault(state.scenario!).fault.type);
   });
 
   it('completes when the fault is diagnosed AND repaired (§41)', async () => {

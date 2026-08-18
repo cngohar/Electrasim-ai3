@@ -57,6 +57,17 @@ export interface ActiveDiagnosisRecord {
   rageTier?: RageTierId;
   challengeId: string;
   status: Extract<DiagnosisStatus, 'active' | 'evaluating'>;
+  /**
+   * Faults already named correctly, by fault id (plan §26 multi-fault runs).
+   *
+   * Safe to persist and safe to regenerate against: scenario fault ids are
+   * derived from `challengeId | candidateKey`, so the same seed always mints
+   * the same ids. It is also *not* a leak — it records what the learner has
+   * already worked out, never what they have not. Absent on records written
+   * before multi-fault scenarios existed, and on every single-fault run that
+   * has made no progress.
+   */
+  identifiedFaultIds?: string[];
   misdiagnoses: number;
   incompleteRepairs: number;
   hintsUsed: number;
@@ -151,7 +162,11 @@ function isActiveRecord(value: unknown): value is ActiveDiagnosisRecord {
     typeof record.difficulty === 'string' &&
     DIFFICULTIES.includes(record.difficulty as ChallengeDifficulty) &&
     // Absent is valid (a normal exercise); present-but-unrecognised is not.
-    (record.rageTier === undefined || isRageTierId(record.rageTier))
+    (record.rageTier === undefined || isRageTierId(record.rageTier)) &&
+    // Absent is valid (pre-multi-fault record, or no progress yet).
+    (record.identifiedFaultIds === undefined ||
+      (Array.isArray(record.identifiedFaultIds) &&
+        record.identifiedFaultIds.every((id) => typeof id === 'string')))
   );
 }
 
@@ -265,27 +280,60 @@ function bumpFaultType(
   };
 }
 
-/** Record that a diagnosis exercise was started. */
+/**
+ * Apply one patch to every distinct fault type in a scenario.
+ *
+ * De-duplicated: a scenario carrying two open circuits met one *kind* of
+ * fault, and counting it twice would quietly overstate the learner's exposure.
+ */
+function bumpFaultTypes(
+  stats: DiagnosisStatsRecord,
+  faultTypes: readonly FaultType[],
+  patch: { seen?: number; solved?: number; misdiagnoses?: number },
+): DiagnosisStatsRecord['byFaultType'] {
+  let byFaultType = stats.byFaultType;
+  for (const type of new Set(faultTypes)) {
+    byFaultType = bumpFaultType({ ...stats, byFaultType }, type, patch);
+  }
+  return byFaultType;
+}
+
+/**
+ * Record that a diagnosis exercise was started.
+ *
+ * `faultTypes` is a list because a scenario may carry more than one fault
+ * (plan §26). Every distinct type is credited a `seen`, so the per-type record
+ * still answers "how often has this learner met an earth fault?" correctly
+ * when the earth fault arrived alongside something else. A repeated type
+ * counts once — the learner met the *kind* once.
+ */
 export async function recordDiagnosisStarted(input: {
   difficulty: ChallengeDifficulty;
-  faultType: FaultType;
+  faultTypes: readonly FaultType[];
 }): Promise<DiagnosisStatsRecord> {
   const stats = await loadDiagnosisStats();
   const next: DiagnosisStatsRecord = {
     ...stats,
     totalStarted: stats.totalStarted + 1,
     byDifficulty: bumpDifficulty(stats, input.difficulty, { started: 1 }),
-    byFaultType: bumpFaultType(stats, input.faultType, { seen: 1 }),
+    byFaultType: bumpFaultTypes(stats, input.faultTypes, { seen: 1 }),
     updatedAt: Date.now(),
   };
   await writeStats(next);
   return next;
 }
 
-/** Record a successful diagnosis + repair (plan §20/§21). */
+/**
+ * Record a successful diagnosis + repair (plan §20/§21).
+ *
+ * The misdiagnosis count is attributed to every fault type in the scenario:
+ * with several faults in play there is no honest way to say which one a wrong
+ * answer was aimed at, and silently blaming the first would corrupt exactly
+ * the statistic the panel uses to pick out a learner's weak spots.
+ */
 export async function recordDiagnosisCompleted(input: {
   difficulty: ChallengeDifficulty;
-  faultType: FaultType;
+  faultTypes: readonly FaultType[];
   elapsedMs: number;
   misdiagnoses: number;
   incompleteRepairs: number;
@@ -309,7 +357,7 @@ export async function recordDiagnosisCompleted(input: {
       completed: 1,
       bestTimeMs: input.elapsedMs,
     }),
-    byFaultType: bumpFaultType(stats, input.faultType, { solved: 1, misdiagnoses }),
+    byFaultType: bumpFaultTypes(stats, input.faultTypes, { solved: 1, misdiagnoses }),
     updatedAt: Date.now(),
   };
   await writeStats(next);
@@ -320,7 +368,7 @@ export async function recordDiagnosisCompleted(input: {
 /** Record an abandoned exercise (plan §22). */
 export async function recordDiagnosisAbandoned(input: {
   difficulty: ChallengeDifficulty;
-  faultType: FaultType;
+  faultTypes: readonly FaultType[];
   misdiagnoses: number;
   hintsUsed: number;
 }): Promise<DiagnosisStatsRecord> {
@@ -331,7 +379,7 @@ export async function recordDiagnosisAbandoned(input: {
     abandoned: stats.abandoned + 1,
     totalMisdiagnoses: stats.totalMisdiagnoses + misdiagnoses,
     totalHints: stats.totalHints + Math.max(0, input.hintsUsed),
-    byFaultType: bumpFaultType(stats, input.faultType, { misdiagnoses }),
+    byFaultType: bumpFaultTypes(stats, input.faultTypes, { misdiagnoses }),
     updatedAt: Date.now(),
   };
   await writeStats(next);

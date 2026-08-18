@@ -119,3 +119,112 @@ describe('scoreDiagnosis', () => {
     expect(score.points).toBeGreaterThanOrEqual(0);
   });
 });
+
+// ---------------------------------------------------------------------------
+// Multiple faults (plan §26/§27)
+// ---------------------------------------------------------------------------
+
+/** Par time for a two-fault run of this difficulty — mirrors the module rule. */
+function twoFaultPar(difficulty: ChallengeDifficulty): number {
+  return scoreDiagnosis({
+    difficulty,
+    elapsedMs: 0,
+    misdiagnoses: 0,
+    incompleteRepairs: 0,
+    hintsUsed: 0,
+    faultCount: 2,
+  }).parTimeSeconds;
+}
+
+describe('scoreDiagnosis — multiple faults', () => {
+  it('defaults to a single fault, fully found', () => {
+    const score = scoreDiagnosis(perfect);
+    expect(score.faultCount).toBe(1);
+    expect(score.faultsIdentified).toBe(1);
+    expect(score.completeness).toBe(1);
+  });
+
+  it('scales par time with the number of faults, but sub-linearly', () => {
+    const one = scoreDiagnosis(perfect);
+    const two = scoreDiagnosis({ ...perfect, faultCount: 2 });
+    const three = scoreDiagnosis({ ...perfect, faultCount: 3 });
+
+    expect(two.parTimeSeconds).toBeGreaterThan(one.parTimeSeconds);
+    expect(three.parTimeSeconds).toBeGreaterThan(two.parTimeSeconds);
+    // A second fault must not buy a whole second exercise's worth of time.
+    expect(two.parTimeSeconds).toBeLessThan(one.parTimeSeconds * 2);
+  });
+
+  it('does not punish a learner for solving the harder exercise', () => {
+    // Same quality of work, more faults: the two-fault run must not score less.
+    // Without the par scaling and the thoroughness bonus it would, which is the
+    // regression this test exists to catch.
+    for (const difficulty of DIFFICULTIES) {
+      const par = getDifficultyProfile(difficulty).parTimeSeconds;
+      const one = scoreDiagnosis({
+        ...perfect,
+        difficulty,
+        elapsedMs: par * 1000 * 0.8,
+        faultCount: 1,
+      });
+      const two = scoreDiagnosis({
+        ...perfect,
+        difficulty,
+        // Proportionally the same fraction of its (longer) par.
+        elapsedMs: twoFaultPar(difficulty) * 1000 * 0.8,
+        faultCount: 2,
+      });
+      expect(two.points).toBeGreaterThanOrEqual(one.points);
+    }
+  });
+
+  it('stays inside 0..1000 however many faults are claimed', () => {
+    for (const faultCount of [1, 2, 3, 8, 40]) {
+      const score = scoreDiagnosis({ ...perfect, faultCount });
+      expect(score.points).toBeGreaterThan(0);
+      expect(score.points).toBeLessThanOrEqual(1000);
+    }
+  });
+
+  it('scores a partly-solved run below a solved one, but above nothing', () => {
+    const solved = scoreDiagnosis({ ...perfect, faultCount: 2, faultsIdentified: 2 });
+    const half = scoreDiagnosis({ ...perfect, faultCount: 2, faultsIdentified: 1 });
+    const none = scoreDiagnosis({ ...perfect, faultCount: 2, faultsIdentified: 0 });
+
+    expect(half.points).toBeLessThan(solved.points);
+    expect(half.points).toBeGreaterThan(none.points);
+    expect(half.completeness).toBe(0.5);
+    expect(none.completeness).toBe(0);
+  });
+
+  it('awards no medal while a fault is still unfound', () => {
+    // A fast, flawless, hint-free half-run: everything that normally earns gold.
+    const half = scoreDiagnosis({ ...perfect, faultCount: 2, faultsIdentified: 1 });
+    expect(half.grade).toBe('complete');
+
+    const done = scoreDiagnosis({ ...perfect, faultCount: 2, faultsIdentified: 2 });
+    expect(done.grade).toBe('gold');
+  });
+
+  it('clamps a nonsensical identified count to the fault count', () => {
+    const score = scoreDiagnosis({ ...perfect, faultCount: 2, faultsIdentified: 9 });
+    expect(score.faultsIdentified).toBe(2);
+    expect(score.completeness).toBe(1);
+    expect(score.points).toBeLessThanOrEqual(1000);
+  });
+
+  it('treats a negative or non-finite fault count as one fault', () => {
+    for (const faultCount of [0, -3, Number.NaN, Number.POSITIVE_INFINITY]) {
+      const score = scoreDiagnosis({ ...perfect, faultCount });
+      expect(score.faultCount).toBe(1);
+      expect(score.completeness).toBe(1);
+    }
+  });
+
+  it('still penalises mistakes on a multi-fault run', () => {
+    const clean = scoreDiagnosis({ ...perfect, faultCount: 2 });
+    const messy = scoreDiagnosis({ ...perfect, faultCount: 2, misdiagnoses: 3 });
+    expect(messy.points).toBeLessThan(clean.points);
+    expect(messy.firstTimeRight).toBe(false);
+  });
+});

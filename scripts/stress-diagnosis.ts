@@ -32,6 +32,7 @@ import {
   type DiagnosisScenario,
   buildDiagnosisScenario,
   evaluateDiagnosis,
+  primaryScenarioFault,
   scoreDiagnosis,
 } from '../src/domain/challenges';
 import { normalizeCircuitFaults } from '../src/domain/faults';
@@ -70,7 +71,7 @@ function repaired(scenario: DiagnosisScenario): Circuit {
  * that is exactly the loophole `describeStructuralGap` closes.
  */
 function repairedByDeletion(scenario: DiagnosisScenario): Circuit | null {
-  const target = scenario.fault.target;
+  const target = primaryScenarioFault(scenario).fault.target;
   if (target.type !== 'wire') return null;
   return {
     ...scenario.faultedCircuit,
@@ -81,7 +82,7 @@ function repairedByDeletion(scenario: DiagnosisScenario): Circuit | null {
 
 /** The realistic bench repair: cut out the bad wire, run a fresh one. */
 function repairedByReplacement(scenario: DiagnosisScenario): Circuit | null {
-  const target = scenario.fault.target;
+  const target = primaryScenarioFault(scenario).fault.target;
   if (target.type !== 'wire') return null;
   const original = scenario.faultedCircuit.wires.find((w) => w.id === target.id);
   if (!original) return null;
@@ -117,23 +118,31 @@ for (const difficulty of DIFFICULTIES) {
       continue;
     }
 
-    // 1. self-consistency
-    if (!scenario.locationChoices.some((c) => c.key === scenario.faultLocationKey)) {
-      fail(`${tag}: the true location is missing from the choices`);
+    // 1. self-consistency — checked for *every* fault the scenario carries, so
+    //    this harness keeps working when a tier grows a second one.
+    for (const entry of scenario.faults) {
+      if (!scenario.locationChoices.some((c) => c.key === entry.locationKey)) {
+        fail(`${tag}: the true location is missing from the choices`);
+      }
+      if (!scenario.faultTypeChoices.some((c) => c.type === entry.fault.type)) {
+        fail(`${tag}: the true fault type is missing from the choices`);
+      }
     }
-    if (!scenario.faultTypeChoices.some((c) => c.type === scenario.fault.type)) {
-      fail(`${tag}: the true fault type is missing from the choices`);
+    // A plain (non-rage) exercise is single-fault by definition (§14).
+    if (scenario.faults.length !== 1) {
+      fail(`${tag}: expected exactly one fault, got ${scenario.faults.length}`);
     }
-    if (normalizeCircuitFaults(scenario.faultedCircuit).length !== 1) {
-      fail(`${tag}: expected exactly one injected fault`);
+    if (normalizeCircuitFaults(scenario.faultedCircuit).length !== scenario.faults.length) {
+      fail(`${tag}: injected fault count disagrees with the scenario`);
     }
 
     // 2. observability (§12)
+    const primary = primaryScenarioFault(scenario);
     if (!scenario.symptom.observable) {
-      fail(`${tag}: injected ${scenario.fault.type} produced no observable symptom`);
+      fail(`${tag}: injected ${primary.fault.type} produced no observable symptom`);
     }
 
-    const truth = { faultType: scenario.fault.type, locationKey: scenario.faultLocationKey };
+    const truth = { faultType: primary.fault.type, locationKey: primary.locationKey };
 
     // 3. truthful answer + repair ⇒ success
     const good = timedEval(scenario, repaired(scenario), truth);
@@ -148,20 +157,20 @@ for (const difficulty of DIFFICULTIES) {
     }
 
     // 5/6. half-right answers ⇒ failure
-    const otherType = scenario.faultTypeChoices.find((c) => c.type !== scenario.fault.type)?.type;
+    const otherType = scenario.faultTypeChoices.find((c) => c.type !== primary.fault.type)?.type;
     if (otherType) {
       const wrongType = timedEval(scenario, repaired(scenario), {
         faultType: otherType,
-        locationKey: scenario.faultLocationKey,
+        locationKey: primary.locationKey,
       });
       if (wrongType.verdict !== 'failure') {
         fail(`${tag}: wrong type '${otherType}' gave '${wrongType.verdict}'`);
       }
     }
-    const otherLoc = scenario.locationChoices.find((c) => c.key !== scenario.faultLocationKey);
+    const otherLoc = scenario.locationChoices.find((c) => c.key !== primary.locationKey);
     if (otherLoc) {
       const wrongLoc = timedEval(scenario, repaired(scenario), {
-        faultType: scenario.fault.type,
+        faultType: primary.fault.type,
         locationKey: otherLoc.key,
       });
       if (wrongLoc.verdict !== 'failure') {
@@ -171,9 +180,9 @@ for (const difficulty of DIFFICULTIES) {
 
     // 7. exhaustive: no other location may ever succeed, even fully repaired
     for (const choice of scenario.locationChoices) {
-      if (choice.key === scenario.faultLocationKey) continue;
+      if (choice.key === primary.locationKey) continue;
       const verdict = timedEval(scenario, repaired(scenario), {
-        faultType: scenario.fault.type,
+        faultType: primary.fault.type,
         locationKey: choice.key,
       });
       if (verdict.verdict === 'success') {
@@ -200,7 +209,10 @@ for (const difficulty of DIFFICULTIES) {
 
     // 9. determinism
     const twin = buildDiagnosisScenario({ seed, difficulty });
-    if (twin.challengeId !== scenario.challengeId || twin.fault.type !== scenario.fault.type) {
+    if (
+      twin.challengeId !== scenario.challengeId ||
+      primaryScenarioFault(twin).fault.type !== primary.fault.type
+    ) {
       fail(`${tag}: rebuild diverged (${twin.challengeId} vs ${scenario.challengeId})`);
     }
 
@@ -213,9 +225,11 @@ for (const difficulty of DIFFICULTIES) {
     ]
       .join(' ')
       .toLowerCase();
-    const typeWord = scenario.fault.type.replace(/-/g, ' ');
-    if (leakZone.includes(scenario.fault.type) || leakZone.includes(typeWord)) {
-      fail(`${tag}: fault type '${scenario.fault.type}' leaked into learner-visible copy`);
+    for (const entry of scenario.faults) {
+      const typeWord = entry.fault.type.replace(/-/g, ' ');
+      if (leakZone.includes(entry.fault.type) || leakZone.includes(typeWord)) {
+        fail(`${tag}: fault type '${entry.fault.type}' leaked into learner-visible copy`);
+      }
     }
 
     // 11. scoring bounds + monotonicity

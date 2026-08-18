@@ -3042,3 +3042,58 @@ SVG, so the first leak test passed vacuously), and the settings write is debounc
 **Next:** Phase F — Ohmageddon Scenarios (§53): plural-fault scenario shape and
 evaluator, which unblocks `multiFault`/`compoundFault`, then `misleadingSymptom`
 and the optional timer.
+
+---
+
+## Session 2026-08-18 — v2 Phase F1: plural-fault scenario shape (§53)
+
+Phase E shipped four modifiers as `implemented: false`. Two of them — `multiFault`
+and `compoundFault` — were blocked by the same single fact: `DiagnosisScenario` had
+one `fault`. F1 is that ceiling removed, deliberately as its own slice, so the
+modifier work in F2/F3 is a modifier change and not a refactor performed under
+pressure.
+
+`scenario.fault` / `scenario.faultLocationKey` are **gone**, replaced by
+`faults: ScenarioFault[]` where each entry keeps its own solo symptom and the
+scenario's `symptom` is the combined observation. `primaryScenarioFault()` covers
+the one-fault callers. The evaluator now grades a *hunt*: naming a real fault while
+others remain outstanding is `incomplete`, never `failure`; re-naming a found fault
+does not count as progress; the matcher prefers an un-named fault. Scoring scales par
+time by `1 + (n−1)×0.6`, pays an 8 % bonus per extra fault, prorates the completion
+floor by completeness, and refuses to award gold/silver/bronze while anything is
+outstanding. Persistence keeps `identifiedFaultIds` across a reload and credits stats
+to every fault type in the run.
+
+**One genuine defect found, and not by review.** `diagnosisStore` treated every
+non-final verdict as a stumble: it incremented `incompleteRepairs` *and* wiped the
+learner's fault-type/location selections — including on the verdict where they had
+just correctly identified the second of three faults. Correct progress was being
+billed as an incomplete repair. Both behaviours are now gated on
+`huntAdvanced = progressed && outstandingCount > 0`. Three store tests caught it.
+
+**A second, quieter bug** in the evaluator: `already.add(matched.fault.id)` ran
+*before* the per-fault results were built, so an already-named fault reported
+`newlyIdentified: true`. The rule that generalises: compute the "was this new?"
+flags before mutating the accumulator.
+
+Both stress harnesses were migrated rather than patched — they now walk each
+scenario **fault by fault**, asserting each is independently observable and
+independently completable, which is the property F2 will actually depend on.
+
+**Gates:** typecheck ✓, biome ✓ (4 pre-existing `Editor.tsx` warnings), 60 files /
+**844** unit ✓ (was 815), all four stress harnesses ✓ at full seed counts,
+`vite build` ✓ (28 precache entries), **e2e 110 passed / 14 skipped** across chromium
++ mobile-chrome.
+
+One e2e fix worth recording: `ohmageddon.spec.ts` "the setting survives a reload"
+reloaded the page immediately after the toggle click, inside the settings store's
+150 ms debounce — so the write was torn down mid-flight and the test read a missing
+record as "the setting did not persist". It now polls IndexedDB until the write lands,
+*then* reloads and polls again, which separates "was it written" from "did it
+survive". (Also note: Playwright browser binaries do not survive a `node_modules`
+reinstall — `npx playwright install chromium` before any e2e run in a fresh session.)
+
+**Next:** F2 — `multiFault` (§53.3), at the `selected: FaultCandidate[] = [candidate]`
+seam in `tryBuildScenario`. The second fault needs a distinct `locationKey` and a
+distinct `candidateKey`, and must clear the same per-fault solo-observability gate the
+loop below already enforces.

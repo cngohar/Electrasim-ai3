@@ -8,7 +8,12 @@ import { describe, expect, it } from 'vitest';
 import { simulate } from '../../simulation';
 import { getDifficultyProfile } from '../difficulty/profiles';
 import type { ChallengeDifficulty } from '../types';
-import { DiagnosisScenarioError, buildDiagnosisScenario, locationKeyFor } from './scenario';
+import {
+  DiagnosisScenarioError,
+  buildDiagnosisScenario,
+  locationKeyFor,
+  primaryScenarioFault,
+} from './scenario';
 
 const DIFFICULTIES: ChallengeDifficulty[] = ['beginner', 'intermediate', 'advanced'];
 
@@ -18,8 +23,7 @@ describe('buildDiagnosisScenario', () => {
       const a = buildDiagnosisScenario({ seed: 4242, difficulty });
       const b = buildDiagnosisScenario({ seed: 4242, difficulty });
       expect(a.challengeId).toBe(b.challengeId);
-      expect(a.fault).toEqual(b.fault);
-      expect(a.faultLocationKey).toBe(b.faultLocationKey);
+      expect(a.faults).toEqual(b.faults);
       expect(a.faultTypeChoices).toEqual(b.faultTypeChoices);
       expect(JSON.stringify(a.faultedCircuit)).toBe(JSON.stringify(b.faultedCircuit));
     }
@@ -31,15 +35,32 @@ describe('buildDiagnosisScenario', () => {
     expect(scenario.identity.displayId).toBe(scenario.challengeId);
   });
 
-  it('always injects exactly one fault, and it is observable (plan §12)', () => {
+  it('injects every scenario fault, and the result is observable (plan §12)', () => {
     for (const difficulty of DIFFICULTIES) {
       for (let seed = 0; seed < 25; seed++) {
         const scenario = buildDiagnosisScenario({ seed: seed * 91 + 5, difficulty });
-        expect(scenario.faultedCircuit.faults).toHaveLength(1);
-        expect(scenario.faultedCircuit.faults?.[0]).toEqual(scenario.fault);
+        expect(scenario.faults.length).toBeGreaterThanOrEqual(1);
+        // The faulted circuit carries exactly the scenario's faults — no more
+        // (a stray fault would be undiagnosable) and no fewer (an uninjected
+        // fault would be unfindable).
+        expect(scenario.faultedCircuit.faults).toEqual(scenario.faults.map((e) => e.fault));
         expect(scenario.symptom.observable).toBe(true);
       }
     }
+  });
+
+  it('a plain exercise carries exactly one fault (§14)', () => {
+    for (const difficulty of DIFFICULTIES) {
+      for (let seed = 0; seed < 15; seed++) {
+        const scenario = buildDiagnosisScenario({ seed: seed * 37 + 3, difficulty });
+        expect(scenario.faults).toHaveLength(1);
+      }
+    }
+  });
+
+  it('exposes the first fault as the single representative (multi-fault accessor)', () => {
+    const scenario = buildDiagnosisScenario({ seed: 909, difficulty: 'intermediate' });
+    expect(primaryScenarioFault(scenario)).toBe(scenario.faults[0]);
   });
 
   it('hands over a healthy circuit that genuinely works', () => {
@@ -71,7 +92,7 @@ describe('buildDiagnosisScenario', () => {
       for (let seed = 0; seed < 15; seed++) {
         const scenario = buildDiagnosisScenario({ seed: seed * 59 + 8, difficulty });
         const types = scenario.faultTypeChoices.map((c) => c.type);
-        expect(types).toContain(scenario.fault.type);
+        expect(types).toContain(primaryScenarioFault(scenario).fault.type);
         expect(new Set(types).size).toBe(types.length);
         expect(types.length).toBeLessThanOrEqual(expected);
       }
@@ -82,7 +103,7 @@ describe('buildDiagnosisScenario', () => {
     for (let seed = 0; seed < 20; seed++) {
       const scenario = buildDiagnosisScenario({ seed: seed * 67 + 4, difficulty: 'advanced' });
       const keys = scenario.locationChoices.map((c) => c.key);
-      expect(keys).toContain(scenario.faultLocationKey);
+      expect(keys).toContain(primaryScenarioFault(scenario).locationKey);
       expect(new Set(keys).size).toBe(keys.length);
       expect(keys.length).toBeGreaterThan(1);
     }
@@ -99,8 +120,8 @@ describe('buildDiagnosisScenario', () => {
     for (let seed = 0; seed < 20; seed++) {
       const scenario = buildDiagnosisScenario({ seed: seed * 71 + 3, difficulty: 'intermediate' });
       const prose = `${scenario.complaint} ${scenario.brief}`.toLowerCase();
-      expect(prose).not.toContain(scenario.fault.type.replace(/-/g, ' '));
-      expect(prose).not.toContain(scenario.fault.type);
+      expect(prose).not.toContain(primaryScenarioFault(scenario).fault.type.replace(/-/g, ' '));
+      expect(prose).not.toContain(primaryScenarioFault(scenario).fault.type);
     }
   });
 
@@ -118,10 +139,10 @@ describe('buildDiagnosisScenario', () => {
   it('only the final hint pinpoints the location', () => {
     for (let seed = 0; seed < 10; seed++) {
       const scenario = buildDiagnosisScenario({ seed: seed * 13 + 1, difficulty: 'intermediate' });
-      const target = scenario.fault.target;
+      const target = primaryScenarioFault(scenario).fault.target;
       const id = target.type === 'port' ? target.componentId : target.id;
       const label = scenario.locationChoices.find(
-        (c) => c.key === scenario.faultLocationKey,
+        (c) => c.key === primaryScenarioFault(scenario).locationKey,
       )?.label;
       expect(scenario.hints[0].text).not.toContain(id);
       expect(scenario.hints[1].text).not.toContain(id);
@@ -154,15 +175,15 @@ describe('locationKeyFor', () => {
   it('matches the key the scenario publishes', () => {
     for (let seed = 0; seed < 10; seed++) {
       const scenario = buildDiagnosisScenario({ seed: seed * 101 + 7, difficulty: 'advanced' });
-      const target = scenario.fault.target;
+      const target = primaryScenarioFault(scenario).fault.target;
       expect(
         locationKeyFor({
-          type: scenario.fault.type,
+          type: primaryScenarioFault(scenario).fault.type,
           target,
           placement: 'wire',
           key: 'ignored',
         }),
-      ).toBe(scenario.faultLocationKey);
+      ).toBe(primaryScenarioFault(scenario).locationKey);
     }
   });
 });

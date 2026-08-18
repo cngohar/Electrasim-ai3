@@ -93,6 +93,7 @@ export function DiagnosisPanel({ isPhone }: Props) {
   const misdiagnoses = useDiagnosisStore((s) => s.misdiagnoses);
   const incompleteRepairs = useDiagnosisStore((s) => s.incompleteRepairs);
   const hintsUsed = useDiagnosisStore((s) => s.hintsUsed);
+  const identifiedFaultIds = useDiagnosisStore((s) => s.identifiedFaultIds);
   const selectedFaultType = useDiagnosisStore((s) => s.selectedFaultType);
   const selectedLocationKey = useDiagnosisStore((s) => s.selectedLocationKey);
   const error = useDiagnosisStore((s) => s.error);
@@ -193,6 +194,31 @@ export function DiagnosisPanel({ isPhone }: Props) {
     () => (scenario ? scenario.hints.slice(0, hintsUsed) : []),
     [scenario, hintsUsed],
   );
+
+  /**
+   * The running tally for a multi-fault exercise (§26).
+   *
+   * Only faults the learner has already named appear here, so this is a record
+   * of their own findings rather than a hint. It exists because the answer
+   * form holds one fault at a time: without a visible tally, someone who found
+   * the first fault ten minutes ago has no way to remember what they logged,
+   * and no way to tell how much of the job is left.
+   */
+  const faultProgress = useMemo(() => {
+    if (!scenario || scenario.faults.length < 2) return null;
+    const found = scenario.faults
+      .filter((entry) => identifiedFaultIds.includes(entry.fault.id))
+      .map((entry) => ({
+        id: entry.fault.id,
+        typeLabel:
+          scenario.faultTypeChoices.find((choice) => choice.type === entry.fault.type)?.label ??
+          entry.fault.type,
+        locationLabel:
+          scenario.locationChoices.find((choice) => choice.key === entry.locationKey)?.label ??
+          'the affected part',
+      }));
+    return { total: scenario.faults.length, found };
+  }, [scenario, identifiedFaultIds]);
 
   /**
    * Carry out the repair the learner has *described* — the remedial action for
@@ -370,12 +396,17 @@ export function DiagnosisPanel({ isPhone }: Props) {
 
   // ── Completed: celebration (plan §19) ───────────────────────────────────
   if (status === 'completed' && score) {
-    const faultLabel =
-      scenario.faultTypeChoices.find((choice) => choice.type === scenario.fault.type)?.label ??
-      scenario.fault.type;
-    const locationLabel =
-      scenario.locationChoices.find((choice) => choice.key === scenario.faultLocationKey)?.label ??
-      'the affected part';
+    // Every fault gets its own line: on a multi-fault scenario the learner has
+    // just solved two puzzles and deserves to see both named back to them.
+    const solved = scenario.faults.map((entry) => ({
+      id: entry.fault.id,
+      faultLabel:
+        scenario.faultTypeChoices.find((choice) => choice.type === entry.fault.type)?.label ??
+        entry.fault.type,
+      locationLabel:
+        scenario.locationChoices.find((choice) => choice.key === entry.locationKey)?.label ??
+        'the affected part',
+    }));
 
     return (
       <section className={shell} aria-label="Diagnosis complete">
@@ -391,14 +422,24 @@ export function DiagnosisPanel({ isPhone }: Props) {
             "slightly more playful message... Keep it tasteful and optional."
           */}
           <p className="text-[13px] font-bold text-emerald-800 dark:text-emerald-200">
-            {scenario.rage ? '😈 YOU ACTUALLY FOUND IT' : '🎉 FAULT CLEARED!'}
+            {scenario.rage
+              ? solved.length > 1
+                ? '😈 YOU ACTUALLY FOUND THEM ALL'
+                : '😈 YOU ACTUALLY FOUND IT'
+              : solved.length > 1
+                ? '🎉 ALL FAULTS CLEARED!'
+                : '🎉 FAULT CLEARED!'}
           </p>
-          <p className="text-[11px] font-semibold text-emerald-700 dark:text-emerald-300">
-            {faultLabel}
-          </p>
-          <p className="text-[10px] text-emerald-700/80 dark:text-emerald-300/80">
-            {locationLabel} correctly identified
-          </p>
+          {solved.map((entry) => (
+            <div key={entry.id}>
+              <p className="text-[11px] font-semibold text-emerald-700 dark:text-emerald-300">
+                {entry.faultLabel}
+              </p>
+              <p className="text-[10px] text-emerald-700/80 dark:text-emerald-300/80">
+                {entry.locationLabel} correctly identified
+              </p>
+            </div>
+          ))}
           <p className="mt-1 text-[20px] font-black tabular-nums text-emerald-700 dark:text-emerald-300">
             {score.points}
             <span className="ml-1 text-[11px] font-semibold uppercase">{score.grade}</span>
@@ -487,6 +528,31 @@ export function DiagnosisPanel({ isPhone }: Props) {
         <p className="text-[10px] leading-relaxed text-slate-500 dark:text-slate-400">
           {scenario.brief}
         </p>
+
+        {/* §26: how much of a multi-fault job is done. Findings only. */}
+        {faultProgress && (
+          <div className="rounded-lg border border-slate-200 bg-slate-50 p-2 dark:border-slate-700 dark:bg-slate-800/60">
+            <p className="text-[10px] font-semibold text-slate-700 dark:text-slate-200">
+              Faults found: {faultProgress.found.length} of {faultProgress.total}
+            </p>
+            {faultProgress.found.length > 0 ? (
+              <ul className="mt-1 space-y-0.5">
+                {faultProgress.found.map((entry) => (
+                  <li
+                    key={entry.id}
+                    className="text-[9px] leading-relaxed text-emerald-700 dark:text-emerald-300"
+                  >
+                    ✓ {entry.typeLabel} — {entry.locationLabel}
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="mt-0.5 text-[9px] leading-relaxed text-slate-500 dark:text-slate-400">
+                More than one thing is wrong here. Report them one at a time.
+              </p>
+            )}
+          </div>
+        )}
 
         {/*
          * §24/§26 transparency: say which modifiers are in play and promise,

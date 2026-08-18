@@ -89,7 +89,14 @@ export function candidateKey(type: FaultType, target: FaultTarget): string {
  */
 export function collectFaultCandidates(
   circuit: Circuit,
-  scenario: GeneratedScenario,
+  // Only the three nomination lists are read. Taking the narrow shape rather
+  // than a whole `GeneratedScenario` lets callers that legitimately have just
+  // these lists — the rage candidate stage, tests assembling a fixture — pass
+  // them without inventing prose fields that would never be used.
+  scenario: Pick<
+    GeneratedScenario,
+    'faultCandidateWireIds' | 'loadComponentIds' | 'protectionComponentIds'
+  >,
 ): FaultCandidate[] {
   const wireIds = new Set(scenario.faultCandidateWireIds);
   const wires = circuit.wires.filter((w) => wireIds.has(w.id));

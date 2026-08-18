@@ -535,13 +535,17 @@ describe('Ohmageddon preserves valid electrical simulation (plan §26, §42)', (
         const decoys = new Set(scenario.rage?.decoyComponentIds ?? []);
         if (decoys.size === 0) continue;
 
-        const target = scenario.fault.target;
-        if (target.type === 'component') expect(decoys.has(target.id)).toBe(false);
-        else if (target.type === 'port') expect(decoys.has(target.componentId)).toBe(false);
-        else {
-          const wire = scenario.healthyCircuit.wires.find((w) => w.id === target.id);
-          expect(decoys.has(wire?.fromComponentId ?? '')).toBe(false);
-          expect(decoys.has(wire?.toComponentId ?? '')).toBe(false);
+        // Every fault, not just the first: a tier that grows a second fault
+        // must not be able to smuggle one onto a decoy.
+        for (const entry of scenario.faults) {
+          const target = entry.fault.target;
+          if (target.type === 'component') expect(decoys.has(target.id)).toBe(false);
+          else if (target.type === 'port') expect(decoys.has(target.componentId)).toBe(false);
+          else {
+            const wire = scenario.healthyCircuit.wires.find((w) => w.id === target.id);
+            expect(decoys.has(wire?.fromComponentId ?? '')).toBe(false);
+            expect(decoys.has(wire?.toComponentId ?? '')).toBe(false);
+          }
         }
       }
     }

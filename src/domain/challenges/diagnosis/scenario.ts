@@ -61,6 +61,33 @@ export interface FaultTypeChoice {
   description: string;
 }
 
+/**
+ * One injected fault, with everything the grader needs to judge it on its own.
+ *
+ * A scenario carries a *list* of these (plan §26 allows "multiple faults", §27
+ * Rage 3/4 require them). Even a normal exercise uses the list — with exactly
+ * one entry — so there is a single code path rather than a singular case and a
+ * plural case that drift apart.
+ *
+ * The fault itself is an ordinary `InjectedFault` (§13: no parallel fault
+ * representation). What is added here is scenario-level knowledge: where the
+ * learner has to point (`locationKey`) and what this fault does **by itself**
+ * (`symptom`), which is what makes each fault independently gradeable.
+ */
+export interface ScenarioFault {
+  fault: InjectedFault;
+  /** Correct answer to §15B for this fault, as a `locationChoices` key. */
+  locationKey: string;
+  /**
+   * Symptom measured with **only this fault** injected (§12 applies per fault).
+   *
+   * For a single-fault scenario this is the scenario symptom. For a multi-fault
+   * scenario it is the evidence that this particular fault is not invisible
+   * behind its sibling — a fault nobody can observe is not diagnosable.
+   */
+  symptom: FaultSymptom;
+}
+
 /** One option in the "where is it wrong?" question (plan §15B). */
 export interface FaultLocationChoice {
   /** Stable key — `wire:<id>`, `component:<id>` or `port:<id>:<index>`. */
@@ -98,12 +125,24 @@ export interface DiagnosisScenario {
   /** The healthy circuit, kept as the recovery reference. Never shown. */
   healthyCircuit: Circuit;
 
-  /** The answer: the one fault that was injected. */
-  fault: InjectedFault;
-  /** How that fault manifests, measured from the simulator (§12). */
+  /**
+   * The answer: every fault that was injected, in a deterministic order.
+   *
+   * Always at least one entry. An ordinary exercise has exactly one; §26/§27
+   * allow an Ohmageddon scenario to carry more. Consumers must not assume the
+   * length — use {@link primaryScenarioFault} when a single representative is
+   * genuinely wanted (a stats bucket, a log line), and iterate otherwise.
+   */
+  faults: ScenarioFault[];
+  /**
+   * How the installation misbehaves with **all** the injected faults present —
+   * the state the learner actually observes (§12).
+   *
+   * With one fault this equals `faults[0].symptom`. With several it may differ
+   * from any individual fault's symptom, which is the whole point of a
+   * compound scenario (§26 "compound diagnostic scenarios").
+   */
   symptom: FaultSymptom;
-  /** Correct answer to §15B, as a location key. */
-  faultLocationKey: string;
 
   /** Multiple-choice options for "what is wrong?" (§15A). */
   faultTypeChoices: FaultTypeChoice[];
@@ -289,16 +328,47 @@ function tryBuildScenario(request: {
   const candidate = selectFaultCandidate(candidates, rng);
   if (!candidate) return { ok: false, reason: 'fault selection produced nothing' };
 
+  // The selected candidates, in the order they were chosen. F1 ships exactly
+  // one; the plural shape is what lets §27's Rage 3/4 add a second without
+  // reworking the grader.
+  const selected: FaultCandidate[] = [candidate];
+
   const challengeId = generated.metadata.identity.displayId;
-  const fault = createScenarioFault(challengeId, candidate);
-  const faultedCircuit = withScenarioFaults(healthyCircuit, [fault]);
-  const faulted = simulate(faultedCircuit, { appMode: 'pro' });
+  const loadIds = scenarioInfo.loadComponentIds;
 
-  const symptom = diffSymptom(baseline, faulted, generated.scenario.loadComponentIds);
+  // ── Plan §12: the mandatory gate, applied **per fault**. ─────────────────
+  // Each fault must be observable *on its own*, otherwise it cannot be asked
+  // about: a fault whose entire effect is masked by a sibling is not a puzzle,
+  // it is a trick, and §26 forbids "claiming a fault exists when it does not"
+  // in spirit as well as in letter.
+  const scenarioFaults: ScenarioFault[] = [];
+  for (const chosen of selected) {
+    const fault = createScenarioFault(challengeId, chosen);
+    const soloCircuit = withScenarioFaults(healthyCircuit, [fault]);
+    const solo = simulate(soloCircuit, { appMode: 'pro' });
+    const soloSymptom = diffSymptom(baseline, solo, loadIds);
+    if (!soloSymptom.observable) {
+      return { ok: false, reason: `${chosen.type} produced no observable symptom` };
+    }
+    scenarioFaults.push({ fault, locationKey: locationKeyFor(chosen), symptom: soloSymptom });
+  }
 
-  // ── Plan §12: the mandatory gate. ────────────────────────────────────────
-  if (!symptom.observable) {
-    return { ok: false, reason: `${candidate.type} produced no observable symptom` };
+  const faults = scenarioFaults.map((entry) => entry.fault);
+  const faultedCircuit = withScenarioFaults(healthyCircuit, faults);
+  // Single-fault fast path: the combined circuit is the solo circuit, so the
+  // simulator is not asked the same question twice.
+  const combinedSymptom =
+    scenarioFaults.length === 1
+      ? // Length checked immediately above.
+        scenarioFaults[0]!.symptom
+      : diffSymptom(baseline, simulate(faultedCircuit, { appMode: 'pro' }), loadIds);
+
+  // The *combined* state must also be observable. With one fault this is
+  // already proven above; with several, faults can in principle cancel out
+  // (a forced-open breaker upstream of a short), and an installation that
+  // looks healthy is not a diagnosis exercise.
+  if (!combinedSymptom.observable) {
+    return { ok: false, reason: 'combined faults produced no observable symptom' };
   }
 
   return {
@@ -309,9 +379,9 @@ function tryBuildScenario(request: {
       healthyCircuit,
       faultedCircuit,
       baseline,
-      fault,
-      candidate,
-      symptom,
+      scenarioFaults,
+      candidates: selected,
+      symptom: combinedSymptom,
       difficulty,
       seed,
       generatorVersion,
@@ -334,8 +404,11 @@ function assembleScenario(args: {
   healthyCircuit: Circuit;
   faultedCircuit: Circuit;
   baseline: SimulationResult;
-  fault: InjectedFault;
-  candidate: FaultCandidate;
+  /** Every injected fault, with its solo symptom and location key. */
+  scenarioFaults: ScenarioFault[];
+  /** The candidates those faults came from, same order. */
+  candidates: FaultCandidate[];
+  /** Symptom of the circuit with all faults present. */
   symptom: FaultSymptom;
   difficulty: ChallengeDifficulty;
   seed: number;
@@ -350,8 +423,8 @@ function assembleScenario(args: {
     scenarioInfo,
     healthyCircuit,
     faultedCircuit,
-    fault,
-    candidate,
+    scenarioFaults,
+    candidates,
     symptom,
     difficulty,
     seed,
@@ -372,17 +445,16 @@ function assembleScenario(args: {
   // original wire no longer exists, and offering the learner a location option
   // that points at a deleted wire would be both confusing and a tell.
   const locationChoices = buildLocationChoices(healthyCircuit, scenarioInfo);
-  const faultLocationKey = locationKeyFor(candidate);
   const faultTypeChoices = buildFaultTypeChoices(
     healthyCircuit,
     scenarioInfo,
-    candidate.type,
+    candidates.map((c) => c.type),
     profile.diagnosticChoiceCount,
     rng.fork('choices'),
   );
 
   // ── Ohmageddon stage ③ — ration the help (plan §27) ─────────────────────
-  const baseHints = buildHints(healthyCircuit, candidate, symptom, deadLoadLabels);
+  const baseHints = buildHints(healthyCircuit, candidates, symptom, deadLoadLabels);
   let hints = baseHints;
   let hintBudget = profile.hintBudget;
   let parTimeSeconds = profile.parTimeSeconds;
@@ -438,9 +510,8 @@ function assembleScenario(args: {
     faultedCircuit: deepCopy(faultedCircuit),
     healthyCircuit: deepCopy(healthyCircuit),
 
-    fault,
+    faults: scenarioFaults,
     symptom,
-    faultLocationKey,
 
     faultTypeChoices,
     locationChoices,
@@ -539,28 +610,33 @@ function buildLocationChoices(
 }
 
 /**
- * The §15A choice set: the true fault plus plausible distractors.
+ * The §15A choice set: every true fault type plus plausible distractors.
  *
  * Distractors are drawn from faults that were *genuinely eligible on this
  * circuit*, so every wrong answer is a fault that could really have happened
  * here. A distractor that is impossible on the topology teaches nothing and
  * is trivially eliminated.
  *
- * Size follows `difficulty.diagnosticChoiceCount` (3 / 5 / 7).
+ * Size follows `difficulty.diagnosticChoiceCount` (3 / 5 / 7), but the correct
+ * answers are never dropped to hit that number: on a multi-fault scenario the
+ * list grows rather than hiding an answer the learner is required to give.
+ * Two faults of the same kind contribute one option, not two — the question is
+ * "what is wrong?", and repeating an option would itself be a tell.
  */
 function buildFaultTypeChoices(
   circuit: Circuit,
   scenario: Parameters<typeof collectFaultCandidates>[1],
-  correct: FaultType,
+  correctTypes: readonly FaultType[],
   desiredCount: number,
   rng: ReturnType<typeof createSeededRng>,
 ): FaultTypeChoice[] {
+  const correct = [...new Set(correctTypes)];
   const eligible = eligibleFaultTypes(collectFaultCandidates(circuit, scenario));
-  const distractors = eligible.filter((t) => t !== correct);
-  const wanted = Math.max(2, desiredCount) - 1;
+  const distractors = eligible.filter((t) => !correct.includes(t));
+  const wanted = Math.max(Math.max(2, desiredCount) - correct.length, 1);
   const chosen = rng.shuffle(distractors).slice(0, wanted);
 
-  const types = rng.shuffle([correct, ...chosen]);
+  const types = rng.shuffle([...correct, ...chosen]);
   return types.map((type) => {
     const def = getFaultDefinition(type);
     return { type, label: def.label, description: def.description };
@@ -581,11 +657,17 @@ function buildFaultTypeChoices(
  */
 function buildHints(
   circuit: Circuit,
-  candidate: FaultCandidate,
+  candidates: readonly FaultCandidate[],
   symptom: FaultSymptom,
   deadLoadLabels: readonly string[],
 ): DiagnosisHint[] {
+  // Hints are written from the first fault outward. On a multi-fault scenario
+  // levels 2 and 3 additionally warn that clearing one thing will not be
+  // enough — see below. They still never pair a *type* with a *location*.
+  // Callers always pass at least one candidate.
+  const candidate = candidates[0]!;
   const def = getFaultDefinition(candidate.type);
+  const extra = candidates.length - 1;
 
   const observation =
     symptom.primary === 'load-dead'
@@ -596,15 +678,42 @@ function buildHints(
           ? 'A component has been destroyed, so the energy went somewhere it should not have.'
           : 'The installation is reporting a condition the regulations do not permit.';
 
-  const direction = directionHint(candidate.type, def.category);
+  // With more than one fault the learner is told *that* there is more than
+  // one, but not what or where. Withholding the count would not make the
+  // exercise harder in an honest way — it would make a complete repair look
+  // like a failed one, which §26 rules out.
+  const plural =
+    extra > 0
+      ? ` This installation has more than one thing wrong with it — ${extra + 1} in total.`
+      : '';
 
-  const location = `Inspect ${describeFaultTarget(circuit, candidate.target)}.`;
+  const direction = `${directionHint(candidate.type, def.category)}${plural}`;
+
+  const location = `Inspect ${describeFaultTarget(circuit, candidate.target)}.${
+    extra > 0 ? ' That is not the only fault.' : ''
+  }`;
 
   return [
     { level: 1, kind: 'observation', text: observation },
     { level: 2, kind: 'direction', text: direction },
     { level: 3, kind: 'location', text: location },
   ];
+}
+
+/**
+ * The fault a single-answer consumer should use — statistics buckets, log
+ * lines, the "you found it" headline.
+ *
+ * Always the first entry, which is the first fault the seed selected and the
+ * one the hints are written around. Callers that must handle *every* fault
+ * (grading, repair verification) iterate `scenario.faults` instead; this
+ * helper exists so the ones that genuinely want one representative say so
+ * explicitly rather than reaching for `faults[0]` and hoping.
+ */
+export function primaryScenarioFault(scenario: DiagnosisScenario): ScenarioFault {
+  // A scenario always carries at least one fault — the builder rejects any
+  // attempt that produced none.
+  return scenario.faults[0]!;
 }
 
 /** Narrow the search without naming the fault (plan §17 hint 2). */

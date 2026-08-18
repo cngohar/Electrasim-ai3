@@ -11,6 +11,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — Session 2026-08-18 (v2 Phase F1): plural-fault scenario shape
+
+Phase F's first slice (§53). Phase E had to register `multiFault` and `compoundFault` as `implemented: false` for one structural reason: a `DiagnosisScenario` carried exactly one `fault`. F1 removes that ceiling everywhere *before* any modifier tries to use it, so the two-fault work that follows is a modifier change rather than a rewrite.
+
+- **`DiagnosisScenario.faults: ScenarioFault[]`** (always ≥ 1) replaces the singular `scenario.fault` / `scenario.faultLocationKey`. Each `ScenarioFault` carries its own `fault`, `locationKey` and solo `symptom`; the scenario's own `symptom` is the *combined* observation. `primaryScenarioFault(scenario)` is the one-fault accessor. Single-fault scenarios are unchanged in behaviour — the array simply has length 1.
+- **The evaluator now grades a hunt, not a guess.** `DiagnosisEvaluation` gains `faults[]`, `matchedFaultId`, `progressed`, `identifiedFaultIds`, `outstandingCount` and `faultCount`. Naming a genuine fault while others remain outstanding is **`incomplete`, never `failure`** — the learner was right, just not finished. Re-naming a fault already found is `incomplete` with `progressed: false`, and the matcher prefers an un-named fault so a duplicate answer can't be laundered into progress.
+- **Scoring accounts for the extra work.** `parTimeSeconds` scales `× (1 + (faultCount − 1) × 0.6)`, each additional fault found adds an 8 % bonus, and the completion floor is prorated by `completeness` so a partial hunt scores partially. `gradeFor` returns `'complete'` — never gold/silver/bronze — while any fault is outstanding.
+- **Persistence tracks the hunt.** `ActiveDiagnosisRecord.identifiedFaultIds` survives a reload, and stats moved from a single `faultType` to `faultTypes: readonly FaultType[]`: every type in a run is credited `seen`/`solved`, and a misdiagnosis is attributed to all of them while run-level totals are still counted once. A malformed `identifiedFaultIds` invalidates the whole record rather than being silently dropped.
+- **The panel shows the hunt** — a "Faults found: N of M" card, shown only when a scenario actually has more than one fault, plus a pluralised completion screen.
+- **Fixed: a partial success was billed as a failure.** `diagnosisStore` incremented `incompleteRepairs` and cleared the learner's selections on *every* non-final verdict, including the one where they had just correctly identified a second fault. Now guarded on `huntAdvanced` (`progressed && outstandingCount > 0`), which is also the only condition that resets the pickers. Caught by three failing store tests, not by review.
+
+**Tests:** 844 unit tests pass (up from 815) across 60 files, with new multi-fault blocks in `evaluator.test.ts` (21), `scoring.test.ts` (18) and `diagnosisPersistence.test.ts` (26). Both `stress-diagnosis` and `stress-ohmageddon` were migrated to the plural shape and now walk a scenario **fault by fault**, asserting every fault is independently observable and completable. Full e2e green: 110 passed across chromium + mobile-chrome.
+
 ### Added — Session 2026-08-18 (v2 Phase E): Ohmageddon Foundation 😈
 
 Phase E of the v2 plan (§23–§28, §42, §52, §57). Ohmageddon is the opt-in "deliberately difficult" diagnostic mode. Its whole design problem is that §25 forbids a separate generator while §26 forbids a dishonest simulation — so the difficulty has to come from the *diagnosis*, never from the physics. **"Rage against the circuit, not against physics."**

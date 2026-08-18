@@ -61,6 +61,16 @@ export interface DiagnosisState {
   incompleteRepairs: number;
   hintsUsed: number;
 
+  /**
+   * Faults the learner has already named correctly, in the order they found
+   * them (plan §26: a scenario may carry more than one).
+   *
+   * This is *progress*, not the answer key — it only ever holds faults the
+   * learner worked out themselves, so exposing it to the panel leaks nothing.
+   * On a single-fault exercise it is empty until the run is won.
+   */
+  identifiedFaultIds: string[];
+
   /** Pending selection in the "what is wrong?" question (§15A). */
   selectedFaultType: DiagnosisAnswer['faultType'] | null;
   /** Pending selection in the "where is it?" question (§15B). */
@@ -110,6 +120,7 @@ export const useDiagnosisStore = create<DiagnosisState>((set, get) => ({
   misdiagnoses: 0,
   incompleteRepairs: 0,
   hintsUsed: 0,
+  identifiedFaultIds: [],
   selectedFaultType: null,
   selectedLocationKey: null,
   startedAt: null,
@@ -161,6 +172,7 @@ export const useDiagnosisStore = create<DiagnosisState>((set, get) => ({
         misdiagnoses: 0,
         incompleteRepairs: 0,
         hintsUsed: 0,
+        identifiedFaultIds: [],
         selectedFaultType: null,
         selectedLocationKey: null,
         startedAt,
@@ -182,7 +194,7 @@ export const useDiagnosisStore = create<DiagnosisState>((set, get) => ({
       });
       const stats = await recordDiagnosisStarted({
         difficulty: scenario.difficulty,
-        faultType: scenario.fault.type,
+        faultTypes: scenario.faults.map((entry) => entry.fault.type),
       });
       set({ stats });
     } catch (err) {
@@ -218,16 +230,24 @@ export const useDiagnosisStore = create<DiagnosisState>((set, get) => ({
       scenario,
       { components, wires, globalVoltage, faults },
       { faultType: state.selectedFaultType, locationKey: state.selectedLocationKey },
+      // Carrying prior correct answers forward is what makes a multi-fault run
+      // solvable: without it the learner would have to name both faults in a
+      // single submission, which the one-type/one-location form cannot express.
+      { identifiedFaultIds: state.identifiedFaultIds },
     );
+
+    // The evaluator has already filtered stale ids against this scenario.
+    const identifiedFaultIds = evaluation.identifiedFaultIds.slice();
 
     if (evaluation.verdict === 'failure') {
       // Plan §18: a wrong diagnosis never ends the exercise.
       const misdiagnoses = state.misdiagnoses + 1;
-      set({ evaluation, misdiagnoses, status: 'active' });
+      set({ evaluation, misdiagnoses, identifiedFaultIds, status: 'active' });
       void persistProgress(scenario, {
         misdiagnoses,
         incompleteRepairs: state.incompleteRepairs,
         hintsUsed: state.hintsUsed,
+        identifiedFaultIds,
         startedAt: state.startedAt,
         elapsedMs: state.elapsedMs,
       });
@@ -235,14 +255,32 @@ export const useDiagnosisStore = create<DiagnosisState>((set, get) => ({
     }
 
     if (evaluation.verdict === 'incomplete') {
-      // §16: correct answer, circuit still broken — stay on this scenario and
-      // keep the selection, because the diagnosis was right.
-      const incompleteRepairs = state.incompleteRepairs + 1;
-      set({ evaluation, incompleteRepairs, status: 'active' });
+      // §16: correct answer, circuit still broken — stay on this scenario.
+      //
+      // Two different situations land here, and they are counted differently
+      // on purpose. Naming a *new* fault while others are still hidden is
+      // forward progress in the hunt, not a failed repair, so the §41
+      // `incompleteRepairs` penalty is withheld — otherwise a two-fault
+      // scenario would dock the learner for the very submission that solved
+      // half of it. Once every fault has been named, though, an unrepaired
+      // circuit is the ordinary §41 case and counts, exactly as it always did
+      // for a single-fault exercise: there is nothing left to discover, only
+      // work left to do.
+      const huntAdvanced = evaluation.progressed && evaluation.outstandingCount > 0;
+      const incompleteRepairs = huntAdvanced
+        ? state.incompleteRepairs
+        : state.incompleteRepairs + 1;
+      // Finding one of several faults clears the form so the next one can be
+      // entered; with nothing left to name the selection stays, since the
+      // diagnosis was right and the learner is being asked to finish the
+      // repair rather than answer again.
+      const selection = huntAdvanced ? { selectedFaultType: null, selectedLocationKey: null } : {};
+      set({ evaluation, incompleteRepairs, identifiedFaultIds, status: 'active', ...selection });
       void persistProgress(scenario, {
         misdiagnoses: state.misdiagnoses,
         incompleteRepairs,
         hintsUsed: state.hintsUsed,
+        identifiedFaultIds,
         startedAt: state.startedAt,
         elapsedMs: state.elapsedMs,
       });
@@ -256,11 +294,20 @@ export const useDiagnosisStore = create<DiagnosisState>((set, get) => ({
       misdiagnoses: state.misdiagnoses,
       incompleteRepairs: state.incompleteRepairs,
       hintsUsed: state.hintsUsed,
+      faultCount: evaluation.faultCount,
+      faultsIdentified: evaluation.faultCount,
     });
-    set({ evaluation, score, status: 'completed', elapsedMs, startedAt: null });
+    set({
+      evaluation,
+      score,
+      identifiedFaultIds,
+      status: 'completed',
+      elapsedMs,
+      startedAt: null,
+    });
     void recordDiagnosisCompleted({
       difficulty: scenario.difficulty,
-      faultType: scenario.fault.type,
+      faultTypes: scenario.faults.map((entry) => entry.fault.type),
       elapsedMs,
       misdiagnoses: state.misdiagnoses,
       incompleteRepairs: state.incompleteRepairs,
@@ -283,7 +330,7 @@ export const useDiagnosisStore = create<DiagnosisState>((set, get) => ({
     if (scenario) {
       const stats = await recordDiagnosisAbandoned({
         difficulty: scenario.difficulty,
-        faultType: scenario.fault.type,
+        faultTypes: scenario.faults.map((entry) => entry.fault.type),
         misdiagnoses,
         hintsUsed,
       });
@@ -297,6 +344,7 @@ export const useDiagnosisStore = create<DiagnosisState>((set, get) => ({
       misdiagnoses: 0,
       incompleteRepairs: 0,
       hintsUsed: 0,
+      identifiedFaultIds: [],
       selectedFaultType: null,
       selectedLocationKey: null,
       startedAt: null,
@@ -310,14 +358,20 @@ export const useDiagnosisStore = create<DiagnosisState>((set, get) => ({
    * when a confirmation is required.
    */
   requestNew: () => {
-    const { status, misdiagnoses, incompleteRepairs, hintsUsed, scenario } = get();
+    const { status, misdiagnoses, incompleteRepairs, hintsUsed, identifiedFaultIds, scenario } =
+      get();
     if (status !== 'active' || !scenario) return false;
     // Any edit to the faulted circuit counts as work in progress — the learner
     // may have already lifted a conductor while testing.
     const edited =
       useCircuitStore.getState().wires.length !== scenario.faultedCircuit.wires.length ||
       useCircuitStore.getState().components.length !== scenario.faultedCircuit.components.length;
-    const meaningful = misdiagnoses > 0 || incompleteRepairs > 0 || hintsUsed > 0 || edited;
+    const meaningful =
+      misdiagnoses > 0 ||
+      incompleteRepairs > 0 ||
+      hintsUsed > 0 ||
+      identifiedFaultIds.length > 0 ||
+      edited;
     if (meaningful) {
       set({ confirmingNew: true });
       return true;
@@ -337,6 +391,7 @@ export const useDiagnosisStore = create<DiagnosisState>((set, get) => ({
       misdiagnoses: 0,
       incompleteRepairs: 0,
       hintsUsed: 0,
+      identifiedFaultIds: [],
       selectedFaultType: null,
       selectedLocationKey: null,
       startedAt: null,
@@ -387,6 +442,14 @@ export const useDiagnosisStore = create<DiagnosisState>((set, get) => ({
         misdiagnoses: record.misdiagnoses,
         incompleteRepairs: record.incompleteRepairs,
         hintsUsed: record.hintsUsed,
+        // Filtered against the regenerated scenario: `challengeId` already
+        // matched, so these ids belong to it, but a defensive filter keeps a
+        // hand-edited record from parking a phantom id in the progress list.
+        identifiedFaultIds: record.identifiedFaultIds
+          ? record.identifiedFaultIds.filter((id) =>
+              scenario.faults.some((entry) => entry.fault.id === id),
+            )
+          : [],
         selectedFaultType: null,
         selectedLocationKey: null,
         startedAt: Date.now(),
@@ -414,6 +477,7 @@ function persistProgress(
     misdiagnoses: number;
     incompleteRepairs: number;
     hintsUsed: number;
+    identifiedFaultIds: readonly string[];
     startedAt: number | null;
     elapsedMs: number;
   },
@@ -431,6 +495,11 @@ function persistProgress(
     misdiagnoses: progress.misdiagnoses,
     incompleteRepairs: progress.incompleteRepairs,
     hintsUsed: progress.hintsUsed,
+    // Omitted when empty so a single-fault record stays byte-identical to the
+    // pre-multi-fault shape.
+    ...(progress.identifiedFaultIds.length > 0
+      ? { identifiedFaultIds: [...progress.identifiedFaultIds] }
+      : {}),
     startedAt: progress.startedAt ?? Date.now(),
     elapsedMs: progress.elapsedMs,
   });
