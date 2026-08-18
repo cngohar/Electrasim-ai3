@@ -11,6 +11,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — Session 2026-08-18 (v2 Phase B): Generator stress test — **FOUNDATION LOCK**
+
+Phase B of the v2 plan (§56 generator stress test, §57 foundation gate). No new product surface: this phase proves the Phase A generator is a foundation the remaining phases can be built on, then locks that guarantee into CI. **Phase C (Challenge Mode) is now unblocked.**
+
+- **New `scripts/stress-challenge-generator.ts`** (`npm run stress:generator`) — fuzzes the generator far beyond what the unit suite can afford and drives every candidate through the complete challenge loop: **generate → validate → inject fault → verify symptom → repair → verify recovery → replay**. One run covers **3,726 challenges, 223,656 fault injections and 414,574 verified repairs in ~35 s**, across four sweeps:
+  1. **Seed fuzz** — 750 seeds × 3 difficulties, recipe chosen by the generator.
+  2. **Pinned recipes** — 120 seeds × 12 recipes, so rare recipes get equal coverage rather than weight-proportional coverage.
+  3. **Adversarial seeds** — `0`, negatives, fractional, `2^32` wrap-around, `MAX_SAFE_INTEGER`, `NaN`, `±Infinity`.
+  4. **Identity collision resistance** — 60,000 identities checked against a 4× birthday-bound budget.
+- **Invariants asserted per candidate** (any breach exits non-zero): baseline simulation and BS 7671 validation stay clean; declared loads energise at rest; deterministic replay is byte-identical; a `generatorVersion` bump diverges; identity recomputes from metadata alone; every wire routes orthogonally; the circuit survives a JSON round trip; every fault is observable, is never reported resolved while injected, and fully recovers on repair.
+- **Timing budgets enforced by the script** — generation median ≤ 5 ms and p95 ≤ 20 ms per difficulty, full-loop p95 ≤ 120 ms. Measured: generation median **0.24 / 0.31 / 0.63 ms** and p95 **0.41 / 0.51 / 1.00 ms** (beginner / intermediate / advanced); full-loop p95 **6.0 / 13.1 / 28.7 ms**. **Zero generation failures and zero retries** across every sweep.
+- **New `src/domain/challenges/generator/foundation.test.ts` (+63 tests)** — the cheap CI mirror of the sweep, so a regression fails `npm test` instead of waiting for the stress run. Covers the §56 loop on 12 seeds per difficulty × 9 fault kinds, plus render/persistence guarantees and a pinned 5-seed regression fixture for each of the 12 recipes.
+- **Harness discipline (§57):** fault injection lives only in the script and the test file — never in `src/domain/challenges/generator/**`. The generator still emits clean, fault-free circuits; the existing `src/domain/faults` and `src/domain/simulation` engines do the fault work, with no duplicate fault model introduced.
+- **Findings:** no topology or layout defects were found. Two candidate issues were investigated and dismissed with evidence — recipes whose components share a row do *not* produce wires crossing component bodies (the editor's obstacle-aware router resolves all 6,802 sampled wires with **0 diagonal fallbacks**), and `open-earth` is documented as *deliberately* behaviourally silent (a safety defect, not a functional one) and exempted from the observability rule rather than papered over.
+- **Negative controls:** the harness was verified to actually fail — determinism, observability, recovery and budget checks were each individually broken and each produced the expected non-zero exit.
+- Tests: **44 files / 550 tests** (up from 43/487). Typecheck and lint clean.
+
 ### Added — Session 2026-08-18 (v2 Phase A): Deterministic challenge circuit generator
 
 Foundation for the ElectraSim v2 learning modes (Circuit Generator → Challenge Mode → Diagnosis Lab → Ohmageddon). **Phase A only** — the generator stops at a valid circuit; no faults, no challenge scoring, no Ohmageddon (v2 plan §7, §51).

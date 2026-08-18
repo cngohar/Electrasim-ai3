@@ -17,6 +17,39 @@ Format per entry:
 
 ---
 
+## 2026-08-18 — ElectraSim v2 Phase B — Generator Stress Test → **FOUNDATION LOCK**
+
+Phase B of the v2 plan (§56 stress test, §57 foundation gate). No new product surface — the job was to try hard to break the Phase A generator, fix whatever broke, and then lock the guarantees into CI so later phases can build on them without re-litigating.
+
+**Done:**
+- **`scripts/stress-challenge-generator.ts`** (`npm run stress:generator`, run via `node --import tsx` like `benchmark:simulation`; `scripts/` stays outside `tsconfig` `include`, matching the existing convention). Four sweeps: 750 seeds × 3 difficulties, 120 seeds × 12 pinned recipes, 12 adversarial seed values × 3 difficulties, and 60,000 identity hashes. Flags: `--seeds=N`, `--verbose`.
+- **Full §56 loop per candidate**, not just generation: baseline simulate + `validateCircuit` → inject fault → assert an observable electrical symptom → repair (both *clear the fault* and *delete the faulted wire*) → assert exact recovery to the pre-fault state → deterministic replay → generator-version divergence → identity recomputation from metadata alone. Plus render routability and a JSON persistence round trip.
+- **9 fault kinds** exercised on every wire, port and protective device of every candidate: `open-circuit`, `open-live`, `open-neutral`, `short-circuit`, `earth-fault`, `live-to-earth`, `reverse-polarity`, `terminal-disconnect`, `protection-forced-open`.
+- **`src/domain/challenges/generator/foundation.test.ts` (+63 tests)** — the same invariants at CI scale (12 seeds per difficulty, plus 5 pinned seeds per recipe as regression fixtures), so a regression fails `npm test` rather than waiting for the stress run.
+
+**Results:** 3,726 challenges generated, **223,656 fault injections, 414,574 verified repairs, zero invariant failures, zero generation failures, zero retries** — in ~35 s.
+
+**Findings — nothing needed fixing, and two false alarms were dismissed with evidence:**
+1. Two recipes (`intermediate-socket-and-light`, `advanced-distribution-board`) place components on a shared row such that a naive straight-line test says a wire crosses a third component's body. Ran all 6,802 sampled wires through the editor's actual router (`computeOrthogonalPath` + `collectObstacles`): **0 diagonal fallbacks**, every path axis-aligned. The router routes around them; the layout is fine. Locked in as an assertion rather than left as an assumption.
+2. `open-earth` is the one fault with no functional symptom on a TN circuit with no earth-referenced measurement — it is a *safety* defect. Documented and explicitly exempted (`BEHAVIOURALLY_SILENT_FAULTS`) instead of being hidden by a weaker observability rule. Every other fault kind is observable **100 %** of the time.
+3. `isFaultResolved` correctly returns `false` when a *component* is deleted while a fault still targets one of its wires — verified deliberately, since Diagnosis Lab will depend on that edge.
+
+**Negative controls (the harness must be able to fail):** individually broke determinism (2,994 failures), fault observability (85,484), repair recovery (170,968) and the p95 budget — each produced the expected non-zero exit. The green run is meaningful.
+
+**Gates:** typecheck clean; biome clean on all new files (the 4 remaining repo warnings are pre-existing, in unrelated UI code); **44 test files / 550 tests pass** (up from 43/487, +63, no regressions).
+
+**§57 Generator Foundation Gate — walked explicitly, all satisfied:** deterministic per seed ✓ · versioned and divergent on bump ✓ · all three difficulties ✓ · structural + electrical + baseline-simulation validation ✓ · bounded retries with graceful failure ✓ · large-batch validity ✓ · every fault kind observable and repairable ✓ · circuits render and persist ✓ · no challenge/diagnosis/fault/Ohmageddon logic inside the generator ✓ · no duplicate circuit or fault model ✓.
+
+> **FOUNDATION LOCK declared.** The generator is now a fixed contract. Phase C (Challenge Mode) is unblocked.
+
+**Next:** Phase C — Challenge Mode on top of the locked generator (objectives, scoring, hint budget, par time), consuming the existing `difficulty/profiles.ts` learning knobs.
+
+**Blockers / Notes:** Fault injection deliberately stays a harness concern (script + test only) so the §57 gate keeps holding as later phases land. Any future change to the generator must keep `npm run stress:generator` green.
+
+**Perf:** generation median 0.24 / 0.31 / 0.63 ms and p95 0.41 / 0.51 / 1.00 ms (beginner / intermediate / advanced); full challenge-loop p95 6.0 / 13.1 / 28.7 ms. Budgets enforced in-script at 5 ms median, 20 ms p95 generation and 120 ms p95 loop.
+
+---
+
 ## 2026-08-18 — ElectraSim v2 Phase A — Circuit Generator Foundation
 
 Started the ElectraSim v2 plan (Circuit Generator → Challenge → Diagnosis → Ohmageddon). This session covers **Phase A only**, which the plan ends with a hard STOP before Challenge Mode (§51).
