@@ -1,5 +1,7 @@
 # ElectraSim Component Coverage Audit
 
+> **Status update (2026-08-18):** All recommended components from this audit have now been **implemented**. The registry grew from 91 → **115** components. See the "Resolution" section at the bottom.
+
 **Date:** 2026-08-17 · **Scope:** Compare the component registry/palette against real-world domestic (UK) electrical installation components. Sources: IET/BS 7671 references, Electrical Safety First, consumer-unit guides, DIY Wiki house-wiring guide.
 
 ---
@@ -69,3 +71,26 @@ These are **fixed permanent circuits / accessories** that a domestic electrician
 4. **KWh electricity meter** — completes the supply-entry model.
 5. **Surface `fused-spur` + `afdd` in the palette.**
 6. (Next tier) Earth rod, shaver socket, extractor hood, underfloor heating, storage heater, heat pump, white goods, burglar alarm.
+
+---
+
+## Resolution (2026-08-18) — All gaps implemented
+
+All recommended components are now in the registry, palette, and (where applicable) SVG art + component help:
+
+**New fixed circuits / loads:**
+- `electric-shower` (8.5kW dedicated circuit)
+- `immersion-heater` (3kW, 16A circuit)
+- `smoke-alarm` (BS 5839-6 safety circuit)
+- `kwh-meter` (supply-entry pass-through)
+- `extractor-hood`, `underfloor-heating`, `storage-heater`, `heat-pump`
+- White goods: `dishwasher`, `washing-machine`, `tumble-dryer`, `fridge-freezer`
+- `burglar-alarm`
+
+**New supply / protection / socket:**
+- `earth-rod` (TT earthing), `main-switch` (standalone isolator), `shaver-socket` (bathroom, Reg 701)
+
+**Surfaced in the palette (previously hidden pro-tier):**
+- `fused-spur` (FCU 13A), `afdd`, `mcb-type-c`, `mcb-type-d`, `mccb`, `diesel-generator`, `rotary-selector-switch`, `smart-relay`
+
+**Result:** registry 91 → **115 components**; typecheck clean, 327 unit + 39 e2e pass.

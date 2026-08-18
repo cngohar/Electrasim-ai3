@@ -104,6 +104,37 @@ export const HVAC_SOUNDER_AND_DISTRIBUTION_DEFS: Record<string, ComponentDef> = 
     icon: '🔔',
   },
 
+  // ─── Fire / safety detection (audit-report additions) ─────────────────
+  'smoke-alarm': {
+    label: 'Smoke / Heat / CO Alarm',
+    description:
+      'Interlinked mains smoke, heat and carbon-monoxide detector on a dedicated safety circuit (BS 5839-6 Grade D).',
+    category: 'sounder',
+    isLoad: true,
+    powerWatts: 2,
+    recommendedCableMm2: 1.0,
+    ports: [
+      { type: 'live', relX: 0, relY: 0.5, label: 'L' },
+      { type: 'neutral', relX: 1, relY: 0.5, label: 'N' },
+    ],
+    icon: '🚨',
+  },
+
+  'burglar-alarm': {
+    label: 'Burglar Alarm Panel',
+    description: 'Intruder alarm control panel with perimeter detectors on a dedicated circuit.',
+    category: 'sounder',
+    isLoad: true,
+    powerWatts: 20,
+    tier: 'pro',
+    recommendedCableMm2: 1.0,
+    ports: [
+      { type: 'live', relX: 0, relY: 0.5, label: 'L' },
+      { type: 'neutral', relX: 1, relY: 0.5, label: 'N' },
+    ],
+    icon: '🚨',
+  },
+
   'motor-3phase': {
     label: '3-Phase AC Induction Motor (3kW / 4HP)',
     description: 'Heavy industrial 3-phase asynchronous squirrel-cage motor for machinery.',

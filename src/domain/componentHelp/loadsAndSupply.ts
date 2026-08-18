@@ -9,6 +9,77 @@
 import type { ComponentHelpData } from './types';
 
 export const LOAD_AND_SUPPLY_HELP: Record<string, ComponentHelpData> = {
+  'electric-shower': {
+    title: 'Instantaneous Electric Shower (8.5kW)',
+    category: 'load',
+    voltage: '230V AC Single-Phase',
+    amperage: '37.0A (max rating)',
+    powerWatts: 8500,
+    frequency: '50Hz',
+    ipRating: 'IPX4 (bathroom splash zone)',
+    cableSize: '10mm² dedicated cable',
+    poles: 'Live, Neutral, Earth',
+    standards: 'BS 7671 · BS EN 60335-2-35',
+    overview:
+      'Instantaneous electric shower that heats mains water at the point of use. A high-power fixed load that always needs a dedicated, RCD-protected high-current circuit.',
+    circuitBehavior:
+      'Draws up to 37A at full power (8.5kW / 230V). In-rush is resistive and stable, but the sustained high current demands a correctly sized 32-40A MCB and 10mm² cable.',
+    keySpecs: [
+      'Power: 8,500W (8.5kW)',
+      'Current: up to 37A at 230V AC',
+      'Must be on a dedicated circuit (never a shared ring)',
+    ],
+    quickTips: [
+      'Requires a dedicated 32A or 40A MCB/RCBO with 30mA RCD protection.',
+      'Fit a double-pole isolation switch (pull-cord or flush) within easy reach.',
+      'Use 10mm² cable and verify Ze / Zs meet disconnection times.',
+    ],
+  },
+  'immersion-heater': {
+    title: 'Hot-Water Immersion Heater (3kW)',
+    category: 'load',
+    voltage: '230V AC Single-Phase',
+    amperage: '13.0A continuous',
+    powerWatts: 3000,
+    frequency: '50Hz',
+    ipRating: 'IPX4',
+    cableSize: '2.5mm² heat-resistant',
+    poles: 'Live, Neutral, Earth',
+    standards: 'BS EN 60335-2-21 / BS 7671',
+    overview:
+      'Immersion heating element for domestic hot-water cylinders, wired on its own circuit with double-pole isolation.',
+    circuitBehavior:
+      'Continuous resistive load (PF=1.00) of 13A until the thermostat reaches the set temperature.',
+    keySpecs: ['Power: 3,000W', 'Current: 13A at 230V', 'Dual-pole thermostat + thermal cut-out'],
+    quickTips: [
+      'Use a dedicated 16A radial circuit.',
+      'Fit a 20A double-pole isolator with neon indicator nearby.',
+    ],
+  },
+  'kwh-meter': {
+    title: 'Electricity Meter (kWh)',
+    category: 'supply',
+    voltage: '230V AC (single-phase)',
+    amperage: '100A max',
+    frequency: '50Hz',
+    ipRating: 'IP54 (utility box)',
+    cableSize: 'Utility-supplied tails',
+    poles: 'Live in/out, Neutral in/out',
+    standards: 'BS EN 50470 · MID (Measuring Instruments Directive)',
+    overview:
+      'The incoming energy meter that sits between the utility supply and the consumer unit. A pass-through measuring point, not a protective device.',
+    circuitBehavior:
+      'Passes supply through while measuring energy. It does not trip or isolate — protection happens downstream in the consumer unit.',
+    keySpecs: [
+      'Registers active energy in kWh',
+      'Pass-through (no interruption of supply)',
+      'Located on the supply side of the consumer unit',
+    ],
+    quickTips: [
+      'Model the meter between the supply terminals and the main switch.',
+      'It is a junction/pass-through, not an isolator.',
+    ],
+  },
   'water-heater': {
     title: 'Storage Water Heater / Immersion Element (3kW)',
     category: 'load',

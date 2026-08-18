@@ -56,6 +56,22 @@ export const DEFAULT_ART_TYPES = new Set([
   'socket-as3112-double',
   'socket-bs546',
   'socket-bs546-double',
+  'electric-shower',
+  'immersion-heater',
+  'smoke-alarm',
+  'kwh-meter',
+  'main-switch',
+  'earth-rod',
+  'shaver-socket',
+  'storage-heater',
+  'underfloor-heating',
+  'heat-pump',
+  'extractor-hood',
+  'dishwasher',
+  'washing-machine',
+  'tumble-dryer',
+  'fridge-freezer',
+  'burglar-alarm',
 ]);
 
 const ART: Record<string, string> = {
@@ -711,6 +727,220 @@ const ART: Record<string, string> = {
     <!-- Heat sink fins hint -->
     <rect x="28" y="6" width="8" height="3" rx="1" fill="#94a3b8"/>
     <rect x="28" y="10" width="8" height="3" rx="1" fill="#94a3b8"/>
+  `),
+
+  // ─── Electric shower unit ──────────────────────────────────────────────
+  'electric-shower': S(`
+    <defs>
+      <linearGradient id="${T('electricshower')}body" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#e2e8f0"/>
+      </linearGradient>
+    </defs>
+    <rect x="12" y="10" width="40" height="44" rx="6" fill="url(#${T('electricshower')}body)" stroke="#94a3b8" stroke-width="2"/>
+    <rect x="17" y="15" width="30" height="22" rx="3" fill="#e0f2fe" stroke="#0ea5e9" stroke-width="1.5"/>
+    <rect x="21" y="19" width="22" height="14" rx="2" fill="#0ea5e9"/>
+    <text x="32" y="28" text-anchor="middle" font-size="7" font-weight="900" fill="#ffffff" font-family="ui-monospace,monospace">SHOWER</text>
+    <circle cx="22" cy="30" r="1.5" fill="#e0f2fe"/><circle cx="42" cy="30" r="1.5" fill="#e0f2fe"/>
+    <rect x="22" y="41" width="7" height="6" rx="2" fill="#0ea5e9"/>
+    <rect x="35" y="41" width="7" height="6" rx="2" fill="#0ea5e9"/>
+    <circle cx="25.5" cy="44" r="1" fill="#ffffff"/><circle cx="38.5" cy="44" r="1" fill="#ffffff"/>
+  `),
+
+  // ─── Immersion heater ──────────────────────────────────────────────────
+  'immersion-heater': S(`
+    <defs>
+      <linearGradient id="${T('immersionheater')}tank" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#94a3b8"/><stop offset="0.5" stop-color="#cbd5e1"/><stop offset="1" stop-color="#64748b"/>
+      </linearGradient>
+    </defs>
+    <rect x="18" y="12" width="28" height="34" rx="6" fill="url(#${T('immersionheater')}tank)" stroke="#475569" stroke-width="1.5"/>
+    <line x1="24" y1="20" x2="40" y2="20" stroke="#e2e8f0" stroke-width="1.5"/>
+    <line x1="24" y1="38" x2="40" y2="38" stroke="#e2e8f0" stroke-width="1.5"/>
+    <!-- Immersion element head -->
+    <rect x="28" y="8" width="8" height="7" rx="2" fill="#dc2626"/>
+    <circle cx="32" cy="4" r="2.5" fill="#ef4444"/>
+    <rect x="4" y="42" width="56" height="6" rx="3" fill="#64748b"/>
+    <circle cx="8" cy="45" r="1.5" fill="#e2e8f0"/><circle cx="56" cy="45" r="1.5" fill="#e2e8f0"/>
+  `),
+
+  // ─── Smoke / heat / CO alarm ───────────────────────────────────────────
+  'smoke-alarm': S(`
+    <defs>
+      <radialGradient id="${T('smokealarm')}face" cx="0.4" cy="0.35" r="1">
+        <stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#e2e8f0"/>
+      </radialGradient>
+    </defs>
+    <circle cx="32" cy="32" r="24" fill="url(#${T('smokealarm')}face)" stroke="#94a3b8" stroke-width="2"/>
+    <circle cx="32" cy="32" r="18" fill="#f1f5f9" stroke="#cbd5e1" stroke-width="1.5"/>
+    <circle cx="32" cy="32" r="6" fill="#fde68a" stroke="#f59e0b" stroke-width="1.5"/>
+    <!-- Detector slots -->
+    <circle cx="24" cy="26" r="1.5" fill="#94a3b8"/><circle cx="40" cy="26" r="1.5" fill="#94a3b8"/>
+    <circle cx="24" cy="38" r="1.5" fill="#94a3b8"/><circle cx="40" cy="38" r="1.5" fill="#94a3b8"/>
+    <!-- Test button -->
+    <rect x="29" y="15" width="6" height="5" rx="1.5" fill="#ef4444"/>
+  `),
+
+  // ─── Electricity (kWh) meter ───────────────────────────────────────────
+  'kwh-meter': S(`
+    <defs>
+      <linearGradient id="${T('kwhmeter')}body" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#1e293b"/><stop offset="1" stop-color="#0f172a"/>
+      </linearGradient>
+    </defs>
+    <rect x="10" y="12" width="44" height="40" rx="6" fill="url(#${T('kwhmeter')}body)" stroke="#475569" stroke-width="2"/>
+    <rect x="15" y="17" width="34" height="16" rx="2" fill="#082f49"/>
+    <text x="32" y="29" text-anchor="middle" font-size="9" font-weight="900" fill="#4ade80" font-family="ui-monospace,monospace">kWh</text>
+    <rect x="15" y="37" width="10" height="7" rx="2" fill="#334155"/>
+    <rect x="39" y="37" width="10" height="7" rx="2" fill="#334155"/>
+    <rect x="18" y="40" width="4" height="1" fill="#64748b"/>
+    <rect x="42" y="40" width="4" height="1" fill="#64748b"/>
+    <circle cx="32" cy="47" r="1.2" fill="#38bdf8"/>
+  `),
+
+  // ─── Main switch (standalone) ──────────────────────────────────────────
+  'main-switch': S(`
+    <defs>
+      <linearGradient id="${T('mainswitch')}body" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#e2e8f0"/>
+      </linearGradient>
+    </defs>
+    <rect x="14" y="8" width="36" height="48" rx="6" fill="url(#${T('mainswitch')}body)" stroke="#475569" stroke-width="2"/>
+    <rect x="20" y="16" width="24" height="30" rx="4" fill="#e2e8f0"/>
+    <rect x="25" y="22" width="14" height="18" rx="3" fill="#dc2626"/>
+    <rect x="28" y="26" width="8" height="10" rx="2" fill="#ffffff" opacity="0.25"/>
+    <text x="32" y="56" text-anchor="middle" font-size="6" font-weight="800" fill="#0f172a" font-family="ui-monospace,monospace">MAIN</text>
+  `),
+
+  // ─── Earth rod / electrode ─────────────────────────────────────────────
+  'earth-rod': S(`
+    <defs>
+      <linearGradient id="${T('earthrod')}rod" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#94a3b8"/><stop offset="1" stop-color="#475569"/>
+      </linearGradient>
+    </defs>
+    <rect x="30" y="12" width="4" height="30" fill="url(#${T('earthrod')}rod)"/>
+    <path d="M28 14 h8 M28 26 h8 M28 38 h8" stroke="#facc15" stroke-width="2"/>
+    <path d="M8 42 h48 M12 46 h40 M16 50 h32" stroke="#64748b" stroke-width="2" stroke-linecap="round"/>
+    <circle cx="32" cy="8" r="3" fill="#facc15"/>
+  `),
+
+  // ─── Shaver socket (bathroom) ──────────────────────────────────────────
+  'shaver-socket': S(`
+    <defs>
+      <linearGradient id="${T('shaversocket')}face" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#e2e8f0"/>
+      </linearGradient>
+    </defs>
+    <rect x="12" y="8" width="40" height="48" rx="9" fill="url(#${T('shaversocket')}face)" stroke="#94a3b8" stroke-width="2"/>
+    <circle cx="17" cy="13" r="1.5" fill="#cbd5e1"/><circle cx="47" cy="13" r="1.5" fill="#cbd5e1"/>
+    <circle cx="17" cy="51" r="1.5" fill="#cbd5e1"/><circle cx="47" cy="51" r="1.5" fill="#cbd5e1"/>
+    <!-- Shaver 2-pin recess -->
+    <circle cx="32" cy="32" r="14" fill="#cbd5e1"/>
+    <rect x="27" y="26" width="3" height="12" rx="1.5" fill="#0f172a"/>
+    <rect x="34" y="26" width="3" height="12" rx="1.5" fill="#0f172a"/>
+    <circle cx="32" cy="22" r="1.5" fill="#eab308"/>
+  `),
+
+  // ─── Storage heater ────────────────────────────────────────────────────
+  'storage-heater': S(`
+    <defs>
+      <linearGradient id="${T('storageheater')}body" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#cbd5e1"/><stop offset="1" stop-color="#94a3b8"/>
+      </linearGradient>
+    </defs>
+    <rect x="8" y="16" width="48" height="32" rx="6" fill="url(#${T('storageheater')}body)" stroke="#475569" stroke-width="2"/>
+    <!-- Bricks/vent slots -->
+    <rect x="14" y="22" width="36" height="4" rx="1" fill="#64748b"/>
+    <rect x="14" y="30" width="36" height="4" rx="1" fill="#64748b"/>
+    <rect x="14" y="38" width="36" height="4" rx="1" fill="#64748b"/>
+    <rect x="6" y="46" width="52" height="5" rx="2" fill="#64748b"/>
+  `),
+
+  // ─── Underfloor heating ────────────────────────────────────────────────
+  'underfloor-heating': S(`
+    <defs>
+      <linearGradient id="${T('underfloorheating')}floor" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#e2e8f0"/><stop offset="1" stop-color="#cbd5e1"/>
+      </linearGradient>
+    </defs>
+    <rect x="6" y="20" width="52" height="14" rx="3" fill="url(#${T('underfloorheating')}floor)" stroke="#94a3b8" stroke-width="1.5"/>
+    <path d="M12 27 h6 M24 27 h6 M36 27 h6 M48 27 h6" stroke="#ef4444" stroke-width="2.5" stroke-linecap="round"/>
+    <!-- Thermostat control -->
+    <rect x="24" y="8" width="16" height="9" rx="2" fill="#0f172a"/>
+    <circle cx="32" cy="12.5" r="2" fill="#4ade80"/>
+    <path d="M20 38 h24" stroke="#94a3b8" stroke-width="2"/>
+  `),
+
+  // ─── Heat pump ─────────────────────────────────────────────────────────
+  'heat-pump': S(`
+    <defs>
+      <linearGradient id="${T('heatpump')}body" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#e0f2fe"/><stop offset="1" stop-color="#7dd3fc"/>
+      </linearGradient>
+    </defs>
+    <rect x="10" y="14" width="44" height="36" rx="4" fill="url(#${T('heatpump')}body)" stroke="#0284c7" stroke-width="2"/>
+    <circle cx="32" cy="32" r="14" fill="#f0f9ff" stroke="#0ea5e9" stroke-width="1.5"/>
+    <path d="M32 22 L32 42 M22 32 L42 32" stroke="#38bdf8" stroke-width="2.5"/>
+    <circle cx="32" cy="32" r="3" fill="#0284c7"/>
+    <rect x="16" y="50" width="32" height="4" rx="2" fill="#64748b"/>
+  `),
+
+  // ─── Extractor hood ────────────────────────────────────────────────────
+  'extractor-hood': S(`
+    <defs>
+      <linearGradient id="${T('extractorhood')}body" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#f1f5f9"/><stop offset="1" stop-color="#cbd5e1"/>
+      </linearGradient>
+    </defs>
+    <path d="M16 20 L48 20 L56 40 L8 40 Z" fill="url(#${T('extractorhood')}body)" stroke="#64748b" stroke-width="1.5"/>
+    <rect x="24" y="40" width="16" height="6" rx="2" fill="#94a3b8"/>
+    <circle cx="32" cy="30" r="9" fill="#e2e8f0" stroke="#94a3b8" stroke-width="1.5"/>
+    <path d="M32 23 L32 37 M25 30 L39 30" stroke="#64748b" stroke-width="2"/>
+    <circle cx="32" cy="30" r="2.5" fill="#0284c7"/>
+    <line x1="28" y1="18" x2="36" y2="18" stroke="#94a3b8" stroke-width="2"/>
+  `),
+
+  // ─── White goods (dishwasher / washer / dryer / fridge) ────────────────
+  dishwasher: S(`
+    <rect x="14" y="10" width="36" height="44" rx="4" fill="#f1f5f9" stroke="#64748b" stroke-width="1.5"/>
+    <rect x="18" y="14" width="28" height="22" rx="3" fill="#e2e8f0"/>
+    <path d="M20 18 L24 28 L30 20 L36 30 L42 22" fill="none" stroke="#38bdf8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    <rect x="28" y="40" width="8" height="10" rx="2" fill="#cbd5e1"/>
+  `),
+  'washing-machine': S(`
+    <rect x="14" y="10" width="36" height="44" rx="4" fill="#f1f5f9" stroke="#64748b" stroke-width="1.5"/>
+    <circle cx="32" cy="28" r="12" fill="#e0f2fe" stroke="#0ea5e9" stroke-width="2"/>
+    <circle cx="32" cy="28" r="6" fill="#bae6fd" stroke="#38bdf8" stroke-width="1"/>
+    <rect x="27" y="44" width="10" height="4" rx="1.5" fill="#cbd5e1"/>
+  `),
+  'tumble-dryer': S(`
+    <rect x="14" y="10" width="36" height="44" rx="4" fill="#f1f5f9" stroke="#64748b" stroke-width="1.5"/>
+    <circle cx="32" cy="28" r="12" fill="#fff7ed" stroke="#d97706" stroke-width="2"/>
+    <path d="M32 18 L26 28 L32 38 L38 28 Z" fill="none" stroke="#f59e0b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    <circle cx="32" cy="28" r="2" fill="#d97706"/>
+    <rect x="27" y="44" width="10" height="4" rx="1.5" fill="#cbd5e1"/>
+  `),
+  'fridge-freezer': S(`
+    <rect x="14" y="8" width="36" height="48" rx="4" fill="#f1f5f9" stroke="#64748b" stroke-width="1.5"/>
+    <rect x="18" y="12" width="28" height="20" rx="2" fill="#e0f2fe" stroke="#0ea5e9" stroke-width="1"/>
+    <rect x="21" y="15" width="22" height="14" rx="2" fill="#bae6fd"/>
+    <line x1="21" y1="24" x2="43" y2="24" stroke="#7dd3fc" stroke-width="1.5"/>
+    <rect x="18" y="34" width="28" height="18" rx="2" fill="#cffafe" stroke="#0ea5e9" stroke-width="1"/>
+    <rect x="21" y="37" width="22" height="12" rx="2" fill="#e0f2fe"/>
+    <rect x="36" y="40" width="4" height="6" rx="1" fill="#94a3b8"/>
+  `),
+
+  // ─── Burglar alarm ─────────────────────────────────────────────────────
+  'burglar-alarm': S(`
+    <defs>
+      <linearGradient id="${T('burglaralarm')}body" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#f8fafc"/><stop offset="1" stop-color="#e2e8f0"/>
+      </linearGradient>
+    </defs>
+    <rect x="12" y="14" width="40" height="36" rx="6" fill="url(#${T('burglaralarm')}body)" stroke="#475569" stroke-width="2"/>
+    <rect x="17" y="19" width="30" height="10" rx="2" fill="#0f172a"/>
+    <circle cx="24" cy="24" r="1.5" fill="#4ade80"/><circle cx="31" cy="24" r="1.5" fill="#4ade80"/><circle cx="38" cy="24" r="1.5" fill="#4ade80"/>
+    <path d="M22 34 h20 M26 40 h12" stroke="#ef4444" stroke-width="2.5" stroke-linecap="round"/>
   `),
 
   // ─── Fluorescent tube ──────────────────────────────────────────────────

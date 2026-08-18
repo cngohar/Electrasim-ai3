@@ -171,4 +171,159 @@ export const FAN_AND_LOAD_DEFS: Record<string, ComponentDef> = {
     ],
     icon: '🚗',
   },
+
+  // ─── Fixed permanent domestic circuits (audit-report additions) ──────
+  'electric-shower': {
+    label: 'Electric Shower Unit (8.5kW)',
+    description:
+      'Instantaneous electric shower. A dedicated high-current (32–40 A / 10 mm²) RCD-protected circuit with a pull-cord isolation switch is required.',
+    category: 'load',
+    isLoad: true,
+    powerWatts: 8500,
+    recommendedCableMm2: 10.0,
+    proNotes: 'BS 7671 — dedicated high-current circuit, 30 mA RCD + double-pole isolation.',
+    ports: [
+      { type: 'live', relX: 0, relY: 0.25, label: 'L' },
+      { type: 'neutral', relX: 0, relY: 0.5, label: 'N' },
+      { type: 'earth', relX: 0, relY: 0.75, label: 'E' },
+    ],
+    icon: '🚿',
+  },
+
+  'immersion-heater': {
+    label: 'Immersion Heater (3.0kW)',
+    description:
+      'Hot-water immersion heating element on a dedicated 16 A circuit with double-pole isolation.',
+    category: 'load',
+    isLoad: true,
+    powerWatts: 3000,
+    recommendedCableMm2: 2.5,
+    proNotes: 'Dedicated 16 A circuit, double-pole isolation switch.',
+    ports: [
+      { type: 'live', relX: 0, relY: 0.5, label: 'L' },
+      { type: 'neutral', relX: 1, relY: 0.5, label: 'N' },
+    ],
+    icon: '♨️',
+  },
+
+  'extractor-hood': {
+    label: 'Kitchen Extractor Hood (300W)',
+    description: 'Range hood with extraction fan and integrated lighting for the kitchen.',
+    category: 'load',
+    isLoad: true,
+    powerWatts: 300,
+    recommendedCableMm2: 1.5,
+    ports: [
+      { type: 'live', relX: 0, relY: 0.5, label: 'L' },
+      { type: 'neutral', relX: 1, relY: 0.5, label: 'N' },
+    ],
+    icon: '💨',
+  },
+
+  'underfloor-heating': {
+    label: 'Underfloor Heating (2.0kW)',
+    description:
+      'Electric underfloor heating mat or cable on a dedicated thermostat-controlled circuit.',
+    category: 'load',
+    isLoad: true,
+    powerWatts: 2000,
+    recommendedCableMm2: 2.5,
+    proNotes: 'Dedicated thermostat-controlled circuit, RCD protected.',
+    ports: [
+      { type: 'live', relX: 0, relY: 0.5, label: 'L' },
+      { type: 'neutral', relX: 1, relY: 0.5, label: 'N' },
+    ],
+    icon: '🌡️',
+  },
+
+  'storage-heater': {
+    label: 'Storage Heater (2.5kW)',
+    description:
+      'Off-peak storage heater with dual supply — an unfused off-peak radial and a fused boost/fan supply.',
+    category: 'load',
+    isLoad: true,
+    powerWatts: 2500,
+    recommendedCableMm2: 4.0,
+    proNotes: 'Off-peak dual-supply: unfused radial + fused boost/fan circuit.',
+    ports: [
+      { type: 'live', relX: 0, relY: 0.5, label: 'L' },
+      { type: 'neutral', relX: 1, relY: 0.5, label: 'N' },
+    ],
+    icon: '🔥',
+  },
+
+  'heat-pump': {
+    label: 'Air-Source Heat Pump (3.0kW)',
+    description:
+      'Modern air-source heat pump — a high-inrush compressor load for heating and hot water.',
+    category: 'load',
+    isLoad: true,
+    tier: 'pro',
+    powerWatts: 3000,
+    recommendedCableMm2: 2.5,
+    proNotes: 'C-curve breaker for compressor inrush; dedicated circuit.',
+    ports: [
+      { type: 'live', relX: 0, relY: 0.25, label: 'L' },
+      { type: 'neutral', relX: 0, relY: 0.5, label: 'N' },
+      { type: 'earth', relX: 0, relY: 0.75, label: 'E' },
+    ],
+    icon: '🌬️',
+  },
+
+  dishwasher: {
+    label: 'Dishwasher (2.2kW)',
+    description: 'Dishwasher on a dedicated kitchen small-appliance circuit.',
+    category: 'load',
+    isLoad: true,
+    powerWatts: 2200,
+    recommendedCableMm2: 2.5,
+    ports: [
+      { type: 'live', relX: 0, relY: 0.5, label: 'L' },
+      { type: 'neutral', relX: 1, relY: 0.5, label: 'N' },
+    ],
+    icon: '🍽️',
+  },
+
+  'washing-machine': {
+    label: 'Washing Machine (2.2kW)',
+    description: 'Washing machine on a dedicated appliance circuit.',
+    category: 'load',
+    isLoad: true,
+    powerWatts: 2200,
+    recommendedCableMm2: 2.5,
+    ports: [
+      { type: 'live', relX: 0, relY: 0.5, label: 'L' },
+      { type: 'neutral', relX: 1, relY: 0.5, label: 'N' },
+    ],
+    icon: '🧺',
+  },
+
+  'tumble-dryer': {
+    label: 'Tumble Dryer (2.5kW)',
+    description: 'Vented or condenser tumble dryer on a dedicated appliance circuit.',
+    category: 'load',
+    isLoad: true,
+    powerWatts: 2500,
+    recommendedCableMm2: 2.5,
+    ports: [
+      { type: 'live', relX: 0, relY: 0.5, label: 'L' },
+      { type: 'neutral', relX: 1, relY: 0.5, label: 'N' },
+    ],
+    icon: '🌀',
+  },
+
+  'fridge-freezer': {
+    label: 'Fridge Freezer (200W)',
+    description:
+      'Fridge/freezer — a small appliance circuit often left on its own to avoid disturbance.',
+    category: 'load',
+    isLoad: true,
+    powerWatts: 200,
+    recommendedCableMm2: 1.5,
+    ports: [
+      { type: 'live', relX: 0, relY: 0.5, label: 'L' },
+      { type: 'neutral', relX: 1, relY: 0.5, label: 'N' },
+    ],
+    icon: '🧊',
+  },
 };

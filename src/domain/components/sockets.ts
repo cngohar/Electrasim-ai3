@@ -205,6 +205,21 @@ export const SOCKET_DEFS: Record<string, ComponentDef> = {
     ],
     icon: '⏚',
   },
+  'shaver-socket': {
+    label: 'Shaver Socket (Bathroom)',
+    description: 'Bathroom shaver outlet with isolating transformer and earth socket (Reg 701).',
+    category: 'socket',
+    isSocket: true,
+    powerWatts: 20,
+    recommendedCableMm2: 1.5,
+    ports: [
+      { type: 'live', relX: 0, relY: 0.25, label: 'L' },
+      { type: 'neutral', relX: 0, relY: 0.5, label: 'N' },
+      { type: 'earth', relX: 0, relY: 0.75, label: 'E' },
+    ],
+    icon: '🪒',
+  },
+
   'socket-bs546-double': {
     label: 'BS 546 Twin Socket',
     description: 'Twin round-pin 3-pin sockets for India / South Africa.',

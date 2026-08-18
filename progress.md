@@ -17,6 +17,19 @@ Format per entry:
 
 ---
 
+## 2026-08-18 (follow-up 17) — Missing real-world components (audit resolution)
+
+Implemented every component recommended in `COMPONENT_AUDIT_REPORT.md`. Registry 91 → 115.
+
+**Added loads/fixed circuits:** `electric-shower` (8.5kW dedicated), `immersion-heater` (3kW), `smoke-alarm` (BS 5839-6), `kwh-meter` (supply entry pass-through), `extractor-hood`, `underfloor-heating`, `storage-heater`, `heat-pump`, white goods (`dishwasher`, `washing-machine`, `tumble-dryer`, `fridge-freezer`), `burglar-alarm`.
+**Added supply/protection/socket:** `earth-rod` (TT), `main-switch` (standalone), `shaver-socket` (bathroom).
+**Surfaced in palette (previously pro-tier hidden):** `fused-spur` (FCU), `afdd`, `mcb-type-c/d`, `mccb`, `diesel-generator`, `rotary-selector-switch`, `smart-relay`.
+Added near-realistic SVG art for all new components + component help for shower/immersion/kWh meter.
+
+Verified in browser: new components appear in the palette (pro-tier ones in Pro mode); typecheck clean, 327 unit + 39 e2e pass. Committed.
+
+---
+
 ## 2026-08-18 (follow-up 16) — UI / UX polish batch (server restarted)
 
 Restarted the dev server (node_modules/browsers wiped between sessions → reinstalled + relaunched on :3000). Implemented the UI/UX improvement list:

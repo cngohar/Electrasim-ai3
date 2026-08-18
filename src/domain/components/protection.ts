@@ -200,6 +200,25 @@ export const PROTECTION_DEFS: Record<string, ComponentDef> = {
     icon: '🗄️',
   },
 
+  'main-switch': {
+    label: 'Main Switch (100A)',
+    description:
+      'Standalone double-pole main switch for isolating the whole installation at the consumer unit.',
+    category: 'protection',
+    isSwitch: true,
+    isPassThrough: true,
+    isProtection: true,
+    defaultOn: true,
+    maxAmps: 100,
+    ports: [
+      { type: 'live', relX: 0, relY: 0.35, label: 'L-in' },
+      { type: 'neutral', relX: 0, relY: 0.65, label: 'N-in' },
+      { type: 'live', relX: 1, relY: 0.35, label: 'L-out' },
+      { type: 'neutral', relX: 1, relY: 0.65, label: 'N-out' },
+    ],
+    icon: '🛡️',
+  },
+
   'fused-spur': {
     label: 'Fused Connection Unit (FCU 13A)',
     description: 'Switched FCU with BS 1362 fuse for local protection of fixed appliances.',

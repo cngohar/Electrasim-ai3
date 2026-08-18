@@ -11,6 +11,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — Session 2026-08-18 (follow-up 17): Missing real-world components (audit resolution)
+- Implemented all components recommended in `COMPONENT_AUDIT_REPORT.md`. Registry grew 91 → **115 components**.
+- **Fixed circuits / loads:** `electric-shower` (8.5kW), `immersion-heater` (3kW), `smoke-alarm` (BS 5839-6), `kwh-meter` (supply entry), `extractor-hood`, `underfloor-heating`, `storage-heater`, `heat-pump`, white goods (`dishwasher`, `washing-machine`, `tumble-dryer`, `fridge-freezer`), `burglar-alarm`.
+- **Supply / protection / socket:** `earth-rod` (TT earthing), `main-switch` (standalone isolator), `shaver-socket` (bathroom, Reg 701).
+- **Surfaced in the palette** (previously hidden pro-tier): `fused-spur` (FCU 13A), `afdd`, `mcb-type-c`, `mcb-type-d`, `mccb`, `diesel-generator`, `rotary-selector-switch`, `smart-relay`.
+- Added near-realistic SVG art for the new components and specific component help for the shower / immersion heater / kWh meter.
+
 ### Added — Session 2026-08-18 (follow-up 16): UI / UX polish batch
 - **Panel layout persistence** — the palette (expanded/collapsed), inspector, and console drawer state are now remembered across reloads (previously reset every time). The palette collapse is now tied to the store's `paletteOpen`, and the Editor applies saved layout on mount.
 - **Command palette scope tabs** — the Ctrl+K palette now has **All / Actions / Components** filter tabs, so with ~80 components it's easy to browse just actions or just the addable components.

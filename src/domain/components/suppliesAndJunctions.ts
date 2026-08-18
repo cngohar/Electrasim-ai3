@@ -97,6 +97,33 @@ export const SUPPLY_AND_JUNCTION_DEFS: Record<string, ComponentDef> = {
     icon: '🏭',
   },
 
+  'kwh-meter': {
+    label: 'Electricity Meter (kWh)',
+    description:
+      'The incoming electricity meter between the utility supply and the consumer unit. A pass-through measuring point on the supply entry.',
+    category: 'supply',
+    isPassThrough: true,
+    isJunction: true,
+    ports: [
+      { type: 'live', relX: 0, relY: 0.3, label: 'L-in' },
+      { type: 'neutral', relX: 0, relY: 0.7, label: 'N-in' },
+      { type: 'live', relX: 1, relY: 0.3, label: 'L-out' },
+      { type: 'neutral', relX: 1, relY: 0.7, label: 'N-out' },
+    ],
+    icon: '🔢',
+  },
+
+  'earth-rod': {
+    label: 'Earth Rod / Electrode',
+    description:
+      'A ground electrode used for TT earthing arrangements — connects the installation earth to the ground.',
+    category: 'supply',
+    isSource: true,
+    sourceType: 'earth',
+    ports: [{ type: 'earth', relX: 1, relY: 0.5, label: 'PE' }],
+    icon: '⏚',
+  },
+
   'junction-box': {
     label: 'Junction Box (4-Way)',
     description: 'Circular junction box splitting live wiring into multiple branch outputs.',
