@@ -19,6 +19,7 @@
     "stress:challenge": "node --import tsx scripts/stress-challenge-mode.ts",
     "stress:generator": "node --import tsx scripts/stress-challenge-generator.ts",
     "stress:diagnosis": "node --import tsx scripts/stress-diagnosis.ts",
+    "stress:ohmageddon": "node --import tsx scripts/stress-ohmageddon.ts",
     "benchmark:browser": "PERF=1 playwright test e2e/performance.spec.ts --project=chromium",
     "check:perf": "node scripts/check-performance.mjs",
     "check:links": "node scripts/check-internal-links.mjs",

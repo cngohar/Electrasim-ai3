@@ -144,6 +144,7 @@ function SimulationSettings() {
   const currentFlowAnimation = useSettingsStore((state) => state.currentFlowAnimation);
   const activeLoadEffects = useSettingsStore((state) => state.activeLoadEffects);
   const reducedEffects = useSettingsStore((state) => state.reducedEffects);
+  const ohmageddonMode = useSettingsStore((state) => state.ohmageddonMode);
   const setSetting = useSettingsStore((state) => state.setSetting);
 
   return (
@@ -185,6 +186,32 @@ function SimulationSettings() {
         }
         checked={reducedEffects}
         onChange={(value) => setSetting('reducedEffects', value)}
+      />
+      {/*
+       * Ohmageddon Mode (plan §23, §24).
+       *
+       * The label and description are the plan's own words. §23 shows the
+       * control as `Ohmageddon Mode / [ OFF ]` with the line "Deliberately
+       * difficult diagnostic challenges. Enable only if you want the challenge
+       * to fight back." — reproduced rather than paraphrased, because the
+       * warning is the point: §24 requires that a normal user can never
+       * *accidentally* end up in this mode.
+       *
+       * The preview line states plainly what changes, and deliberately
+       * reassures on the one thing that does not (§26: the simulation stays
+       * honest), so nobody switches it off believing their circuits were lying
+       * to them.
+       */}
+      <ElectricToggle
+        label="😈 Ohmageddon Mode"
+        description="Deliberately difficult diagnostic challenges. Enable only if you want the challenge to fight back. Adds red herrings, faults placed far from the symptom, and fewer hints to the Diagnosis Lab. The electrical simulation stays completely honest — only the diagnosis gets harder."
+        preview={
+          ohmageddonMode
+            ? '😈 Rage tiers are selectable in the Diagnosis Lab. Expect decoys, remote faults and rationed hints.'
+            : '🎓 Normal educational challenges only — no red herrings, no chaos, full hints.'
+        }
+        checked={ohmageddonMode}
+        onChange={(value) => setSetting('ohmageddonMode', value)}
       />
     </>
   );

@@ -2950,3 +2950,95 @@ leak, determinism, and score monotonicity.
 
 **Gates:** typecheck ✓, biome ✓ (4 pre-existing `Editor.tsx` warnings), 59 files / 785
 unit ✓, all three stress harnesses ✓, `vite build` ✓.
+
+---
+
+## Session 2026-08-18 (part 13) — Phase E: Ohmageddon Foundation 😈
+
+Plan §23–§28, §42, §51 Phase E, §52, §57. Full detail in
+`docs/decisions/0005-ohmageddon-foundation.md`.
+
+**The design problem.** §25 forbids a separate Ohmageddon generator; §26 forbids a
+dishonest simulation. So every gram of difficulty has to come from the *diagnosis*
+rather than the physics — "rage against the circuit, not against physics".
+
+**Approach: modifiers on the existing pipeline.** `generateChallenge()` is untouched
+(still locked by §57). `src/domain/challenges/rage/` defines a composable modifier
+interface with three optional hooks — `transformCircuit`, `rankCandidates`,
+`adjustPresentation` — applied to the *existing* diagnosis build. Nothing in
+`generator/**` imports from `rage/**`, so the §57 gate stays checkable by inspecting
+imports.
+
+**Honesty is enforced by re-running the production gate.** Any circuit a modifier
+produces goes back through the same `validateCandidate()` the generator uses, plus a
+before/after check on every declared load; failures are discarded and the original
+circuit kept. The component budget is the one deliberate exemption (a red herring is
+an extra component by definition).
+
+**Design validated before implementation.** Probed the splice mechanic first: 2,745
+junction splices across 180 generated circuits, **99.1%** accepted by the unmodified
+validator, every accepted one behaviourally identical to its parent. The 0.9% are
+caught by an existing compat rule. That number is what justified building
+`redHerring` at all.
+
+**Shipped:** `redHerring`, `remoteFault`, `limitedHints` (§52's nominated three).
+`multiFault`, `compoundFault`, `misleadingSymptom`, `timeLimit` are declared with
+`implemented: false` and the runner refuses them — each blocked on a real constraint
+(singular `scenario.fault`; §26's ban on fabricated symptoms), not on scheduling.
+
+**§24 safety.** `DiagnosisScenario.rage` is `null` unless a tier was explicitly
+passed, and `diagnosisStore.start()` is the single gate that consults the setting.
+A saved rage run is discarded, not downgraded, on resume.
+
+### Two negative controls failed to fail — both were real test weaknesses
+
+1. **Deleting the decoy-exclusion filter still passed.** The test only sampled the
+   *selected* fault; with ~14 of ~31 candidates touching the decoy, weighted
+   selection lands on one too rarely to catch it. Replaced with an assertion over
+   the entire candidate list, plus a guard that the decoy is genuinely a suspect
+   (so the test cannot become vacuous).
+2. **Disabling the `validateCandidate` honesty gate still passed** — because the
+   shipped modifiers are honest, nothing exercised the gate. Added a test that
+   injects a dishonest transform. Isolating the right limb mattered: a severed
+   conductor trips *both* the validator and the behavioural check, so a **stray
+   unwired component** (structurally invalid, electrically inert) is used to test
+   the validator limb alone.
+
+Also documented honestly: the behavioural limb is currently *subsumed* by
+`validateCandidate` (measured 0/90 scenarios have a deliberately-off load). It is
+kept as insurance for the first recipe that ships one, and the comment says so
+rather than implying independent coverage.
+
+### Defect 5 — the red herring announced itself (screenshot-only find)
+
+Decoys were named `<wireId>-decoy`. `ComponentNode.tsx` renders `component.id`
+beneath every device, so the canvas literally read `gen-984062-1-w-3-decoy` — the
+answer, in plain text, to any learner who looked. Zero tests were watching. Decoys
+now follow the generator's own `<prefix>-jN` convention; locked by a unit test and
+an e2e test, both negative-control verified.
+
+**This is the third UI defect this project that only a rendered screenshot caught.**
+The pattern is now unambiguous: read the screen at every viewport, every phase.
+
+**Tests:** `rage/modifiers.test.ts` (30), `e2e/ohmageddon.spec.ts` (7 × chromium +
+mobile-chrome = 14), `scripts/stress-ohmageddon.ts` (`npm run stress:ohmageddon`) —
+1,440 scenarios / 4,320 evaluations. The harness asserts **measured** escalation and
+fails if a tier stops being harder than the one below it:
+
+| difficulty | mean fault distance (normal → rage-2 → rage-3) | hints |
+|---|---|---|
+| beginner | 0.61 → 1.30 → 1.98 | 3 → 2 → 1 |
+| intermediate | 0.95 → 2.72 → 2.89 | 3 → 2 → 1 |
+| advanced | 0.70 → 1.95 → 2.25 | 3 → 2 → 1 |
+
+Build p95 2.67 ms (budget 200 ms). Two e2e tests needed fixing for harness reasons,
+both worth remembering: SVG text needs `textContent` (`innerText` returns `''` for
+SVG, so the first leak test passed vacuously), and the settings write is debounced
+150 ms, so the IndexedDB assertion must poll rather than read once.
+
+**Gates:** typecheck ✓, biome ✓ (4 pre-existing `Editor.tsx` warnings), 61 files /
+815 unit ✓, all four stress harnesses ✓, `vite build` ✓.
+
+**Next:** Phase F — Ohmageddon Scenarios (§53): plural-fault scenario shape and
+evaluator, which unblocks `multiFault`/`compoundFault`, then `misleadingSymptom`
+and the optional timer.

@@ -144,6 +144,19 @@ export interface UserSettings {
    * 'nema5' | 'schuko' | 'as3112' | 'bs546' | 'all'. Persisted.
    */
   plugSystem: PlugSystemId;
+  /**
+   * Ohmageddon Mode 😈 (plan §23, §24).
+   *
+   * OFF by default and never enabled implicitly. When off the Diagnosis Lab
+   * offers ordinary educational exercises only — no red herrings, no remote
+   * faults, no rationed hints. When on, the rage tiers become *eligible*, and
+   * the UI is required to say so (§24: "Do not hide the fact that the mode is
+   * active").
+   *
+   * The flag gates nothing electrical. Ohmageddon changes which scenario is
+   * built, never how the simulator behaves (§26).
+   */
+  ohmageddonMode: boolean;
   /** Panel layout persistence — remembered across reloads. */
   paletteOpen: boolean;
   inspectorCollapsed: boolean;
@@ -174,6 +187,8 @@ const DEFAULTS: UserSettings = {
   stressZonesEnabled: false,
   autoWireJoints: false,
   plugSystem: 'bs1363',
+  // §23: "It is NOT enabled by default."
+  ohmageddonMode: false,
   paletteOpen: true,
   inspectorCollapsed: true,
   logOpen: false,
@@ -272,6 +287,7 @@ function parsePersistedSettings(value: unknown): UserSettings | null {
     ).includes(stored.plugSystem as PlugSystemId)
       ? (stored.plugSystem as PlugSystemId)
       : DEFAULTS.plugSystem,
+    ohmageddonMode: booleanOrDefault(stored.ohmageddonMode, DEFAULTS.ohmageddonMode),
     paletteOpen: booleanOrDefault(stored.paletteOpen, DEFAULTS.paletteOpen),
     inspectorCollapsed: booleanOrDefault(stored.inspectorCollapsed, DEFAULTS.inspectorCollapsed),
     logOpen: booleanOrDefault(stored.logOpen, DEFAULTS.logOpen),
@@ -357,6 +373,7 @@ function snapshot(state: SettingsState): UserSettings {
     stressZonesEnabled: state.stressZonesEnabled,
     autoWireJoints: state.autoWireJoints,
     plugSystem: state.plugSystem,
+    ohmageddonMode: state.ohmageddonMode,
     paletteOpen: state.paletteOpen,
     inspectorCollapsed: state.inspectorCollapsed,
     logOpen: state.logOpen,
@@ -406,6 +423,7 @@ export async function startSettingsPersistence(): Promise<void> {
       state.stressZonesEnabled === prev.stressZonesEnabled &&
       state.autoWireJoints === prev.autoWireJoints &&
       state.plugSystem === prev.plugSystem &&
+      state.ohmageddonMode === prev.ohmageddonMode &&
       state.paletteOpen === prev.paletteOpen &&
       state.inspectorCollapsed === prev.inspectorCollapsed &&
       state.logOpen === prev.logOpen &&

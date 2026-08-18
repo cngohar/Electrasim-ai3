@@ -38,9 +38,14 @@ import {
 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { COMP_H, COMP_W } from '../../domain';
-import type { ChallengeDifficulty, FaultLocationChoice } from '../../domain/challenges';
-import { formatElapsed, locationKeyForTarget } from '../../domain/challenges';
-import { useCircuitStore, useUiStore, useViewportStore } from '../../store';
+import type { ChallengeDifficulty, FaultLocationChoice, RageTierId } from '../../domain/challenges';
+import {
+  RAGE_TIERS,
+  RAGE_TIER_IDS,
+  formatElapsed,
+  locationKeyForTarget,
+} from '../../domain/challenges';
+import { useCircuitStore, useSettingsStore, useUiStore, useViewportStore } from '../../store';
 import { useDiagnosisStore } from '../../store/diagnosisStore';
 import { MAX_ZOOM, MIN_ZOOM } from '../../store/viewportStore';
 import { fitCircuitIntoVisibleRegion } from '../canvas/fitRegion';
@@ -106,6 +111,18 @@ export function DiagnosisPanel({ isPhone }: Props) {
     exitDiagnosis();
     setDiagnosisOpen(false);
   };
+
+  /**
+   * §24: Ohmageddon is opt-in from Settings and nowhere else. The panel reads
+   * the flag but never writes it, so the only way into rage is the explicit
+   * toggle the plan specifies.
+   */
+  const ohmageddonMode = useSettingsStore((s) => s.ohmageddonMode);
+  const [selectedTier, setSelectedTier] = useState<RageTierId | null>(null);
+  // Turning the setting off must not leave a stale rage selection armed.
+  useEffect(() => {
+    if (!ohmageddonMode) setSelectedTier(null);
+  }, [ohmageddonMode]);
 
   const liveFaults = useCircuitStore((s) => s.faults);
   /** §15: both halves of the answer are required before anything may be done. */
@@ -266,11 +283,72 @@ export function DiagnosisPanel({ isPhone }: Props) {
               {error}
             </p>
           )}
+          {/*
+           * Ohmageddon tier picker (plan §23, §24, §27).
+           *
+           * Only rendered when the Settings flag is on — §24: "Normal users
+           * must never accidentally enter Ohmageddon Mode." When it is off
+           * this block does not exist, so there is no stray control to trip
+           * over. When it is on, the badge and the tier buttons make the
+           * state unmissable rather than tucking it away.
+           */}
+          {ohmageddonMode && (
+            <div className="space-y-1.5 rounded-xl border border-rose-300 bg-rose-50/70 p-2 dark:border-rose-800 dark:bg-rose-950/40">
+              <p className="flex items-center gap-1.5 text-[11px] font-bold text-rose-800 dark:text-rose-200">
+                <span aria-hidden="true">😈</span> Ohmageddon Mode
+              </p>
+              <p className="text-[9px] leading-relaxed text-rose-700/90 dark:text-rose-300/90">
+                Harder to diagnose, never dishonest. Pick a tier, or leave it off for a normal
+                exercise.
+              </p>
+              <div className="flex flex-wrap gap-1">
+                <button
+                  type="button"
+                  onClick={() => setSelectedTier(null)}
+                  aria-pressed={selectedTier === null}
+                  className={[
+                    'min-h-[28px] rounded-lg border px-2 py-1 text-[10px] font-semibold transition',
+                    selectedTier === null
+                      ? 'border-slate-400 bg-white text-slate-800 dark:border-slate-500 dark:bg-slate-800 dark:text-slate-100'
+                      : 'border-rose-200 text-rose-700 hover:bg-rose-100 dark:border-rose-800 dark:text-rose-300',
+                  ].join(' ')}
+                >
+                  Off
+                </button>
+                {RAGE_TIER_IDS.map((tierId) => {
+                  const tier = RAGE_TIERS[tierId];
+                  const active = selectedTier === tierId;
+                  return (
+                    <button
+                      key={tierId}
+                      type="button"
+                      onClick={() => setSelectedTier(tierId)}
+                      aria-pressed={active}
+                      title={tier.blurb}
+                      className={[
+                        'min-h-[28px] rounded-lg border px-2 py-1 text-[10px] font-semibold transition',
+                        active
+                          ? 'border-rose-500 bg-rose-600 text-white'
+                          : 'border-rose-200 text-rose-700 hover:bg-rose-100 dark:border-rose-800 dark:text-rose-300',
+                      ].join(' ')}
+                    >
+                      {tier.label}
+                    </button>
+                  );
+                })}
+              </div>
+              {selectedTier && (
+                <p className="text-[9px] leading-relaxed text-rose-800 dark:text-rose-200">
+                  {RAGE_TIERS[selectedTier].blurb}
+                </p>
+              )}
+            </div>
+          )}
           {DIFFICULTIES.map((difficulty) => (
             <button
               key={difficulty.id}
               type="button"
-              onClick={() => void start(difficulty.id)}
+              onClick={() => void start(difficulty.id, undefined, selectedTier ?? undefined)}
               className="flex w-full items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-left transition hover:border-amber-400 hover:bg-amber-50 dark:border-slate-700 dark:hover:border-amber-500 dark:hover:bg-slate-800"
             >
               <Play className="size-3.5 text-amber-600 dark:text-amber-400" />
@@ -308,8 +386,12 @@ export function DiagnosisPanel({ isPhone }: Props) {
           ].join(' ')}
         >
           <Trophy className="size-6 text-emerald-600 dark:text-emerald-400" aria-hidden="true" />
+          {/*
+            §28: same success pipeline (Diagnose → Repair → Verify → Success),
+            "slightly more playful message... Keep it tasteful and optional."
+          */}
           <p className="text-[13px] font-bold text-emerald-800 dark:text-emerald-200">
-            🎉 FAULT CLEARED!
+            {scenario.rage ? '😈 YOU ACTUALLY FOUND IT' : '🎉 FAULT CLEARED!'}
           </p>
           <p className="text-[11px] font-semibold text-emerald-700 dark:text-emerald-300">
             {faultLabel}
@@ -339,7 +421,7 @@ export function DiagnosisPanel({ isPhone }: Props) {
         <div className="flex gap-2 p-3">
           <button
             type="button"
-            onClick={() => void start(scenario.difficulty)}
+            onClick={() => void start(scenario.difficulty, undefined, scenario.rage?.tier)}
             className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-amber-500 px-3 py-2 text-[12px] font-semibold text-white hover:bg-amber-400"
           >
             Next Circuit <ChevronRight className="size-3.5" />
@@ -367,12 +449,24 @@ export function DiagnosisPanel({ isPhone }: Props) {
         </span>
         <div className="min-w-0 flex-1">
           <h2 className="truncate text-[12px] font-semibold text-slate-800 dark:text-slate-100">
-            Diagnosis Challenge
+            {scenario.rage ? 'Ohmageddon Challenge' : 'Diagnosis Challenge'}
           </h2>
           <p className="text-[9px] uppercase tracking-wide text-slate-500">
             {scenario.difficulty} · {scenario.challengeId}
           </p>
         </div>
+        {/* §24: the status indicator. Never hide that the mode is active. */}
+        {scenario.rage && (
+          <span
+            className="flex items-center gap-1 rounded-md bg-rose-600 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white"
+            title={`${scenario.rage.tierLabel} — ${scenario.rage.applications
+              .filter((a) => a.applied)
+              .map((a) => a.label)
+              .join(', ')}`}
+          >
+            <span aria-hidden="true">😈</span> Rage Bait
+          </span>
+        )}
         <span className="flex items-center gap-1 rounded-md bg-slate-100 px-1.5 py-0.5 text-[10px] font-bold tabular-nums text-slate-700 dark:bg-slate-800 dark:text-slate-200">
           <Timer className="size-3" aria-hidden="true" />
           <span aria-label={`Elapsed time ${elapsedLabel}`}>{elapsedLabel}</span>
@@ -393,6 +487,35 @@ export function DiagnosisPanel({ isPhone }: Props) {
         <p className="text-[10px] leading-relaxed text-slate-500 dark:text-slate-400">
           {scenario.brief}
         </p>
+
+        {/*
+         * §24/§26 transparency: say which modifiers are in play and promise,
+         * in the product itself, that the physics is untouched. Naming the
+         * modifiers does not leak the answer — "there is a decoy somewhere"
+         * is a different thing from "the fault is here".
+         */}
+        {scenario.rage && (
+          <div className="rounded-lg border border-rose-200 bg-rose-50/70 p-2 dark:border-rose-900 dark:bg-rose-950/40">
+            <p className="text-[10px] font-bold text-rose-800 dark:text-rose-200">
+              😈 {scenario.rage.tierLabel} active
+            </p>
+            <ul className="mt-1 space-y-0.5">
+              {scenario.rage.applications
+                .filter((application) => application.applied)
+                .map((application) => (
+                  <li
+                    key={application.id}
+                    className="text-[9px] leading-relaxed text-rose-700 dark:text-rose-300"
+                  >
+                    • {application.label}
+                  </li>
+                ))}
+            </ul>
+            <p className="mt-1 text-[9px] italic leading-relaxed text-rose-600/90 dark:text-rose-400/90">
+              Rage against the circuit, not against physics — every reading is honest.
+            </p>
+          </div>
+        )}
 
         {/* A. What is wrong? (plan §15A) */}
         <fieldset className="space-y-1">
@@ -549,7 +672,8 @@ export function DiagnosisPanel({ isPhone }: Props) {
               type="button"
               onClick={() => {
                 const difficulty = scenario.difficulty;
-                void abandon().then(() => start(difficulty));
+                const tier = scenario.rage?.tier;
+                void abandon().then(() => start(difficulty, undefined, tier));
               }}
               className="flex-1 rounded-lg bg-red-600 px-2 py-1.5 text-[11px] font-semibold text-white hover:bg-red-500"
             >
@@ -589,7 +713,7 @@ export function DiagnosisPanel({ isPhone }: Props) {
         <button
           type="button"
           onClick={() => {
-            if (!requestNew()) void start(scenario.difficulty);
+            if (!requestNew()) void start(scenario.difficulty, undefined, scenario.rage?.tier);
           }}
           aria-label="New diagnosis exercise"
           title="New diagnosis exercise"

@@ -87,6 +87,8 @@ describe('settingsStore — Phase 6.1', () => {
       stressZonesEnabled: false,
       autoWireJoints: false,
       plugSystem: 'bs1363',
+      // A stored blob that predates Ohmageddon must hydrate it OFF (plan §23).
+      ohmageddonMode: false,
       paletteOpen: true,
       inspectorCollapsed: true,
       logOpen: false,

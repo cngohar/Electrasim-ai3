@@ -23,7 +23,8 @@
  */
 
 import { get, set } from 'idb-keyval';
-import type { ChallengeDifficulty } from '../domain/challenges';
+import type { ChallengeDifficulty, RageTierId } from '../domain/challenges';
+import { isRageTierId } from '../domain/challenges';
 import type { FaultType } from '../domain/types';
 
 const SCHEMA_VERSION = 1 as const;
@@ -46,6 +47,14 @@ export interface ActiveDiagnosisRecord {
   generatorVersion: number;
   difficulty: ChallengeDifficulty;
   mode: 'diagnosis';
+  /**
+   * Ohmageddon tier, when the run is a rage exercise (plan §23).
+   *
+   * Stored alongside the seed because it is a *generation input*: the same
+   * seed with a different tier is a different scenario, so resuming without it
+   * would silently hand the learner a different puzzle.
+   */
+  rageTier?: RageTierId;
   challengeId: string;
   status: Extract<DiagnosisStatus, 'active' | 'evaluating'>;
   misdiagnoses: number;
@@ -140,7 +149,9 @@ function isActiveRecord(value: unknown): value is ActiveDiagnosisRecord {
     typeof record.startedAt === 'number' &&
     typeof record.elapsedMs === 'number' &&
     typeof record.difficulty === 'string' &&
-    DIFFICULTIES.includes(record.difficulty as ChallengeDifficulty)
+    DIFFICULTIES.includes(record.difficulty as ChallengeDifficulty) &&
+    // Absent is valid (a normal exercise); present-but-unrecognised is not.
+    (record.rageTier === undefined || isRageTierId(record.rageTier))
   );
 }
 

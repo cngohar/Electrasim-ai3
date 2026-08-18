@@ -30,6 +30,7 @@ import {
   type DiagnosisScenario,
   type DiagnosisScore,
   GENERATOR_VERSION,
+  type RageTierId,
   buildDiagnosisScenario,
   evaluateDiagnosis,
   scoreDiagnosis,
@@ -46,6 +47,7 @@ import {
   recordDiagnosisStarted,
   saveActiveDiagnosis,
 } from './diagnosisPersistence';
+import { useSettingsStore } from './settingsStore';
 
 export interface DiagnosisState {
   status: DiagnosisStatus;
@@ -74,7 +76,11 @@ export interface DiagnosisState {
   /** True while a "start a new exercise?" confirmation is pending (§22). */
   confirmingNew: boolean;
 
-  start: (difficulty: ChallengeDifficulty, seed?: number) => Promise<void>;
+  /**
+   * Begin an exercise. `rageTier` is only honoured when Ohmageddon Mode is
+   * enabled in Settings — see the §24 gate in the implementation.
+   */
+  start: (difficulty: ChallengeDifficulty, seed?: number, rageTier?: RageTierId) => Promise<void>;
   selectFaultType: (type: DiagnosisAnswer['faultType'] | null) => void;
   selectLocation: (key: string | null) => void;
   submit: () => DiagnosisEvaluation | null;
@@ -123,11 +129,27 @@ export const useDiagnosisStore = create<DiagnosisState>((set, get) => ({
     return status === 'active' && selectedFaultType !== null && selectedLocationKey !== null;
   },
 
-  start: async (difficulty, seed) => {
+  start: async (difficulty, seed, rageTier) => {
     set({ status: 'generating', error: null, confirmingNew: false });
     const chosenSeed = seed ?? randomSeed();
+    /**
+     * Plan §24, the safety rule: "Normal users must never accidentally enter
+     * Ohmageddon Mode."
+     *
+     * This single line is the enforcement point. The domain has no idea the
+     * settings store exists — `buildDiagnosisScenario` applies modifiers if and
+     * only if it is handed a tier — so gating here means a stale UI, a resumed
+     * record or a future caller cannot conjure a rage exercise while the
+     * setting is off. Turning the setting off mid-session downgrades the next
+     * exercise to a normal one rather than erroring.
+     */
+    const effectiveTier = useSettingsStore.getState().ohmageddonMode ? rageTier : undefined;
     try {
-      const scenario = buildDiagnosisScenario({ seed: chosenSeed, difficulty });
+      const scenario = buildDiagnosisScenario({
+        seed: chosenSeed,
+        difficulty,
+        ...(effectiveTier ? { rageTier: effectiveTier } : {}),
+      });
       // The learner works on the *faulted* installation in the normal editor.
       useCircuitStore.getState().setCircuit(scenario.faultedCircuit);
       const startedAt = Date.now();
@@ -149,6 +171,7 @@ export const useDiagnosisStore = create<DiagnosisState>((set, get) => ({
         generatorVersion: scenario.generatorVersion,
         difficulty: scenario.difficulty,
         mode: 'diagnosis',
+        ...(effectiveTier ? { rageTier: effectiveTier } : {}),
         challengeId: scenario.challengeId,
         status: 'active',
         misdiagnoses: 0,
@@ -335,10 +358,19 @@ export const useDiagnosisStore = create<DiagnosisState>((set, get) => ({
     const record = await loadActiveDiagnosis();
     if (!record) return false;
     try {
+      // §24 again: a saved rage run is only resumable while the mode is still
+      // enabled. If the user turned it off, the stored run is discarded rather
+      // than silently downgraded — a downgrade would change the puzzle under
+      // them, and `challengeId` would no longer match anyway.
+      if (record.rageTier && !useSettingsStore.getState().ohmageddonMode) {
+        await clearActiveDiagnosis();
+        return false;
+      }
       const scenario = buildDiagnosisScenario({
         seed: record.seed,
         difficulty: record.difficulty,
         generatorVersion: record.generatorVersion,
+        ...(record.rageTier ? { rageTier: record.rageTier } : {}),
       });
       // A generator-version bump invalidates the saved run rather than
       // silently resuming a different fault (plan §31).
@@ -391,6 +423,9 @@ function persistProgress(
     generatorVersion: scenario.generatorVersion,
     difficulty: scenario.difficulty,
     mode: 'diagnosis',
+    // Derived from the scenario itself, so progress writes can never disagree
+    // with what was actually generated.
+    ...(scenario.rage ? { rageTier: scenario.rage.tier } : {}),
     challengeId: scenario.challengeId,
     status: 'active',
     misdiagnoses: progress.misdiagnoses,

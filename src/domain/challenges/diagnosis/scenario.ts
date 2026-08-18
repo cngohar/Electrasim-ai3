@@ -37,6 +37,14 @@ import { labelById } from '../faults/labels';
 import { type FaultSymptom, describeSymptom, diffSymptom } from '../faults/verification';
 import { generateChallenge } from '../generator/generator';
 import { GENERATOR_VERSION, createSeededRng, normalizeSeed } from '../generator/seed';
+import {
+  applyCandidateStage,
+  applyCircuitStage,
+  applyPresentationStage,
+  buildRageSummary,
+} from '../rage/runner';
+import { getRageTier, rageProfileKey } from '../rage/tiers';
+import type { RageApplication, RageSummary, RageTierId } from '../rage/types';
 import type { ChallengeDifficulty, ChallengeIdentity } from '../types';
 
 /** Progressive hint (plan §17: observation → direction → location). */
@@ -110,6 +118,17 @@ export interface DiagnosisScenario {
   loadComponentIds: string[];
   /** Labels of the loads that went dead — used in the complaint text. */
   deadLoadLabels: string[];
+
+  /**
+   * Ohmageddon summary, or `null` for an ordinary exercise (plan §24).
+   *
+   * This field IS the §24 safety guarantee in data form: a normal scenario
+   * carries `rage: null`, and the only way it becomes non-null is an explicit
+   * `rageTier` on the build request. `buildDiagnosisScenario` never invents
+   * one, so "normal mode never receives Ohmageddon modifiers" is a property of
+   * the type, not of a code path someone has to remember to check.
+   */
+  rage: RageSummary | null;
 }
 
 export interface BuildDiagnosisScenarioRequest {
@@ -123,6 +142,14 @@ export interface BuildDiagnosisScenarioRequest {
    * patched.
    */
   maxAttempts?: number;
+  /**
+   * Ohmageddon tier (plan §23–§27). **Omit for normal exercises.**
+   *
+   * The caller must have checked `settings.ohmageddonMode` before setting
+   * this; the domain deliberately does not read settings, so this parameter is
+   * the single, explicit boundary between the normal and rage worlds (§24).
+   */
+  rageTier?: RageTierId;
 }
 
 export const MAX_SCENARIO_ATTEMPTS = 10;
@@ -151,7 +178,14 @@ export function buildDiagnosisScenario(request: BuildDiagnosisScenarioRequest): 
     // Derive a fresh seed per attempt so a rejected circuit is *replaced*,
     // not re-faulted — the generator core stays untouched (§57).
     const seed = attempt === 0 ? baseSeed : normalizeSeed(baseSeed + attempt * 7919);
-    const built = tryBuildScenario({ ...request, seed, generatorVersion });
+    const built = tryBuildScenario({
+      ...request,
+      seed,
+      generatorVersion,
+      // Explicit rather than relying on the spread, so the §24 boundary is
+      // visible at the one place rage can enter the pipeline.
+      ...(request.rageTier ? { rageTier: request.rageTier } : {}),
+    });
     if (built.ok) return built.scenario;
     rejections.push(`seed ${seed}: ${built.reason}`);
   }
@@ -169,37 +203,88 @@ function tryBuildScenario(request: {
   difficulty: ChallengeDifficulty;
   generatorVersion: number;
   recipeId?: string;
+  rageTier?: RageTierId;
 }): BuildOutcome {
-  const { seed, difficulty, generatorVersion, recipeId } = request;
+  const { seed, difficulty, generatorVersion, recipeId, rageTier } = request;
+
+  // §25: the SAME generator. Rage changes the identity inputs (so a rage
+  // exercise gets its own `ES-RAGE-######`) but never the pipeline.
+  const mode = rageTier ? 'rage' : 'diagnosis';
+  const rageProfile = rageTier ? rageProfileKey(rageTier) : undefined;
 
   const generated = generateChallenge({
     seed,
     difficulty,
-    mode: 'diagnosis',
+    mode,
     generatorVersion,
     recipeId,
+    ...(rageProfile ? { rageProfile } : {}),
   });
 
-  const healthyCircuit = generated.circuit;
-  const baseline = simulate(healthyCircuit, { appMode: 'pro' });
+  let healthyCircuit = generated.circuit;
+  let scenarioInfo = generated.scenario;
+  const baseline0 = simulate(healthyCircuit, { appMode: 'pro' });
 
   // A scenario is only meaningful if the healthy circuit actually works —
   // the learner must have a "correct" state to restore.
-  if (baseline.errors.length > 0) {
+  if (baseline0.errors.length > 0) {
     return { ok: false, reason: 'baseline circuit is not clean' };
-  }
-
-  const candidates = collectFaultCandidates(healthyCircuit, generated.scenario);
-  if (candidates.length === 0) {
-    return { ok: false, reason: 'no eligible fault candidates' };
   }
 
   const rng = createSeededRng({
     generatorVersion,
     seed,
     difficulty,
-    mode: 'diagnosis',
+    mode,
+    ...(rageProfile ? { rageProfile } : {}),
   }).fork('diagnosis-fault');
+
+  // ── Ohmageddon stage ① — reshape the circuit (plan §25) ──────────────────
+  // Skipped entirely when `rageTier` is absent, which is the §24 guarantee.
+  const rageApplications: RageApplication[] = [];
+  let decoyComponentIds: string[] = [];
+  if (rageTier) {
+    const staged = applyCircuitStage({
+      circuit: healthyCircuit,
+      scenario: scenarioInfo,
+      difficulty,
+      tier: rageTier,
+      rng: rng.fork('rage-circuit'),
+      expectedEnergisedLoadIds: generated.metadata.baseline.expectedEnergisedLoadIds,
+    });
+    healthyCircuit = staged.circuit;
+    scenarioInfo = { ...scenarioInfo, faultCandidateWireIds: staged.faultCandidateWireIds };
+    decoyComponentIds = staged.decoyComponentIds;
+    rageApplications.push(...staged.applications);
+  }
+
+  // Re-measured after the transform: everything downstream (symptom, recovery,
+  // structural diff) must be judged against the circuit the learner actually
+  // sees, not the pre-modifier one.
+  const baseline = rageTier ? simulate(healthyCircuit, { appMode: 'pro' }) : baseline0;
+  if (baseline.errors.length > 0) {
+    return { ok: false, reason: 'rage-modified baseline is not clean' };
+  }
+
+  let candidates = collectFaultCandidates(healthyCircuit, scenarioInfo);
+  if (candidates.length === 0) {
+    return { ok: false, reason: 'no eligible fault candidates' };
+  }
+
+  // ── Ohmageddon stage ② — re-rank the candidates ──────────────────────────
+  if (rageTier) {
+    const ranked = applyCandidateStage({
+      circuit: healthyCircuit,
+      candidates,
+      loadComponentIds: scenarioInfo.loadComponentIds,
+      difficulty,
+      tier: rageTier,
+      rng: rng.fork('rage-candidates'),
+      decoyComponentIds,
+    });
+    candidates = ranked.candidates;
+    rageApplications.push(...ranked.applications);
+  }
 
   const candidate = selectFaultCandidate(candidates, rng);
   if (!candidate) return { ok: false, reason: 'fault selection produced nothing' };
@@ -220,6 +305,7 @@ function tryBuildScenario(request: {
     ok: true,
     scenario: assembleScenario({
       generated,
+      scenarioInfo,
       healthyCircuit,
       faultedCircuit,
       baseline,
@@ -230,6 +316,9 @@ function tryBuildScenario(request: {
       seed,
       generatorVersion,
       rng,
+      rageTier,
+      rageApplications,
+      decoyComponentIds,
     }),
   };
 }
@@ -240,6 +329,8 @@ function tryBuildScenario(request: {
 
 function assembleScenario(args: {
   generated: ReturnType<typeof generateChallenge>;
+  /** Recipe info, rewritten by the rage circuit stage when one ran. */
+  scenarioInfo: ReturnType<typeof generateChallenge>['scenario'];
   healthyCircuit: Circuit;
   faultedCircuit: Circuit;
   baseline: SimulationResult;
@@ -250,9 +341,13 @@ function assembleScenario(args: {
   seed: number;
   generatorVersion: number;
   rng: ReturnType<typeof createSeededRng>;
+  rageTier?: RageTierId;
+  rageApplications: RageApplication[];
+  decoyComponentIds: string[];
 }): DiagnosisScenario {
   const {
     generated,
+    scenarioInfo,
     healthyCircuit,
     faultedCircuit,
     fault,
@@ -262,6 +357,9 @@ function assembleScenario(args: {
     seed,
     generatorVersion,
     rng,
+    rageTier,
+    rageApplications,
+    decoyComponentIds,
   } = args;
 
   const profile = getDifficultyProfile(difficulty);
@@ -270,15 +368,51 @@ function assembleScenario(args: {
   const deadLoadLabels = symptom.deEnergisedLoadIds.map(labelOf);
   const complaint = describeSymptom(symptom, deadLoadLabels);
 
-  const locationChoices = buildLocationChoices(healthyCircuit, generated.scenario);
+  // `scenarioInfo`, not `generated.scenario`: after a red-herring splice the
+  // original wire no longer exists, and offering the learner a location option
+  // that points at a deleted wire would be both confusing and a tell.
+  const locationChoices = buildLocationChoices(healthyCircuit, scenarioInfo);
   const faultLocationKey = locationKeyFor(candidate);
   const faultTypeChoices = buildFaultTypeChoices(
     healthyCircuit,
-    generated.scenario,
+    scenarioInfo,
     candidate.type,
     profile.diagnosticChoiceCount,
     rng.fork('choices'),
   );
+
+  // ── Ohmageddon stage ③ — ration the help (plan §27) ─────────────────────
+  const baseHints = buildHints(healthyCircuit, candidate, symptom, deadLoadLabels);
+  let hints = baseHints;
+  let hintBudget = profile.hintBudget;
+  let parTimeSeconds = profile.parTimeSeconds;
+  let timeLimitSeconds: number | null = null;
+
+  if (rageTier) {
+    const staged = applyPresentationStage({
+      hints: baseHints,
+      hintBudget: profile.hintBudget,
+      parTimeSeconds: profile.parTimeSeconds,
+      timeLimitSeconds: null,
+      difficulty,
+      tier: rageTier,
+      rng: rng.fork('rage-presentation'),
+    });
+    hints = staged.presentation.hints as DiagnosisHint[];
+    hintBudget = staged.presentation.hintBudget;
+    parTimeSeconds = staged.presentation.parTimeSeconds;
+    timeLimitSeconds = staged.presentation.timeLimitSeconds;
+    rageApplications.push(...staged.applications);
+  }
+
+  const rage: RageSummary | null = rageTier
+    ? buildRageSummary({
+        tier: rageTier,
+        applications: rageApplications,
+        decoyComponentIds,
+        timeLimitSeconds,
+      })
+    : null;
 
   return {
     challengeId: generated.metadata.identity.displayId,
@@ -288,13 +422,18 @@ function assembleScenario(args: {
     difficulty,
     recipeId: generated.scenario.recipeId,
 
-    title: generated.scenario.recipeTitle,
+    title: rageTier
+      ? `${getRageTier(rageTier).label}: ${scenarioInfo.recipeTitle}`
+      : scenarioInfo.recipeTitle,
     complaint,
-    brief:
-      'This installation was working. It is not working now. Investigate the circuit, ' +
-      'work out what has gone wrong and where, then put it right.',
-    teaches: generated.scenario.teaches,
-    expectedBehaviour: generated.scenario.expectedBehaviour,
+    brief: rageTier
+      ? 'This installation was working. It is not working now — and it is not going to be ' +
+        'obvious. Everything you see is electrically honest; the difficulty is in the ' +
+        'looking, not in the physics.'
+      : 'This installation was working. It is not working now. Investigate the circuit, ' +
+        'work out what has gone wrong and where, then put it right.',
+    teaches: scenarioInfo.teaches,
+    expectedBehaviour: scenarioInfo.expectedBehaviour,
 
     faultedCircuit: deepCopy(faultedCircuit),
     healthyCircuit: deepCopy(healthyCircuit),
@@ -306,12 +445,13 @@ function assembleScenario(args: {
     faultTypeChoices,
     locationChoices,
 
-    hints: buildHints(healthyCircuit, candidate, symptom, deadLoadLabels),
-    hintBudget: profile.hintBudget,
-    parTimeSeconds: profile.parTimeSeconds,
+    hints,
+    hintBudget,
+    parTimeSeconds,
 
-    loadComponentIds: [...generated.scenario.loadComponentIds],
+    loadComponentIds: [...scenarioInfo.loadComponentIds],
     deadLoadLabels,
+    rage,
   };
 }
 
