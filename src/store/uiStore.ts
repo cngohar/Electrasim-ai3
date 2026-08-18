@@ -72,6 +72,7 @@ export const useUiStore = create<UiState>()(
     contactOpen: false,
     templatesOpen: false,
     activeGuideId: null,
+    challengeOpen: false,
     guideHidden: false,
     welcomeOpen: !hasWelcomed() && !mobileSuitabilityInitiallyOpen,
     mobileSuitabilityOpen: mobileSuitabilityInitiallyOpen,
@@ -669,6 +670,10 @@ export const useUiStore = create<UiState>()(
     setContactOpen: (open) =>
       set((s) => {
         s.contactOpen = open;
+      }),
+    setChallengeOpen: (open) =>
+      set((s) => {
+        s.challengeOpen = open;
       }),
     setTemplatesOpen: (open) =>
       set((s) => {

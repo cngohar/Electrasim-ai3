@@ -158,6 +158,8 @@ export interface UiState {
   templatesOpen: boolean;
   /** Loaded guided circuit whose checklist is currently shown. */
   activeGuideId: string | null;
+  /** Challenge Mode panel mounted (plan §32). Session state lives in challengeStore. */
+  challengeOpen: boolean;
   /**
    * The active guide's checklist is temporarily hidden so the canvas it
    * overlays becomes reachable again. Distinct from `activeGuideId: null`
@@ -284,6 +286,7 @@ export interface UiState {
   setDocsOpen: (open: boolean, scrollTo?: string | null) => void;
   setContactOpen: (open: boolean) => void;
   setTemplatesOpen: (open: boolean) => void;
+  setChallengeOpen: (open: boolean) => void;
   setActiveGuideId: (id: string | null) => void;
   setGuideHidden: (hidden: boolean) => void;
   setWelcomeOpen: (open: boolean) => void;

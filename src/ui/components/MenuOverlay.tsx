@@ -16,6 +16,7 @@ import {
   Mail,
   RefreshCcw,
   Settings,
+  Target,
   Trash2,
   Unlink,
 } from 'lucide-react';
@@ -41,6 +42,15 @@ interface Props {
 
 export function MenuOverlay({ open, onClose }: Props) {
   const items: MenuItem[] = [
+    {
+      icon: Target,
+      label: 'Challenge Mode',
+      description: 'Build a generated circuit against the clock',
+      portColor: 'bg-amber-500',
+      action: () => {
+        useUiStore.getState().setChallengeOpen(true);
+      },
+    },
     {
       icon: BookOpen,
       label: 'Guided Circuits',

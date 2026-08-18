@@ -17,6 +17,50 @@ Format per entry:
 
 ---
 
+## 2026-08-18 — ElectraSim v2 Phase C — Challenge Mode
+
+Phase C of the v2 plan (§51 steps 1–11, §14–§22). First player-facing v2 mode. The generator is treated as a fixed dependency — Challenge Mode calls `generateChallenge()` and decorates it, and contains no generator of its own (§51).
+
+**The interesting problem: what does "correct" mean?**
+
+The plan never defines circuit comparison — a grep for `compare|equivalen|objective|target circuit` across all 2,212 lines returns 5 incidental hits. So the semantics were a decision, recorded in ADR 0003. Three facts ruled out the naive answers: the learner's component ids never match the target's, array order is not meaningful (it's a graph), and wire direction is not meaningful.
+
+Settled on **four gates, cheapest first**: structure → existing rules → existing simulator → structural match. Gates 1–3 reuse the engines verbatim; only gate 4 is new. Keeping "works" and "matches" as *separate* gates is the pedagogical point — a lamp wired straight to the supply, skipping the required switch, passes 1–3 and fails 4, and gets told exactly that.
+
+Gate 4 reduces every wire to a canonical `type:port|type:port` signature with the endpoints sorted, so relabelling, ordering and direction all fall out. Two cheap multiset gates generate the actionable diffs; a bounded backtracking isomorphism search settles the remainder.
+
+**Done:**
+- `src/domain/challenges/challenge/{scenario,comparison,evaluator,scoring}.ts` — pure, no store/UI/persistence.
+- `src/store/challengeStore.ts` (session state, §34) and `src/store/challengePersistence.ts` (reuses the existing `idb-keyval` setup per §20; stores **seed not circuit** per §21).
+- `src/ui/components/ChallengePanel.tsx` + Menu entry; docks right so the palette stays usable, bottom sheet on phones.
+- `scripts/stress-challenge-mode.ts` (`npm run stress:challenge`) and `e2e/challenge-mode.spec.ts`.
+- ADR `docs/decisions/0003-challenge-mode-comparison.md`.
+
+**Verification — the part worth trusting:**
+A hand-written isomorphism search risks being wrong in the same way as the tests written beside it. So the harness cross-checks every verdict against an **independent Weisfeiler-Leman colour-refinement oracle** that shares no code with the implementation.
+
+```
+Scenarios generated : 750 (250 seeds × 3 difficulties)
+Corruptions checked : 3000  → all rejected
+WL-oracle checks    : 841/841 agreement
+Evaluation timing   : median 0.11 ms, p95 0.34 ms, max 20.6 ms
+```
+
+Three negative controls were injected. Forcing `isomorphic = true` and deleting the match gate both made the harness fail as intended. The third — erasing port indices from the wire signature — was caught by `comparison.test.ts` but **not** by the harness, because the isomorphism search reads port indices directly and stays correct; the damage is confined to diff-message wording. That's defence in depth, not redundancy, and it's why both layers stay.
+
+**Findings fixed along the way:**
+- Briefs said "6 A MCB" while the parts checklist said "MCB Type B (16A)" — the registry label embeds a *catalogue default* that the generated instance overrides. Labels now derive the rating from `state.customMaxAmps`. Caught by reading the rendered panel in a real browser, not by any test.
+- First panel placement covered the component palette — unusable for a mode whose whole task is dragging parts. Moved to the right rail, matching `GuidedCircuitPanel`.
+- Biome flagged `role="progressbar"` on a `div` as unfocusable; replaced with a native `<progress>`, which gets the semantics without adding a keyboard tab stop.
+
+**Deliberate non-goals:** behavioural (`simulate()`-output) equivalence is *not* the identity relation — it would accept a lamp across the supply as equal to one behind a switch. Symmetric branch swaps *are* accepted, since the WL oracle confirms the graphs are indistinguishable.
+
+**Tests:** 50 files / 647 tests (up from 44/550) + 6 Playwright specs (chromium + mobile-chrome green; tablet-safari needs a WebKit binary not present in this sandbox). Typecheck clean, lint unchanged (4 pre-existing UI hook warnings), `npm run stress:generator` still green.
+
+**Next:** Phase D — Diagnosis Lab (§14–§22 fault workflow), reusing `src/domain/faults` and the observability guarantees locked in Phase B.
+
+---
+
 ## 2026-08-18 — ElectraSim v2 Phase B — Generator Stress Test → **FOUNDATION LOCK**
 
 Phase B of the v2 plan (§56 stress test, §57 foundation gate). No new product surface — the job was to try hard to break the Phase A generator, fix whatever broke, and then lock the guarantees into CI so later phases can build on them without re-litigating.
