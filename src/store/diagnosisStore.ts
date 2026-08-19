@@ -105,6 +105,16 @@ export interface DiagnosisState {
   totalElapsedMs: () => number;
   /** True once both halves of the answer are chosen (§15). */
   canSubmit: () => boolean;
+  /**
+   * Remaining time on a Rage 4 countdown, or `null` when the exercise is
+   * untimed. Hits zero and stays there.
+   */
+  remainingMs: () => number | null;
+  /**
+   * End an active timed exercise. Scores whatever the learner has already
+   * found — a timeout is not a fabricated fail (§18 / §26).
+   */
+  expire: () => void;
 }
 
 function randomSeed(): number {
@@ -131,13 +141,60 @@ export const useDiagnosisStore = create<DiagnosisState>((set, get) => ({
 
   totalElapsedMs: () => {
     const { startedAt, elapsedMs, status } = get();
-    if (startedAt === null || status === 'completed' || status === 'abandoned') return elapsedMs;
+    if (
+      startedAt === null ||
+      status === 'completed' ||
+      status === 'abandoned' ||
+      status === 'timed-out'
+    ) {
+      return elapsedMs;
+    }
     return elapsedMs + Math.max(0, Date.now() - startedAt);
+  },
+
+  remainingMs: () => {
+    const { scenario } = get();
+    const limit = scenario?.rage?.timeLimitSeconds;
+    if (limit === null || limit === undefined) return null;
+    return Math.max(0, limit * 1000 - get().totalElapsedMs());
   },
 
   canSubmit: () => {
     const { status, selectedFaultType, selectedLocationKey } = get();
     return status === 'active' && selectedFaultType !== null && selectedLocationKey !== null;
+  },
+
+  expire: () => {
+    const state = get();
+    const scenario = state.scenario;
+    if (!scenario || state.status !== 'active') return;
+    const limit = scenario.rage?.timeLimitSeconds;
+    if (limit === null || limit === undefined) return;
+    if (state.totalElapsedMs() < limit * 1000) return;
+
+    const elapsedMs = Math.min(state.totalElapsedMs(), limit * 1000);
+    const identified = state.identifiedFaultIds.length;
+    const score = scoreDiagnosis({
+      difficulty: scenario.difficulty,
+      elapsedMs,
+      misdiagnoses: state.misdiagnoses,
+      incompleteRepairs: state.incompleteRepairs,
+      hintsUsed: state.hintsUsed,
+      faultCount: scenario.faults.length,
+      faultsIdentified: identified,
+    });
+    set({
+      score,
+      status: 'timed-out',
+      elapsedMs,
+      startedAt: null,
+    });
+    void recordDiagnosisAbandoned({
+      difficulty: scenario.difficulty,
+      faultTypes: scenario.faults.map((entry) => entry.fault.type),
+      misdiagnoses: state.misdiagnoses,
+      hintsUsed: state.hintsUsed,
+    }).then((stats) => set({ stats }));
   },
 
   start: async (difficulty, seed, rageTier) => {
@@ -222,7 +279,7 @@ export const useDiagnosisStore = create<DiagnosisState>((set, get) => ({
   submit: () => {
     const state = get();
     const scenario = state.scenario;
-    if (!scenario || state.status === 'completed') return null;
+    if (!scenario || state.status !== 'active') return null;
     if (state.selectedFaultType === null || state.selectedLocationKey === null) return null;
 
     const { components, wires, globalVoltage, faults } = useCircuitStore.getState();
@@ -434,6 +491,44 @@ export const useDiagnosisStore = create<DiagnosisState>((set, get) => ({
         return false;
       }
       useCircuitStore.getState().setCircuit(scenario.faultedCircuit);
+      const limitMs =
+        scenario.rage?.timeLimitSeconds === null || scenario.rage?.timeLimitSeconds === undefined
+          ? null
+          : scenario.rage.timeLimitSeconds * 1000;
+      if (limitMs !== null && record.elapsedMs >= limitMs) {
+        // The clock already ran out before the reload. Settle as a timeout
+        // rather than handing back an untimed-looking active session.
+        const score = scoreDiagnosis({
+          difficulty: scenario.difficulty,
+          elapsedMs: Math.min(record.elapsedMs, limitMs),
+          misdiagnoses: record.misdiagnoses,
+          incompleteRepairs: record.incompleteRepairs,
+          hintsUsed: record.hintsUsed,
+          faultCount: scenario.faults.length,
+          faultsIdentified: (record.identifiedFaultIds ?? []).filter((id) =>
+            scenario.faults.some((entry) => entry.fault.id === id),
+          ).length,
+        });
+        set({
+          status: 'timed-out',
+          scenario,
+          evaluation: null,
+          score,
+          misdiagnoses: record.misdiagnoses,
+          incompleteRepairs: record.incompleteRepairs,
+          hintsUsed: record.hintsUsed,
+          identifiedFaultIds: (record.identifiedFaultIds ?? []).filter((id) =>
+            scenario.faults.some((entry) => entry.fault.id === id),
+          ),
+          selectedFaultType: null,
+          selectedLocationKey: null,
+          startedAt: null,
+          elapsedMs: Math.min(record.elapsedMs, limitMs),
+          error: null,
+        });
+        void clearActiveDiagnosis();
+        return true;
+      }
       set({
         status: 'active',
         scenario,
@@ -501,7 +596,8 @@ function persistProgress(
       ? { identifiedFaultIds: [...progress.identifiedFaultIds] }
       : {}),
     startedAt: progress.startedAt ?? Date.now(),
-    elapsedMs: progress.elapsedMs,
+    // Bank the running segment so a Rage 4 reload cannot reset the clock.
+    elapsedMs: useDiagnosisStore.getState().totalElapsedMs(),
   });
 }
 

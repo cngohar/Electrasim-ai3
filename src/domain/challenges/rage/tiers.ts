@@ -6,11 +6,12 @@
  * difficulty curve, no XP and no unlock tree — three tiers, each a named
  * combination of the modifiers defined in `modifiers.ts`.
  *
- * All four tiers from the plan now exist. Three shipped in Phase E; Phase F
- * completed Rage 3 by adding the second fault §27 always specified for it, and
- * added Rage 4 once `compoundFault` could be supported honestly. §27 defines
- * Rage 4 as `2 faults + compound symptom + limited hints + optional timer`; the
- * timer is the one piece still outstanding, and §27 itself marks it optional.
+ * All four tiers from the plan now exist. Phase F finished the last three
+ * honest modifiers: `multiFault` (Rage 3), `compoundFault` (Rage 4),
+ * `misleadingSymptom` (Rage 2, retiring the `remoteFault` stand-in) and the
+ * optional `timeLimit` on Rage 4. §27 defines Rage 4 as `2 faults + compound
+ * symptom + limited hints + optional timer` — that list is now the one that
+ * ships.
  */
 
 import type { RageTier, RageTierId } from './types';
@@ -26,15 +27,17 @@ export const RAGE_TIERS: Record<RageTierId, RageTier> = {
   'rage-2': {
     id: 'rage-2',
     label: 'Rage 2',
-    blurb: 'One fault, a long way from the symptom, with the hints thinned out.',
+    blurb:
+      'One fault whose honest symptom points you at the wrong place, with the hints thinned out.',
     /**
      * §27 Rage 2 is "1 fault + misleading symptom + reduced hints".
-     * `misleadingSymptom` is not truthfully implementable yet, so this tier
-     * substitutes `remoteFault` — the same intent (the obvious place to look
-     * is the wrong one) achieved by a mechanic the simulator can support
-     * honestly. The reduced-hints half is shipped as specified.
+     * Phase E substituted `remoteFault` because the symptom-scoring proof
+     * did not exist yet. F4/F5 retire that stand-in: `misleadingSymptom`
+     * keeps candidates that do not sit on a declared load, and
+     * `tryBuildScenario` re-proves the claim against the *measured*
+     * symptom before the summary is allowed to say `applied`.
      */
-    modifiers: ['remoteFault', 'limitedHints'],
+    modifiers: ['misleadingSymptom', 'limitedHints'],
   },
   'rage-3': {
     id: 'rage-3',
@@ -57,11 +60,13 @@ export const RAGE_TIERS: Record<RageTierId, RageTier> = {
   'rage-4': {
     id: 'rage-4',
     label: 'Rage 4',
-    blurb: 'Two faults, and the first one is hiding the second.',
+    blurb: 'Two faults, the first one hiding the second, and the clock is running.',
     /**
      * §27 Rage 4 — "2 faults + compound symptom + limited hints + optional
-     * timer". The timer is explicitly optional and is not shipped yet; the
-     * rest is.
+     * timer". The timer now ships: `timeLimit` writes `timeLimitSeconds`
+     * and the Diagnosis Lab counts it down. It is still *optional* in the
+     * pedagogical sense — expiry scores what the learner has already found
+     * rather than fabricating a fail — but it is no longer missing.
      *
      * `compoundFault` replaces `multiFault` rather than joining it. Both add a
      * second fault, so running the pair would either fight over the one slot
@@ -80,8 +85,11 @@ export const RAGE_TIERS: Record<RageTierId, RageTier> = {
      * When the masking proof fails, the scenario ships as an ordinary
      * two-fault exercise and the summary says so — see the compound proof in
      * `diagnosis/scenario.ts`. It never claims a compound it did not achieve.
+     *
+     * `timeLimit` is last so `limitedHints` still owns the hint delta in the
+     * presentation notes (the runner records current-vs-next, not original).
      */
-    modifiers: ['redHerring', 'compoundFault', 'limitedHints'],
+    modifiers: ['redHerring', 'compoundFault', 'limitedHints', 'timeLimit'],
   },
 };
 

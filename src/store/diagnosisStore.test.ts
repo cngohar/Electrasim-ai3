@@ -3,7 +3,7 @@
  * (plan §16, §17, §18, §21, §22, §34, §41).
  */
 
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mem = new Map<IDBValidKey, unknown>();
 
@@ -18,6 +18,7 @@ vi.mock('idb-keyval', () => ({
 import { primaryScenarioFault } from '../domain/challenges';
 import { useCircuitStore } from './circuitStore';
 import { useDiagnosisStore } from './diagnosisStore';
+import { useSettingsStore } from './settingsStore';
 
 const flush = () => new Promise((resolve) => setTimeout(resolve, 0));
 
@@ -312,5 +313,85 @@ describe('timing', () => {
     const frozen = useDiagnosisStore.getState().totalElapsedMs();
     await new Promise((resolve) => setTimeout(resolve, 12));
     expect(useDiagnosisStore.getState().totalElapsedMs()).toBe(frozen);
+  });
+});
+
+describe('timeLimit expiry (plan §27 Rage 4)', () => {
+  beforeEach(() => {
+    useSettingsStore.getState().setSetting('ohmageddonMode', true);
+  });
+
+  afterEach(() => {
+    useSettingsStore.getState().setSetting('ohmageddonMode', false);
+  });
+
+  it('does nothing on an untimed exercise', async () => {
+    await useDiagnosisStore.getState().start('beginner', 33);
+    useDiagnosisStore.getState().expire();
+    expect(useDiagnosisStore.getState().status).toBe('active');
+    expect(useDiagnosisStore.getState().remainingMs()).toBeNull();
+  });
+
+  it('settles a Rage 4 run when the clock has already run out', async () => {
+    await useDiagnosisStore.getState().start('beginner', 33, 'rage-4');
+    const limit = useDiagnosisStore.getState().scenario?.rage?.timeLimitSeconds;
+    expect(limit).toBeGreaterThan(0);
+    expect(useDiagnosisStore.getState().remainingMs()).not.toBeNull();
+
+    useDiagnosisStore.setState({ elapsedMs: (limit ?? 0) * 1000 + 1, startedAt: Date.now() });
+    useDiagnosisStore.getState().expire();
+
+    const state = useDiagnosisStore.getState();
+    expect(state.status).toBe('timed-out');
+    expect(state.score).not.toBeNull();
+    expect(state.startedAt).toBeNull();
+    expect(state.remainingMs()).toBe(0);
+    // A timeout is not a completion — the learner did not finish the job.
+    expect(state.score?.completeness ?? 1).toBeLessThan(1);
+  });
+
+  it('refuses further submissions after a timeout', async () => {
+    await useDiagnosisStore.getState().start('beginner', 33, 'rage-4');
+    const limit = useDiagnosisStore.getState().scenario?.rage?.timeLimitSeconds ?? 0;
+    useDiagnosisStore.setState({ elapsedMs: limit * 1000 + 1, startedAt: Date.now() });
+    useDiagnosisStore.getState().expire();
+    answerCorrectly();
+    expect(useDiagnosisStore.getState().submit()).toBeNull();
+  });
+
+  it('cannot sneak a late submit through leftover selections', async () => {
+    await useDiagnosisStore.getState().start('beginner', 33, 'rage-4');
+    answerCorrectly();
+    const limit = useDiagnosisStore.getState().scenario?.rage?.timeLimitSeconds ?? 0;
+    useDiagnosisStore.setState({ elapsedMs: limit * 1000 + 1, startedAt: Date.now() });
+    useDiagnosisStore.getState().expire();
+    expect(useDiagnosisStore.getState().selectedFaultType).not.toBeNull();
+    expect(useDiagnosisStore.getState().submit()).toBeNull();
+    expect(useDiagnosisStore.getState().status).toBe('timed-out');
+  });
+
+  it('resumes an already-expired clock as timed-out rather than handing back the puzzle', async () => {
+    await useDiagnosisStore.getState().start('beginner', 33, 'rage-4');
+    const original = useDiagnosisStore.getState().scenario;
+    const limit = original?.rage?.timeLimitSeconds ?? 0;
+    await flush();
+    const record = mem.get('electrasim:diagnosis:active:v1') as Record<string, unknown>;
+    mem.set('electrasim:diagnosis:active:v1', { ...record, elapsedMs: limit * 1000 + 50 });
+
+    useDiagnosisStore.setState({
+      status: 'idle',
+      scenario: null,
+      score: null,
+      misdiagnoses: 0,
+      incompleteRepairs: 0,
+      hintsUsed: 0,
+    });
+
+    expect(await useDiagnosisStore.getState().resume()).toBe(true);
+    const state = useDiagnosisStore.getState();
+    expect(state.status).toBe('timed-out');
+    expect(state.scenario?.challengeId).toBe(original?.challengeId);
+    expect(state.score).not.toBeNull();
+    expect(state.remainingMs()).toBe(0);
   });
 });

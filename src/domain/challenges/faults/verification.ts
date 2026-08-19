@@ -19,7 +19,8 @@
  * product depends on it.
  */
 
-import type { Circuit, SimulationResult } from '../../types';
+import { COMPONENT_DEFS } from '../../components';
+import type { Circuit, FaultTarget, SimulationResult } from '../../types';
 
 /** The observable, electrical consequences of a fault. Never diagnostic prose. */
 export interface FaultSymptom {
@@ -220,6 +221,62 @@ export function sameObservableWorld(a: FaultSymptom, b: FaultSymptom): boolean {
   const left = [...a.deEnergisedLoadIds].sort();
   const right = [...b.deEnergisedLoadIds].sort();
   return left.every((id, index) => id === right[index]);
+}
+
+/**
+ * The location keys a learner would naturally look at, given this symptom.
+ *
+ * Used by `misleadingSymptom` (plan §26 / §53): a fault is only "misleading"
+ * when it does **not** sit in this set. Derived from the measured symptom,
+ * never from the answer.
+ *
+ *   - A dead load → the load itself, its terminals, and every wire that
+ *     lands on it. That is the "the lamp is out, check the lamp" reflex.
+ *   - A trip with no dead declared load → the protective devices.
+ */
+export function obviousLocationKeys(circuit: Circuit, symptom: FaultSymptom): Set<string> {
+  const keys = new Set<string>();
+
+  const addComponentAndIncident = (id: string) => {
+    keys.add(`component:${id}`);
+    const component = circuit.components.find((c) => c.id === id);
+    const ports = component ? (COMPONENT_DEFS[component.type]?.ports.length ?? 0) : 0;
+    for (let i = 0; i < ports; i++) keys.add(`port:${id}:${i}`);
+    for (const wire of circuit.wires) {
+      if (wire.fromComponentId === id || wire.toComponentId === id) keys.add(`wire:${wire.id}`);
+    }
+  };
+
+  for (const id of symptom.deEnergisedLoadIds) addComponentAndIncident(id);
+
+  if (symptom.primary === 'tripped' && symptom.deEnergisedLoadIds.length === 0) {
+    for (const component of circuit.components) {
+      if (COMPONENT_DEFS[component.type]?.isProtection) keys.add(`component:${component.id}`);
+    }
+  }
+
+  return keys;
+}
+
+/** Stable location key matching the grader / location-choice keys. */
+export function locationKeyOfTarget(target: FaultTarget): string {
+  if (target.type === 'port') return `port:${target.componentId}:${target.portIndex}`;
+  return `${target.type}:${target.id}`;
+}
+
+/**
+ * Does this fault sit somewhere *other* than where the symptom points?
+ *
+ * False when the symptom is not observable — an invisible fault cannot
+ * mislead, it can only fail §12.
+ */
+export function isMisleadingPlacement(
+  circuit: Circuit,
+  target: FaultTarget,
+  symptom: FaultSymptom,
+): boolean {
+  if (!symptom.observable) return false;
+  return !obviousLocationKeys(circuit, symptom).has(locationKeyOfTarget(target));
 }
 
 /**

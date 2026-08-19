@@ -476,12 +476,22 @@ export function applyPresentationStage(
       continue;
     }
 
+    const bits: string[] = [];
+    if (next.hints.length !== presentation.hints.length) {
+      bits.push(`hints ${presentation.hints.length} → ${next.hints.length}`);
+    }
+    if (next.hintBudget !== presentation.hintBudget) {
+      bits.push(`budget ${presentation.hintBudget} → ${next.hintBudget}`);
+    }
+    if (next.timeLimitSeconds !== presentation.timeLimitSeconds) {
+      bits.push(`timer ${next.timeLimitSeconds}s`);
+    }
     presentation = next;
     applications.push({
       id,
       label: modifier.label,
       applied: true,
-      note: `hints ${input.hints.length} → ${next.hints.length}`,
+      note: bits.join(', ') || 'adjusted',
     });
   }
 

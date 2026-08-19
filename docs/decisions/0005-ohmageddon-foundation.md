@@ -88,22 +88,13 @@ across 180 generated circuits, **99.1%** accepted by the unmodified
 parent. The 0.9% are rejected by an existing compat rule — the safety net
 working as intended.
 
-### Deliberately not shipped
+### Deliberately not shipped *(superseded by Phase F)*
 
-`multiFault`, `compoundFault`, `misleadingSymptom` and `timeLimit` are declared
-in the registry with `implemented: false`, and the runner refuses to apply
-them, so a tier table cannot accidentally ship a stub. Each is blocked on a
-real technical constraint, not scheduling:
-
-- **`multiFault` / `compoundFault`** — `DiagnosisScenario.fault` is singular and
-  §15's answer grades one type + one location. Two faults needs a plural
-  scenario shape *and* a plural evaluator (Phase F, §53 items 3 and 6).
-- **`misleadingSymptom`** — must work by *selecting* a fault whose true symptom
-  misleads, never by rewriting symptom text (§26 forbids "random symptoms
-  unrelated to the actual circuit"). Needs a symptom-scoring pass.
-- **`timeLimit`** — §53 says "optional timer only after the above are stable".
-  `RagePresentation.timeLimitSeconds` already exists, so it lands without an
-  interface change.
+All four names that were stubs at Phase E now ship. See the Phase F1–F6
+addenda: plural `scenario.faults` unlocked `multiFault` / `compoundFault`;
+`isMisleadingPlacement` unlocked `misleadingSymptom`; the optional Rage 4
+timer unlocked `timeLimit`. There is no remaining unimplemented modifier
+in the §25 vocabulary.
 
 ## Tiers (§27)
 
@@ -208,3 +199,35 @@ on the learner's burden rather than on modifier count.
 re-reads the circuit, so `observeSymptom` was added to the diagnosis domain and
 the panel now renders live evidence. §14 is preserved by reusing the same vague
 `describeSymptom` phrasing: it reports what is seen, never what is wrong.
+
+---
+
+## Addendum (Phase F4–F6) — `misleadingSymptom`, Rage 2 swap, optional timer
+
+**Decision 6 — a misleading symptom is a selection, never a rewrite.**
+`misleadingSymptom.rankCandidates` drops candidates that sit on a declared
+load. That is only a heuristic: the complaint is written from the *measured*
+symptom, so the authoritative verdict lives in `tryBuildScenario` via
+`isMisleadingPlacement` (dead load → the load, its terminals, its incident
+wires). The summary *replaces* the proposal row, same as Decision 4.
+
+**Decision 7 — Rage 2 retires the `remoteFault` stand-in.** §27 asked for
+"1 fault + misleading symptom + reduced hints". Phase E substituted
+`remoteFault` because the proof did not exist. They are not the same
+modifier: a jammed MCB one hop from the lamp is misleading ("the lamp is
+dead") without being remote. Rage 3 keeps `remoteFault`.
+
+**Decision 8 — the Rage 4 timer is 1.5× par, and expiry scores what was
+found.** Scoring still rewards finishing *under* par, so the hard stop sits
+above the medal cutoff. Hitting zero ends the session as `timed-out`,
+scores `faultsIdentified` so far, and does not invent a fail. Untimed
+tiers keep `timeLimitSeconds: null`.
+
+**Current tiers (Phase F complete).** The Phase E table above is historical.
+
+| Tier | Modifiers | Notes |
+|---|---|---|
+| Rage 1 | `redHerring` | unchanged |
+| Rage 2 | `misleadingSymptom`, `limitedHints` | Decision 7 |
+| Rage 3 | `redHerring`, `remoteFault`, `multiFault`, `limitedHints` | two faults |
+| Rage 4 | `redHerring`, `compoundFault`, `limitedHints`, `timeLimit` | Decision 5 + 8 |

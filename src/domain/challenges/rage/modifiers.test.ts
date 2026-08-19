@@ -21,13 +21,18 @@ import { validateCircuitRules } from '../../electrical/validation';
 import { simulate } from '../../simulation';
 import { observeSymptom } from '../diagnosis/evaluator';
 import { buildDiagnosisScenario } from '../diagnosis/scenario';
-import { withoutFault } from '../faults/injection';
 import { getDifficultyProfile } from '../difficulty/profiles';
 import { collectFaultCandidates } from '../faults/eligibility';
-import { diffSymptom, sameObservableWorld } from '../faults/verification';
+import { withoutFault } from '../faults/injection';
+import { diffSymptom, isMisleadingPlacement, sameObservableWorld } from '../faults/verification';
 import { generateChallenge } from '../generator/generator';
 import { createSeededRng } from '../generator/seed';
-import { RAGE_MODIFIERS, getRageModifier, implementedRageModifiers } from './modifiers';
+import {
+  RAGE_MODIFIERS,
+  RAGE_TIME_LIMIT_FACTOR,
+  getRageModifier,
+  implementedRageModifiers,
+} from './modifiers';
 import {
   MAX_SCENARIO_FAULTS,
   applyCandidateStage,
@@ -64,16 +69,15 @@ describe('rage modifier registry (plan §25)', () => {
     }
   });
 
-  it("ships §52's three modifiers plus multiFault and compoundFault", () => {
-    // §52's first three, plus `multiFault` (Phase F1 gave the scenario a plural
-    // fault list) and `compoundFault` (Phase F3 added the masking proof that
-    // makes it truthful). `misleadingSymptom` and `timeLimit` must stay
-    // unimplemented until they too can be supported truthfully (§25).
+  it('ships every modifier named in §25', () => {
+    // Phase F closed the last two stubs: `misleadingSymptom` (F4) and
+    // `timeLimit` (F6). A missing name here is a silent unimplemented
+    // modifier, which §25 forbids.
     expect(
       implementedRageModifiers()
         .map((m) => m.id)
         .sort(),
-    ).toEqual(['compoundFault', 'limitedHints', 'multiFault', 'redHerring', 'remoteFault']);
+    ).toEqual([...RAGE_MODIFIER_IDS].sort());
   });
 
   it('never marks an unimplemented modifier as having hooks', () => {
@@ -288,7 +292,9 @@ describe('remoteFault — independently (plan §42)', () => {
           candidates,
           loadComponentIds: generated.scenario.loadComponentIds,
           difficulty,
-          tier: 'rage-2',
+          // Rage 3 is the tier that still lists `remoteFault`. Rage 2 used
+          // to, then F5 retired that stand-in for `misleadingSymptom`.
+          tier: 'rage-3',
           rng: createSeededRng({ generatorVersion: 1, seed, difficulty, mode: 'rage' }),
           decoyComponentIds: [],
         });
@@ -1126,5 +1132,168 @@ describe('compoundFault — the learner sees the symptom change (§26)', () => {
       expect(afterBoth.healthy, `seed ${seed}`).toBe(true);
     }
     expect(checked, 'no compound scenario was available to check').toBeGreaterThan(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// misleadingSymptom (plan §26, §27 Rage 2, §53 F4/F5)
+// ---------------------------------------------------------------------------
+
+describe('misleadingSymptom — the complaint points at the wrong place', () => {
+  const seeds = [3, 8, 14, 19, 26, 31, 44, 57, 63, 71];
+
+  it('narrows the pool away from declared loads and never returns empty', () => {
+    let narrowed = 0;
+    for (const difficulty of DIFFICULTIES) {
+      for (let seed = 1; seed <= 8; seed++) {
+        const generated = generateChallenge({ seed, difficulty, mode: 'rage' });
+        const candidates = collectFaultCandidates(generated.circuit, generated.scenario);
+        if (candidates.length < 2) continue;
+
+        const staged = applyCandidateStage({
+          circuit: generated.circuit,
+          candidates,
+          loadComponentIds: generated.scenario.loadComponentIds,
+          difficulty,
+          tier: 'rage-2',
+          rng: createSeededRng({ generatorVersion: 1, seed, difficulty, mode: 'rage' }),
+          decoyComponentIds: [],
+        });
+
+        expect(staged.candidates.length).toBeGreaterThan(0);
+        if (staged.candidates.length < candidates.length) narrowed += 1;
+        const loads = new Set(generated.scenario.loadComponentIds);
+        for (const candidate of staged.candidates) {
+          const target = candidate.target;
+          if (target.type === 'component') expect(loads.has(target.id)).toBe(false);
+          if (target.type === 'port') expect(loads.has(target.componentId)).toBe(false);
+        }
+      }
+    }
+    expect(narrowed).toBeGreaterThan(0);
+  });
+
+  it('declines when there is nothing to choose between', () => {
+    const generated = generateChallenge({ seed: 11, difficulty: 'beginner', mode: 'rage' });
+    const candidates = collectFaultCandidates(generated.circuit, generated.scenario);
+    const patch = getRageModifier('misleadingSymptom').rankCandidates?.(
+      { circuit: generated.circuit, candidates: candidates.slice(0, 1), loadComponentIds: [] },
+      ctxFor('rage-2', 'beginner'),
+    );
+    expect(patch).toBeNull();
+  });
+
+  it('a claimed misleading fault really is one: the symptom does not point at it', () => {
+    let checked = 0;
+    for (const seed of seeds) {
+      const scenario = buildDiagnosisScenario({
+        seed,
+        difficulty: 'intermediate',
+        rageTier: 'rage-2',
+      });
+      const claim = scenario.rage?.applications.find((a) => a.id === 'misleadingSymptom');
+      expect(claim, `seed ${seed}: misleadingSymptom not reported`).toBeDefined();
+      if (!claim!.applied) continue;
+      checked += 1;
+      expect(
+        isMisleadingPlacement(
+          scenario.healthyCircuit,
+          scenario.faults[0]!.fault.target,
+          scenario.faults[0]!.symptom,
+        ),
+        `seed ${seed}: claimed misleading but the complaint points at the fault`,
+      ).toBe(true);
+    }
+    expect(checked, 'no rage-2 seed produced a misleading fault to verify').toBeGreaterThan(0);
+  });
+
+  it('never claims a misleading symptom it did not achieve (§24, §26)', () => {
+    for (const seed of seeds) {
+      const scenario = buildDiagnosisScenario({
+        seed,
+        difficulty: 'advanced',
+        rageTier: 'rage-2',
+      });
+      const claim = scenario.rage?.applications.find((a) => a.id === 'misleadingSymptom');
+      expect(claim).toBeDefined();
+      expect(claim!.applied, `seed ${seed}: ${claim!.note}`).toBe(claim!.note.includes('proven'));
+    }
+  });
+
+  it('does not run for tiers that do not list it', () => {
+    const generated = generateChallenge({ seed: 7, difficulty: 'intermediate', mode: 'rage' });
+    const candidates = collectFaultCandidates(generated.circuit, generated.scenario);
+    const result = applyCandidateStage({
+      circuit: generated.circuit,
+      candidates,
+      loadComponentIds: generated.scenario.loadComponentIds,
+      difficulty: 'intermediate',
+      tier: 'rage-1',
+      rng: createSeededRng({
+        generatorVersion: 1,
+        seed: 7,
+        difficulty: 'intermediate',
+        mode: 'rage',
+      }),
+      decoyComponentIds: [],
+    });
+    expect(result.applications.some((a) => a.id === 'misleadingSymptom')).toBe(false);
+  });
+});
+
+describe('timeLimit — Rage 4 optional timer (plan §27, §53 F6)', () => {
+  it('writes a positive countdown on every Rage 4 scenario and nowhere else', () => {
+    for (const tier of RAGE_TIER_IDS) {
+      const scenario = buildDiagnosisScenario({
+        seed: 21,
+        difficulty: 'intermediate',
+        rageTier: tier,
+      });
+      if (tier === 'rage-4') {
+        expect(scenario.rage?.timeLimitSeconds).toBeGreaterThan(0);
+        const claim = scenario.rage?.applications.find((a) => a.id === 'timeLimit');
+        expect(claim?.applied).toBe(true);
+        expect(claim?.note).toMatch(/timer \d+s/);
+      } else {
+        expect(scenario.rage?.timeLimitSeconds ?? null).toBeNull();
+      }
+    }
+  });
+
+  it('scales with par and never drops below 30 seconds', () => {
+    const next = getRageModifier('timeLimit').adjustPresentation?.(
+      {
+        hints: [{ level: 1, kind: 'observation', text: 'a' }],
+        hintBudget: 1,
+        parTimeSeconds: 10,
+        timeLimitSeconds: null,
+      },
+      ctxFor('rage-4', 'beginner'),
+    );
+    expect(next?.timeLimitSeconds).toBe(30);
+
+    const scaled = getRageModifier('timeLimit').adjustPresentation?.(
+      {
+        hints: [{ level: 1, kind: 'observation', text: 'a' }],
+        hintBudget: 1,
+        parTimeSeconds: 200,
+        timeLimitSeconds: null,
+      },
+      ctxFor('rage-4', 'intermediate'),
+    );
+    expect(scaled?.timeLimitSeconds).toBe(Math.round(200 * RAGE_TIME_LIMIT_FACTOR));
+  });
+
+  it('is a no-op when a timer is already set', () => {
+    const next = getRageModifier('timeLimit').adjustPresentation?.(
+      {
+        hints: [{ level: 1, kind: 'observation', text: 'a' }],
+        hintBudget: 1,
+        parTimeSeconds: 200,
+        timeLimitSeconds: 99,
+      },
+      ctxFor('rage-4', 'intermediate'),
+    );
+    expect(next).toBeNull();
   });
 });

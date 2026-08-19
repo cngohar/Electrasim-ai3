@@ -11,6 +11,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — Session 2026-08-19 (v2 Phase F4–F6): misleading symptom, Rage 2 swap, Rage 4 timer
+
+Phase F is complete. The last two modifiers that were still `implemented: false` now ship honestly, Rage 2 stops pretending `remoteFault` is a misleading symptom, and Rage 4 finally has the optional clock §27 listed for it.
+
+- **`misleadingSymptom` (F4).** The modifier never rewrites the complaint (§26). It *selects* a fault whose true measured symptom points somewhere unhelpful — typically an upstream open that kills a downstream load, so the briefing says the lamp is dead and the lamp is not where the fault is. Ranking drops candidates that sit on a declared load; `tryBuildScenario` then *proves* the claim with `isMisleadingPlacement` against the measured symptom (dead load → the load, its terminals, its incident wires) and **replaces** the proposal row, same honesty pattern as `compoundFault`.
+- **Rage 2 retires the `remoteFault` stand-in (F5).** §27 asked for "1 fault + misleading symptom + reduced hints". A jammed MCB one hop from the lamp is misleading without being remote, which is the beginner-safe case the stand-in was hiding. Rage 3 still uses `remoteFault`.
+- **`timeLimit` on Rage 4 (F6).** 1.5× par (floor 30 s) so the hard stop sits above the medal cutoff. The Diagnosis Lab swaps the elapsed clock for remaining time, and hitting zero settles the run as `timed-out` — whatever the learner has already found is scored, the circuit is not rewritten, and a reload cannot resurrect a clock that already hit zero.
+
 ### Added — Session 2026-08-19 (v2 Phase F3): a fault that hides another fault 😈😈😈
 
 `compoundFault` (§25, §26, §27, §53.6) is now implemented, and **Rage 4** ships with it. A compound scenario is one where the first fault *masks* the second: while it is present the installation looks exactly as it would with that fault alone, and only when the learner repairs it does the real second complaint appear. This is the diagnostic habit the tier exists to teach — *re-test after every repair*.

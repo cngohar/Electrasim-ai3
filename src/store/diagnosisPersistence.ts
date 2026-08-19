@@ -38,6 +38,7 @@ export type DiagnosisStatus =
   | 'active'
   | 'evaluating'
   | 'completed'
+  | 'timed-out'
   | 'abandoned';
 
 /** The resumable slice of a diagnosis run (plan §21). */
