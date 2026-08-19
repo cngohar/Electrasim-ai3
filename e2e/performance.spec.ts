@@ -1,3 +1,4 @@
+import { gzipSync } from 'node:zlib';
 import { type Page, expect, test } from '@playwright/test';
 
 interface FrameStats {
@@ -12,6 +13,80 @@ interface GestureStats extends FrameStats {
   handlerAverage: number;
   handlerP95: number;
   commitHandlerDuration: number;
+}
+
+/** A deterministic dense circuit. The old benchmark depended on a removed
+ * dev-only toolbar button, which meant the opt-in benchmark could not run. */
+function denseCircuitShareUrl(): string {
+  const components: Array<{
+    id: string;
+    type: string;
+    x: number;
+    y: number;
+    state: { on?: boolean };
+  }> = [
+    { id: 'live-rail', type: 'live-terminal', x: 600, y: 50, state: {} },
+    { id: 'neutral-rail', type: 'neutral-terminal', x: 600, y: 1700, state: {} },
+  ];
+  const wires: Array<{
+    id: string;
+    fromComponentId: string;
+    fromPortIndex: number;
+    toComponentId: string;
+    toPortIndex: number;
+    controlPoints: never[];
+  }> = [];
+
+  for (let index = 0; index < 100; index += 1) {
+    const switchId = `switch-${index}`;
+    const bulbId = `bulb-${index}`;
+    const column = index % 10;
+    const row = Math.floor(index / 10);
+    const x = 80 + column * 110;
+    const switchY = 120 + row * 150;
+
+    components.push(
+      {
+        id: switchId,
+        type: 'single-way-switch',
+        x,
+        y: switchY,
+        state: { on: index % 2 === 0 },
+      },
+      { id: bulbId, type: 'bulb', x, y: switchY + 65, state: {} },
+    );
+    wires.push(
+      {
+        id: `live-${index}`,
+        fromComponentId: 'live-rail',
+        fromPortIndex: 0,
+        toComponentId: switchId,
+        toPortIndex: 0,
+        controlPoints: [],
+      },
+      {
+        id: `load-${index}`,
+        fromComponentId: switchId,
+        fromPortIndex: 1,
+        toComponentId: bulbId,
+        toPortIndex: 0,
+        controlPoints: [],
+      },
+      {
+        id: `neutral-${index}`,
+        fromComponentId: bulbId,
+        fromPortIndex: 1,
+        toComponentId: 'neutral-rail',
+        toPortIndex: 0,
+        controlPoints: [],
+      },
+    );
+  }
+
+  const encoded = gzipSync(
+    JSON.stringify({ version: 1, exportedAt: 0, circuit: { components, wires } }),
+  ).toString('base64');
+  return `/?e2e=performance#c=${encodeURIComponent(encoded)}`;
 }
 
 async function measurePointerGesture(
@@ -102,12 +177,9 @@ test.describe('dense editor benchmark', () => {
   });
 
   test('keeps the SVG editing path responsive at roughly 200 components', async ({ page }) => {
-    await page.goto('/');
-
-    const stressButton = page.getByRole('button', { name: 'Stress' });
-    await expect(stressButton).toBeVisible();
-    await stressButton.click({ modifiers: ['Shift'] });
-    await expect(page.getByText(/202 components · 300 wires/)).toBeVisible();
+    await page.goto(denseCircuitShareUrl());
+    await expect(page.locator('[data-component-id]')).toHaveCount(202);
+    await expect(page.locator('path[data-wire-id]')).toHaveCount(300);
 
     await page.getByRole('button', { name: /^Run Simulation$/ }).click();
     await page.waitForTimeout(500);

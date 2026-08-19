@@ -1,206 +1,284 @@
-# Pro Mode & Dual-Standard Compliance — Implementation Notes
+# Pro Mode & Standards Compliance — Implementation Notes
 
-This document summarises the work delivered in this branch, maps each
-requirement to the files that implement it, and lists known follow-ups.
+This document records the completed Pro-mode implementation, including the
+follow-up work identified during the original editor review. It also records
+which validation was executable in this checkout.
 
-## 1. Sub-header "? Specs" button removed
+## Delivered behavior
 
-The quick "? Specs" button that used to appear next to a selected component
-in the floating SubHeaderBar has been removed. The full "Specs" control
-still lives inside the component image card (top-right) and in the variant
-gallery, so no functionality is lost.
+### 1. Focused Pro and Student experiences
 
-- `src/ui/components/SubHeaderBar.tsx` — button deleted.
+- The redundant `? Specs` shortcut was removed from the floating sub-header;
+  component specifications remain available from the image card and variant
+  gallery.
+- Manual fault injection is controlled by the persisted
+  `manualFaultInjection` setting and remains Pro-only. Student mode does not
+  expose the Fault Lab, component/wire injection controls, breaker-trip
+  controls, or fault context-menu actions.
+- Student mode now shows the active electrical standard and citation in a
+  read-only badge. Switching standards and plug systems remains a Pro action.
 
-## 2. Manual fault-injection master toggle (Pro-only)
+Primary files:
 
-A new `manualFaultInjection` boolean setting (default **on**) controls whether
-manual fault-injection UI is rendered. It is exposed as a compact
-Faults on/off pill in the SubHeaderBar, **only in Pro mode**.
+- `src/ui/components/SubHeaderBar.tsx`
+- `src/ui/components/StandardSelector.tsx`
+- `src/ui/components/contextMenuItems.ts`
+- `src/ui/components/inspector/ComponentPropertiesView.tsx`
+- `src/ui/components/inspector/InspectorSimulationContent.tsx`
+- `src/store/settingsStore.ts`
 
-Student Mode never renders the toggle or any fault-injection surface. When
-the toggle is off in Pro mode, all of the following are hidden:
+### 2. Independent electrical standards and physical plug systems
 
-- Manual Fault Simulation panel (Component Properties tab)
-- Fault Injection Testing panel (Simulation tab, wires)
-- Manual breaker trip control (Simulation tab, protection components)
-- Fault injection / clear-fault items in the right-click context menu
+`src/domain/standards.ts` is the authoritative source for four electrical
+rule sets:
 
-In addition, when Student Mode is active any previously injected faults
-remain in the circuit model but no UI exposes them.
+| Code | Rule set | Nominal supply | Frequency | Voltage-drop limit (lighting / power) |
+| --- | --- | ---: | ---: | ---: |
+| `uk` | BS 7671 | 230 V | 50 Hz | 3% / 5% |
+| `us` | NFPA 70 (NEC) | 120 V | 60 Hz | 3% / 5% |
+| `eu` | IEC/HD 60364 | 230 V | 50 Hz | 3% / 5% |
+| `int` | IEC-style International | 230 V | 50 Hz | 3% / 5% |
 
-- `src/store/settingsStore.ts` — `manualFaultInjection` flag (persisted,
-  schema v1 → v2 forward-compatible).
-- `src/ui/components/SubHeaderBar.tsx` — Faults toggle.
-- `src/ui/components/inspector/ComponentPropertiesView.tsx` — panel gated.
-- `src/ui/components/inspector/InspectorSimulationContent.tsx` — wire fault
-  grid + manual breaker trip gated.
-- `src/ui/components/contextMenuItems.ts` — component & wire fault menu
-  items gated.
+Physical plug/socket systems are persisted separately as BS 1363, NEMA 5,
+Schuko, AS/NZS 3112, BS 546, or All. Changing a rule set updates nominal
+voltage and re-runs validation, but does **not** rewrite `plugSystem` or swap
+the user's socket hardware. The plug selector is the sole owner of physical
+plug selection.
 
-## 3. UK / US / EU regulation templates
+Settings hydration accepts the International preset, preserves valid
+standard/plug combinations, and rejects invalid values field-by-field.
+Focused unit and deterministic end-to-end coverage both assert that a
+standard change leaves the selected plug system unchanged.
 
-A new pure module `src/domain/standards.ts` defines three presets:
-
-| Code | Standard | Nominal | Freq | RCD | MCB default | Motor MCB | V-drop L/P |
-|------|----------|---------|------|-----|-------------|-----------|------------|
-| `uk` | BS 7671 18th Ed. Amd 3/4 | 230 V | 50 Hz | 30 mA | B | C | 3 % / 5 % |
-| `us` | NFPA 70 (NEC) | 120 V | 60 Hz | 6 mA GFCI | C | D | 3 % / 5 % |
-| `eu` | IEC 60364 | 230 V | 50 Hz | 30 mA | B | C | 3 % / 5 % |
-
-A segmented `StandardSelector` popover lives in the SubHeaderBar (Pro-only).
-Selecting a template:
-
-1. persists `regulationStandard`,
-2. updates the global supply voltage,
-3. applies the standard's conductor colour palette,
-4. re-runs validation immediately.
+Primary files:
 
 - `src/domain/standards.ts`
 - `src/ui/components/StandardSelector.tsx`
-- `src/ui/theme.ts` — wire colours now derive from `regulationStandard`
-  (legacy `wireColorStandard` still acts as a regional override).
-- `src/ui/Editor.tsx` — passes the standard into the theme builder.
-- `src/store/settingsStore.ts` — `regulationStandard` persisted.
+- `src/store/settingsStore.ts`
+- `src/store/settingsStore.test.ts`
 
-## 4. Standard-aware compliance validation
+### 3. Standard-aware compliance validation
 
-`src/domain/compliance.ts` adds three blocking rules keyed to the active
-standard:
+The validation engine applies the active standard to:
 
-- **Voltage drop** — per-load BFS to the nearest source using the BS 7671
-  Appendix 4 mV/A/m method. Flags any load whose drop exceeds the 3 %
-  (lighting) / 5 % (power) ceiling for the selected standard.
-- **Unswitched socket without RCD/GFCI** — upstream graph search for an
-  RCD/RCBO/GFCI/AFDD. Missing protection is a blocking error under all
-  three standards (BS 7671 411.3.3, NEC 210.8, IEC 60364-4-41).
-- **Wrong MCB curve for motor loads** — motors / compressors / EV chargers
-  require a C- or D-curve breaker; a B-curve upstream is a blocking error
-  (nuisance tripping on inrush).
+- voltage drop at final loads,
+- socket RCD/GFCI protection,
+- MCB curve suitability for motor/high-inrush loads,
+- standard-specific voltage, conductor colours, ratings, and recommendations.
 
-The existing `validateCircuit` runner now accepts the active standard and
-merges these issues into the same report. Each blocking issue carries
-`blocking: true`; the report also exposes `blockingErrorsCount` and the
-`standard` it was generated against.
+Blocking issues carry `blocking: true`; reports expose the active standard and
+`blockingErrorsCount`.
+
+Primary files:
 
 - `src/domain/compliance.ts`
 - `src/domain/circuitValidation.ts`
 - `src/domain/circuitValidationTypes.ts`
 
-## 5. Simulation blocked until compliance errors are fixed
+### 4. Shared simulation-start safety and compliance gate
 
-`setSimRunning(true)` / `toggleSim()` now validate the current graph
-against the active standard **before** starting. If any blocking error is
-open:
+Every ordinary start path (`setSimRunning(true)` and `toggleSim()`) now passes
+through one shared gate:
 
-- simulation stays paused,
-- the Validation inspector tab auto-opens,
-- a `COMPLIANCE CHECK FAILED` fault alert explains the first violation,
-- the user must fix the issue and re-run.
+1. Tripped/blown components and melted wires are checked first and remain
+   non-bypassable physical failures.
+2. In Pro mode, blocking compliance issues pause the simulation, open the
+   Validation inspector, and set `complianceGateBlocked`.
+3. A regulatory rejection is shown as an inline compliance state, not as a
+   fabricated electrical trip alert.
+4. Student-mode compliance remains guidance and does not block simulation.
 
-This is the "simulation does not run until fixed" gate requested in the
-brief. Tripped / blown / busted components continue to block as before.
+The Validation tab displays an actionable banner with the blocker count, the
+first blocking issue, issue navigation, and a clearly labelled Pro-only
+teacher/demo override.
 
-- `src/store/uiStore.ts` — `setSimRunning`, `toggleSim`, `runCircuitValidation`.
+Primary files:
 
-## 6. Pro "Simulation History" audit log
+- `src/store/uiStore.ts`
+- `src/store/uiStore.types.ts`
+- `src/ui/components/ValidationReportView.tsx`
+- `src/store/uiStore.test.ts`
 
-A new **History** tab (clock icon) is appended to the Pro inspector rail.
-It surfaces the event-history stream grouped into three counters:
+### 5. Audited teacher/demo override
 
-- **Violations** (`regulatory_violation`)
-- **Faults** (injected / detected / tripped / blown / melted)
-- **Interventions** (cleared / repaired)
+`runWithComplianceOverride()` starts a Pro simulation despite regulatory
+blockers only. It is inert outside Pro mode and refuses to bypass tripped,
+blown, or melted equipment.
 
-Every blocking compliance violation produced by a validation run is
-automatically recorded (de-duplicated within 5 seconds) with timestamp,
-affected component/wire, standard and issue id. The log holds the last
-100 events and supports a Clear action. The existing floating
-`EventHistoryPanel` keeps working and now also renders the new event
-types.
+Each actual override adds:
 
-- `src/ui/components/inspector/InspectorHistoryView.tsx` (new)
-- `src/ui/components/inspector/Inspector.tsx` — History tab (Pro only).
-- `src/store/uiStore.types.ts` — new event types + details fields.
-- `src/store/uiStore.ts` — auto-records blocking violations.
-- `src/ui/components/EventHistoryPanel.tsx` — icon for new event types.
+- a warning `manual_intervention` event,
+- the active standard,
+- the titles of all blocking issues,
+- a warning in the application log.
 
-## 7. "Show Stress Zones" canvas heatmap
+The event is included in the History intervention count and exposed to tests
+as `data-history-event="manual_intervention"`.
 
-A Pro-mode toolbar toggle arms a new SVG overlay
-(`StressZoneOverlay`) that colour-codes components and wires by the
-higher of:
+Primary files:
 
-- thermal ratio (live component temperature / 90 °C or wire
-  `wireHeatRatios`),
-- voltage-drop ratio (actual % / standard ceiling for the load).
+- `src/store/uiStore.ts`
+- `src/store/uiStore.types.ts`
+- `src/ui/components/ValidationReportView.tsx`
+- `src/ui/components/inspector/InspectorHistoryView.tsx`
 
-The colour ramp runs green → amber → orange → red. Elements above 80 %
-get a pulsing dashed outline and a small percentage badge. Wires show
-their ΔU percentage. The overlay is non-interactive
-(`pointer-events: none`) so selection and wiring keep working.
+### 6. Durable Simulation History
 
-- `src/ui/canvas/StressZoneOverlay.tsx` (new)
-- `src/ui/CircuitCanvas.tsx` — mounts overlay inside the world transform.
-- `src/ui/components/Toolbar.tsx` — Stress Zones toggle (Pro-only).
-- `src/store/settingsStore.ts` — `stressZonesEnabled` persisted.
+The Pro Simulation History audit trail is persisted separately from circuit
+data under `electrasim:event-history:v1`. It hydrates concurrently with the
+circuit and settings before React's first render, and autosaves changes with a
+short debounce.
 
-## 8. "Recommended Protection" badge
+Persistence is schema-versioned and reconstructs untrusted IndexedDB values
+from strict event/severity/detail whitelists. Malformed entries are discarded
+and both hydrated and live histories are capped at 100 events. Circuit import
+or replacement cannot silently erase the audit trail.
 
-For any selected load in Pro mode, the Properties tab now shows a green
-badge with the standard-recommended:
+Primary files:
 
-- MCB rating (smallest preferred size ≥ 1.25 × design current)
-- Trip curve (B for resistive/electronic, C/D for inductive motor loads)
-- Design current Ib (P / V)
+- `src/store/eventHistoryPersistence.ts`
+- `src/store/eventHistoryPersistence.test.ts`
+- `src/main.tsx`
+- `src/ui/components/inspector/InspectorHistoryView.tsx`
 
-The figures recompute when the load's power/voltage or the selected
-regulation standard changes. Badge is suppressed for sources, junctions,
-breakers and distribution gear.
+### 7. Unified three-state diagnostics
 
-- `src/domain/standards.ts` — `recommendMcbrating`, `recommendCurveForLoad`.
-- `src/ui/components/inspector/ComponentPropertiesView.tsx` — badge.
-- Test hook: `[data-recommended-protection]` attribute.
+The former thermal and stress-zone booleans are replaced by one persisted
+setting:
 
-## Tests
+```ts
+type DiagnosticOverlayMode = 'off' | 'heat' | 'heat-vdrop';
+```
 
-- Unit / integration: `npm test` → **317 / 317 passing** (includes the
-  updated settings-store migration test for schema v2).
-- End-to-end: `e2e/pro-features.spec.ts` covers every new surface with
-  8 Playwright tests, **all passing** on Chromium.
-- TypeScript: `tsc --noEmit` clean.
-- Production build: `vite build` succeeds (chunk-size warning pre-existing).
+The Toolbar cycles **Off → Heat only → Heat + V-drop**, while the Analytics
+inspector exposes the same setting as a select control. Migration precedence
+for old saved data is:
 
-## Review suggestions for the actual app
+1. a valid `diagnosticOverlayMode`,
+2. legacy `stressZonesEnabled: true` → `heat-vdrop`,
+3. legacy `thermalOverlayEnabled: true` → `heat`,
+4. otherwise `off`.
 
-While implementing the features I walked the whole editor; a few
-independent improvements stand out as worth doing next:
+Heat mode retains detailed component temperature cards and adds thermal wire
+bands. Combined mode renders component stress halos and combines wire thermal
+loading with standard-relative voltage drop. Wire bands reuse the exact
+orthogonal path precomputed by `CircuitCanvas`, falling back to the shared
+bezier/polyline geometry builder, so diagnostics follow routed bends rather
+than drawing endpoint shortcuts. The overlay remains non-interactive.
 
-1. **Demystify the compliance gate for new users.** The Run button now
-   refuses to start on a blocking violation, but the fault-alert modal is
-   the same component used for trips/melts. A dedicated inline banner
-   inside the Validation tab ("Fix 3 issues to enable Run") with a direct
-   "Run anyway" override for teachers/demos would reduce friction.
-2. **Surface the standard selector in Student mode as read-only.**
-   Students currently can't see which regulation they're working under;
-   showing the flag + citation (disabled) keeps the UI honest without
-   exposing the switch.
-3. **Make Stress Zones reflect the actual geometry.** The current overlay
-   places a dot at the midpoint of a wire's endpoints rather than along
-   the routed path. Reusing `precomputedPath` from `WireLayer` would let
-   the heat band follow bends and corners for a much more convincing
-   heatmap.
-4. **Persist the audit log.** Today the Simulation History is in-memory
-   and resets on reload. Appending it to the existing IndexedDB
-   persistence layer (alongside circuits/settings) would turn it into a
-   genuine traceable record for classrooms.
-5. **Combine the two thermal toggles.** `thermalOverlayEnabled`
-   (Analytics tab, per-component temperature) and the new
-   `stressZonesEnabled` overlap visually. Merging them into one
-   three-state control (Off / Heat only / Heat + V-drop) would remove
-   redundancy.
-6. **Standard-aware palette defaults.** When the user switches to US,
-   socket/breaker components still show BS-pattern parts by default.
-   Filtering or re-labelling the palette (e.g. promoting GFCI receptacles
-   and NEMA sockets) under NEC would make the dual-standard experience
-   feel complete end-to-end.
+Primary files:
+
+- `src/store/settingsStore.ts`
+- `src/ui/components/Toolbar.tsx`
+- `src/ui/components/inspector/InspectorAnalyticsView.tsx`
+- `src/ui/CircuitCanvas.tsx`
+- `src/ui/canvas/ComponentNode.tsx`
+- `src/ui/canvas/StressZoneOverlay.tsx`
+- `src/ui/canvas/geometry.ts`
+
+### 8. Standard- and plug-aware palette recommendations
+
+The palette now promotes a compact essentials set for the selected standard
+and independently selected plug:
+
+- mains supply,
+- standard-appropriate protection,
+- the selected plug system's primary socket,
+- a representative lighting load.
+
+US recommendations promote a C-curve MCB and GFCI; IEC/BS-style presets
+promote RCBO/MCB/RCD protection. Recommended entries are also promoted within
+their normal categories.
+
+Recent components pass through the same eligibility rules as the main
+palette: region-incompatible sockets and Pro-only entries in Student mode are
+not shown. Every normal, recent, and recommendation tile exposes
+`data-palette-type` for deterministic automation.
+
+Primary files:
+
+- `src/ui/components/Palette.tsx`
+- `src/domain/standards.ts`
+
+### 9. Recommended load protection
+
+For eligible selected loads, Pro Properties displays the recommended breaker
+rating, trip curve, and design current. Values recompute from load power,
+voltage, load type, and active standard. Sources, junctions, protection, and
+distribution components do not show the badge.
+
+Primary files:
+
+- `src/domain/standards.ts`
+- `src/ui/components/inspector/ComponentPropertiesView.tsx`
+
+## Automated coverage
+
+Unit/integration coverage includes:
+
+- settings migration and International-standard hydration,
+- standard/plug independence,
+- shared physical-safety and compliance gating,
+- Pro override auditing and physical-fault refusal,
+- strict event-history parsing, capping, hydration, and autosave.
+
+`e2e/pro-features.spec.ts` contains eight deterministic Playwright tests for:
+
+- removal of the redundant Specs shortcut,
+- Pro-only fault controls,
+- Student read-only standards,
+- independent standard/plug selection and palette recommendations,
+- compliance gating, override, audit persistence, and reload hydration,
+- Simulation History visibility,
+- all three diagnostic states,
+- recommended load protection.
+
+The compliance test imports a complete, compressed circuit fixture rather
+than depending on mutable demo content, so a successful browser run has one
+unambiguous regulatory blocker.
+
+## Validation status
+
+Completed in this checkout:
+
+- `npm run check` — TypeScript, Biome lint, and all 61 Vitest files / 898 tests pass.
+- `npm run build` — Vite/PWA, Astro, and postbuild pass; only the existing
+  large-chunk advisory is emitted.
+- `npm run stress:challenge` — 750 scenarios / 4,500 evaluations pass.
+- `npm run stress:generator` — 3,726 challenges, 223,656 injected faults, and
+  414,574 verified repairs pass.
+- `npm run stress:diagnosis` — 600 scenarios / 10,973 evaluations pass.
+- `npm run stress:ohmageddon` — 1,800 scenarios / 6,816 evaluations pass.
+- `npm run benchmark:simulation` — passes serially at 1.15 ms median and
+  1.69 ms p95 for 200 components / 396 wires (8 ms p95 budget).
+
+- `e2e/pro-features.spec.ts` — all 8 focused Pro/standards tests pass in Chromium.
+- Full desktop Chromium suite — 63 passed and 2 intentionally skipped (65 total).
+- Full mobile Chrome suite — 53 passed and 12 intentionally skipped (65 total).
+- Opt-in dense browser benchmark — passes with a deterministic compressed-share
+  fixture containing 202 components and 300 wires.
+- Production Playwright suite — all 11 tests pass against the built Pages output.
+
+Playwright's normal browser downloads remained unavailable because every
+browser CDN reset TLS connections. Chromium execution used a temporary runtime
+obtained through the reachable npm registry and matching NSS/NSPR libraries;
+no runtime package or browser binary was added to the repository. No genuine
+WebKit executable or library was present locally, npm's Playwright WebKit
+packages contained only CDN-backed installers, and system package mirrors were
+also unreachable.
+
+An exact active Playwright 1.62.1 WebKit cache (revision 2336, browser 26.5) was
+located in GitHub Actions, but GitHub's public cache REST API exposes metadata
+and deletion rather than archive downloads. A temporary GitHub Actions
+validation workflow was also prepared; its push was rejected because the Arena
+GitHub App lacks `workflows` permission, and it was removed from the final tree.
+The user chose to finalize the environment-blocked commit rather than reconnect
+GitHub. The `tablet-safari` project therefore remains an explicit validation gap
+rather than being misreported as Chromium coverage.
+
+## Remaining work
+
+No known application implementation item from the original review remains.
+Run `npx playwright test --project=tablet-safari` in an environment that can
+install Playwright WebKit 26.5/revision 2336 to close the sole browser-validation
+gap.

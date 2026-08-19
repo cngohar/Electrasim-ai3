@@ -1,17 +1,68 @@
+import { gzipSync } from 'node:zlib';
 import { type Page, expect, test } from '@playwright/test';
 
 /**
  * End-to-end coverage for the Pro-mode feature set delivered in this branch:
  *   - Specs button removed from the SubHeaderBar
  *   - Manual fault injection master toggle (Pro-only) + fault UI gating
- *   - UK/US/EU regulation template selector (voltage, wire colors, frequency)
- *   - Compliance validation gate blocks simulation until errors are fixed
- *   - Simulation History inspector tab (audit log)
- *   - Show Stress Zones canvas heatmap toggle
+ *   - Read-only Student standard display and independent Pro standard/plug controls
+ *   - Compliance banner, audited teacher override, and persisted Simulation History
+ *   - Unified routed-path Heat / Heat + V-drop diagnostic overlay
  *   - Recommended Protection badge on component properties
  */
 
-const BASE_URL = 'http://127.0.0.1:3000';
+/** A complete UK socket circuit with no upstream RCD/RCBO. It is electrically
+ * runnable but has one unambiguous blocking compliance issue. */
+function unprotectedSocketShareUrl(): string {
+  const payload = {
+    version: 1,
+    exportedAt: 0,
+    circuit: {
+      globalVoltage: 230,
+      components: [
+        { id: 'source', type: 'ac-mains-supply', x: 300, y: 350, state: { on: true } },
+        { id: 'socket', type: 'socket-3pin', x: 650, y: 350, state: { on: true } },
+      ],
+      wires: [
+        {
+          id: 'wire-live',
+          fromComponentId: 'source',
+          fromPortIndex: 0,
+          toComponentId: 'socket',
+          toPortIndex: 0,
+          controlPoints: [],
+          lengthMeters: 1,
+          customCableMm2: 10,
+        },
+        {
+          id: 'wire-neutral',
+          fromComponentId: 'source',
+          fromPortIndex: 1,
+          toComponentId: 'socket',
+          toPortIndex: 1,
+          controlPoints: [],
+          lengthMeters: 1,
+          customCableMm2: 10,
+        },
+        {
+          id: 'wire-earth',
+          fromComponentId: 'source',
+          fromPortIndex: 2,
+          toComponentId: 'socket',
+          toPortIndex: 2,
+          controlPoints: [],
+          lengthMeters: 1,
+          customCableMm2: 10,
+        },
+      ],
+    },
+  };
+  const encoded = gzipSync(JSON.stringify(payload)).toString('base64');
+  // The query marker forces a document navigation when this is opened after
+  // beforeEach has already loaded `/`; a hash-only navigation would not rerun
+  // startup share decoding.
+  return `/?e2e=pro-compliance#c=${encodeURIComponent(encoded)}`;
+}
 
 // Use a wide viewport so the right-hand inspector (≈320 px) and left palette
 // don't overlap the canvas bulbs we need to click in the tests.
@@ -41,7 +92,7 @@ test.describe('Dual standard & pro features', () => {
         /* storage may be unavailable in some environments */
       }
     });
-    await page.goto(BASE_URL, { waitUntil: 'domcontentloaded' });
+    await page.goto('/', { waitUntil: 'domcontentloaded' });
     // Wait for the canvas to mount before interacting.
     await page.locator('[data-circuit-canvas]').waitFor({ state: 'attached' });
     // Expand the right-hand inspector so property / fault controls are
@@ -81,54 +132,88 @@ test.describe('Dual standard & pro features', () => {
     await expect(page.getByText('Manual Fault Simulation').first()).toBeVisible();
   });
 
-  test('student mode never shows the Fault Lab button; country selector is universal', async ({
-    page,
-  }) => {
-    // Switch to Student mode (Pro toggle visible means we're in pro).
+  test('student mode hides Fault Lab and shows its active standard read-only', async ({ page }) => {
+    // Switch to Student mode (a visible Pro toggle means persisted settings
+    // started this test in Pro).
     const proToggle = page.getByRole('button', { name: /^pro$/i });
     if (await proToggle.isVisible().catch(() => false)) {
       await proToggle.click({ force: true });
     }
     await expect(page.getByRole('button', { name: /^student$/i })).toBeVisible();
-    // The Fault Lab button must not be rendered in student mode (fault
-    // injection is Pro-only).
     await expect(page.getByRole('button', { name: /Fault Lab/ })).toHaveCount(0);
-    // The country / region selector is universal (available in all modes).
-    await expect(
-      page.getByRole('banner').getByRole('button', { name: /Standard: .* Plug: / }),
-    ).toBeVisible();
+
+    const standard = page.locator('[data-standard-selector][data-standard-readonly]');
+    await expect(standard).toBeVisible();
+    await expect(standard).toContainText('UK');
+    await expect(standard.locator('[data-standard-citation]')).toContainText('BS 7671');
+    // Student can see the governing rules, but cannot open either selector.
+    await expect(page.getByRole('button', { name: /Standard: .* Plug: / })).toHaveCount(0);
   });
 
-  test('standard selector switches nominal voltage and frequency', async ({ page }) => {
+  test('standard switches voltage without overwriting the independent plug choice', async ({
+    page,
+  }) => {
     await ensureProMode(page);
 
     const trigger = page.locator('[data-standard-selector]');
     await trigger.click({ force: true });
     await expect(page.getByText('United States', { exact: true })).toBeVisible();
 
-    // Switch to US (120 V / 60 Hz).
+    // Make a deliberately non-default physical socket selection first.
+    await page.getByRole('button', { name: /Schuko/ }).click();
+    await expect(trigger).toHaveAttribute('aria-label', /Plug: Schuko/);
+
+    // Changing only the rule set updates voltage/frequency while retaining
+    // the explicitly chosen Schuko hardware.
+    await trigger.click({ force: true });
     await page.getByRole('button', { name: /united states/i }).click();
+    await expect(trigger).toHaveAttribute('aria-label', /Standard: US · Plug: Schuko/);
     await expect(page.getByText(/120\s*V\s*60\s*Hz/)).toBeVisible({ timeout: 5000 });
 
-    // Switch to EU (230 V / 50 Hz).
-    await trigger.click({ force: true });
-    await page.getByRole('button', { name: /european union/i }).click();
-    await expect(page.getByText(/230\s*V\s*50\s*Hz/)).toBeVisible({ timeout: 5000 });
+    const essentials = page.locator('[data-standard-recommendations="us"]');
+    await expect(essentials).toBeVisible();
+    await expect(essentials.locator('[data-palette-type="mcb-type-c"]')).toBeVisible();
+    await expect(essentials.locator('[data-palette-type="socket-gfci"]')).toBeVisible();
+    await expect(essentials.locator('[data-palette-type="socket-schuko"]')).toBeVisible();
   });
 
-  test('validation gates simulation on a compliance violation', async ({ page }) => {
+  test('compliance gate explains, overrides, audits, and persists a violation', async ({
+    page,
+  }) => {
+    await page.goto(unprotectedSocketShareUrl(), { waitUntil: 'domcontentloaded' });
+    await page.locator('[data-circuit-canvas]').waitFor({ state: 'attached' });
     await ensureProMode(page);
 
-    // Click Run. Either the circuit is compliant and simulation starts, or a
-    // compliance failure alert is shown — both are valid outcomes of the gate.
     await page.getByRole('button', { name: /run simulation/i }).click({ force: true });
 
-    const pausedAfterBlock = page.getByText(/compliance check failed/i);
-    const running = page.getByText(/running/i).first();
-    const ok =
-      (await pausedAfterBlock.isVisible().catch(() => false)) ||
-      (await running.isVisible().catch(() => false));
-    expect(ok).toBeTruthy();
+    const banner = page.locator('[data-compliance-gate-banner]');
+    await expect(banner).toBeVisible();
+    await expect(banner).toContainText(/Fix 1 blocking issue to enable Run/i);
+    await expect(banner).toContainText(/RCD|GFCI/i);
+    // Regulatory rejection is not presented as a simulated electrical trip.
+    await expect(page.getByText(/unresolved electrical fault/i)).toHaveCount(0);
+
+    await banner.locator('[data-compliance-override]').click();
+    await expect(page.getByRole('button', { name: /^stop$/i })).toBeVisible();
+    await expect(banner).toHaveCount(0);
+
+    await page
+      .getByRole('button', { name: /simulation history \(audit log\)/i })
+      .click({ force: true });
+    const auditEntry = page.locator('[data-history-event="manual_intervention"]');
+    await expect(auditEntry).toContainText(/Teacher\/demo override/i);
+
+    // IndexedDB autosave is debounced. A reload must hydrate the audit event
+    // before React renders so the history cannot flash empty or disappear.
+    await page.waitForTimeout(250);
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await page.locator('[data-circuit-canvas]').waitFor({ state: 'attached' });
+    await page
+      .getByRole('button', { name: /simulation history \(audit log\)/i })
+      .click({ force: true });
+    await expect(page.locator('[data-history-event="manual_intervention"]')).toContainText(
+      /Teacher\/demo override/i,
+    );
   });
 
   test('simulation history tab is visible in pro inspector', async ({ page }) => {
@@ -146,15 +231,26 @@ test.describe('Dual standard & pro features', () => {
     await expect(page.getByText('Simulation History').first()).toBeVisible();
   });
 
-  test('stress zones toggle arms the canvas heatmap', async ({ page }) => {
+  test('diagnostic control cycles heat and heat-plus-voltage-drop modes', async ({ page }) => {
     await ensureProMode(page);
-    const btn = page.getByRole('button', { name: /stress zones/i });
-    await expect(btn).toBeVisible();
-    // Toggling persists to settings and makes the overlay group mount.
-    await btn.click({ force: true });
-    await page.waitForTimeout(200);
-    const overlayWhenOn = await page.locator('[data-stress-zone-overlay]').count();
-    expect(overlayWhenOn).toBeGreaterThanOrEqual(1);
+    const button = page.getByRole('button', { name: /Diagnostic overlay:/i });
+    await expect(button).toContainText('Off');
+
+    await button.click({ force: true });
+    await expect(button).toContainText('Heat only');
+    await expect(
+      page.locator('[data-stress-zone-overlay][data-diagnostic-overlay-mode="heat"]'),
+    ).toBeAttached();
+
+    await button.click({ force: true });
+    await expect(button).toContainText('Heat + V-drop');
+    await expect(
+      page.locator('[data-stress-zone-overlay][data-diagnostic-overlay-mode="heat-vdrop"]'),
+    ).toBeAttached();
+
+    await button.click({ force: true });
+    await expect(button).toContainText('Off');
+    await expect(page.locator('[data-stress-zone-overlay]')).toHaveCount(0);
   });
 
   test('recommended protection badge appears for a load in pro mode', async ({ page }) => {

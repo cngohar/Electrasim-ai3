@@ -7,6 +7,26 @@ A running, append-only log of work on the ElectraSim rewrite. Every coding sessi
 
 ---
 
+## Session 2026-08-19 — Pro standards and diagnostics follow-up complete
+
+**Done:** closed the remaining implementation notes around Pro compliance, standards, auditability, diagnostics, palette recommendations, and deterministic browser coverage.
+
+- Every ordinary simulation start now passes through one gate. Physical damage remains non-bypassable; Pro regulatory blockers open Validation and may be bypassed only through a clearly labelled teacher/demo action.
+- Each actual override records a persisted `manual_intervention` event with the standard and blocker titles. Simulation History hydrates before first render, autosaves independently of circuit data, rejects malformed records, and caps at 100 events.
+- Student mode displays the active standard read-only. Pro standard and physical plug controls are independent, and the palette applies standard/plug recommendations plus the same eligibility filters to recent items.
+- Replaced `thermalOverlayEnabled` plus `stressZonesEnabled` with `diagnosticOverlayMode` (`off`, `heat`, `heat-vdrop`) and deterministic legacy migration. Thermal and voltage-drop bands reuse routed wire geometry.
+- Rebuilt the focused Pro tests around a deterministic compressed circuit fixture. The opt-in dense benchmark now imports a deterministic 202-component/300-wire circuit instead of depending on the removed development Stress button.
+
+**Verification:** TypeScript and Biome passed; **61/61 Vitest files and 898/898 tests** passed; production build passed; `git diff --check` passed. Stress gates passed at 750 challenge scenarios / 4,500 evaluations, 3,726 generated challenges / 223,656 faults / 414,574 repairs, 600 diagnosis scenarios / 10,973 evaluations, and 1,800 Ohmageddon scenarios / 6,816 evaluations. Serial simulation benchmark passed at 1.15 ms median / 1.69 ms p95 for 200 components and 396 wires.
+
+Playwright passed: focused Pro **8/8**, desktop Chromium **63 passed / 2 intentional skips**, mobile Chrome **53 passed / 12 intentional skips**, opt-in browser benchmark **1/1**, and production output **11/11**. The browser benchmark measured pan average/p95 0.055/0.200 ms, drag 0.083/0.200 ms, and idle frames 17.395/16.700 ms.
+
+**Blocker / decision:** genuine `tablet-safari` remains unexecuted. The sandbox resets every Playwright CDN TLS connection and has no compatible WebKit. An exact active Playwright 1.62.1 WebKit cache (revision 2336) was located in GitHub Actions, but cache archives are not downloadable through the public REST API. A temporary remote validation workflow was then prepared, but GitHub rejected its push because the Arena App lacks `workflows` permission. The user chose to finalize the environment-blocked commit rather than reconnect GitHub. No Chromium/iPad substitution is reported as WebKit coverage.
+
+**Next:** no known application item remains. Run `npx playwright test --project=tablet-safari` in an environment that can install Playwright WebKit 26.5/revision 2336 to close the sole validation gap.
+
+---
+
 ## Session 2026-08-19 — v2 Phase F4–F6: finish Ohmageddon
 
 **Done:** the three leftover Phase F slices from the F3 close-out.

@@ -32,6 +32,8 @@ const DEBOUNCE_MS = 150;
 export type ColorScheme = 'light' | 'dark' | 'system';
 export type RoutingStyle = 'orthogonal' | 'bezier';
 export type WireColorStandard = 'uk_eu' | 'us';
+/** Unified canvas diagnostics: thermal load alone, or thermal load plus voltage drop. */
+export type DiagnosticOverlayMode = 'off' | 'heat' | 'heat-vdrop';
 
 export interface UserSettings {
   /** Show a confirmation dialog before deleting components or wires. */
@@ -108,10 +110,10 @@ export interface UserSettings {
    */
   automaticComponentLabels: boolean;
   /**
-   * Enable thermal overlay view in Analytics panel showing heat map based on power dissipation.
-   * Default false. Color-codes components from green (normal) to red (danger).
+   * Unified Pro diagnostics overlay. `heat` shows thermal loading while
+   * `heat-vdrop` also factors in the active standard's voltage-drop limits.
    */
-  thermalOverlayEnabled: boolean;
+  diagnosticOverlayMode: DiagnosticOverlayMode;
   /**
    * Active international regulatory template (UK BS 7671, US NEC, EU IEC 60364).
    * Drives nominal voltage, wire colours, voltage-drop limits and MCB-curve
@@ -125,12 +127,6 @@ export interface UserSettings {
    * flip it off to keep the canvas clean while designing.
    */
   manualFaultInjection: boolean;
-  /**
-   * Pro-mode only. Overlays a heatmap on the canvas colouring components and
-   * wiring that are dissipating excess heat or exceeding voltage-drop limits
-   * for the currently selected regulation standard.
-   */
-  stressZonesEnabled: boolean;
   /**
    * Automatically place a connection joint (dot) wherever two bezier wires
    * cross each other. This visually marks the crossing as an intentional
@@ -181,10 +177,9 @@ const DEFAULTS: UserSettings = {
   canvasPreset: 'default',
   wireColorStandard: 'uk_eu',
   automaticComponentLabels: true,
-  thermalOverlayEnabled: false,
+  diagnosticOverlayMode: 'off',
   regulationStandard: 'uk',
   manualFaultInjection: true,
-  stressZonesEnabled: false,
   autoWireJoints: false,
   plugSystem: 'bs1363',
   // §23: "It is NOT enabled by default."
@@ -213,7 +208,8 @@ const COLOR_SCHEMES = ['light', 'dark', 'system'] as const;
 const ROUTING_STYLES = ['orthogonal', 'bezier'] as const;
 const CANVAS_PRESETS = ['default', 'high-contrast', 'deuteranopia'] as const;
 const WIRE_COLOR_STANDARDS = ['uk_eu', 'us'] as const;
-const REGULATION_STANDARDS = ['uk', 'us', 'eu'] as const;
+const REGULATION_STANDARDS = ['uk', 'us', 'eu', 'int'] as const;
+const DIAGNOSTIC_OVERLAY_MODES = ['off', 'heat', 'heat-vdrop'] as const;
 
 const APP_MODES = ['basic', 'pro'] as const;
 
@@ -267,9 +263,15 @@ function parsePersistedSettings(value: unknown): UserSettings | null {
       stored.automaticComponentLabels,
       DEFAULTS.automaticComponentLabels,
     ),
-    thermalOverlayEnabled: booleanOrDefault(
-      stored.thermalOverlayEnabled,
-      DEFAULTS.thermalOverlayEnabled,
+    diagnosticOverlayMode: enumOrDefault(
+      stored.diagnosticOverlayMode,
+      DIAGNOSTIC_OVERLAY_MODES,
+      // Migrate the two legacy booleans into one persisted three-state setting.
+      stored.stressZonesEnabled === true
+        ? 'heat-vdrop'
+        : stored.thermalOverlayEnabled === true
+          ? 'heat'
+          : DEFAULTS.diagnosticOverlayMode,
     ),
     regulationStandard: enumOrDefault(
       stored.regulationStandard,
@@ -280,7 +282,6 @@ function parsePersistedSettings(value: unknown): UserSettings | null {
       stored.manualFaultInjection,
       DEFAULTS.manualFaultInjection,
     ),
-    stressZonesEnabled: booleanOrDefault(stored.stressZonesEnabled, DEFAULTS.stressZonesEnabled),
     autoWireJoints: booleanOrDefault(stored.autoWireJoints, DEFAULTS.autoWireJoints),
     plugSystem: (
       ['bs1363', 'nema5', 'schuko', 'as3112', 'bs546', 'all'] as PlugSystemId[]
@@ -367,10 +368,9 @@ function snapshot(state: SettingsState): UserSettings {
     canvasPreset: state.canvasPreset,
     wireColorStandard: state.wireColorStandard,
     automaticComponentLabels: state.automaticComponentLabels,
-    thermalOverlayEnabled: state.thermalOverlayEnabled,
+    diagnosticOverlayMode: state.diagnosticOverlayMode,
     regulationStandard: state.regulationStandard,
     manualFaultInjection: state.manualFaultInjection,
-    stressZonesEnabled: state.stressZonesEnabled,
     autoWireJoints: state.autoWireJoints,
     plugSystem: state.plugSystem,
     ohmageddonMode: state.ohmageddonMode,
@@ -417,10 +417,9 @@ export async function startSettingsPersistence(): Promise<void> {
       state.canvasPreset === prev.canvasPreset &&
       state.wireColorStandard === prev.wireColorStandard &&
       state.automaticComponentLabels === prev.automaticComponentLabels &&
-      state.thermalOverlayEnabled === prev.thermalOverlayEnabled &&
+      state.diagnosticOverlayMode === prev.diagnosticOverlayMode &&
       state.regulationStandard === prev.regulationStandard &&
       state.manualFaultInjection === prev.manualFaultInjection &&
-      state.stressZonesEnabled === prev.stressZonesEnabled &&
       state.autoWireJoints === prev.autoWireJoints &&
       state.plugSystem === prev.plugSystem &&
       state.ohmageddonMode === prev.ohmageddonMode &&

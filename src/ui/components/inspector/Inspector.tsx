@@ -208,6 +208,7 @@ export function Inspector({
                     ? 'bg-indigo-600 text-white shadow-xs'
                     : 'text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
                 }`}
+                aria-label="Simulation History (audit log)"
                 title="Simulation History (audit log)"
               >
                 <Clock className="size-4" />
@@ -478,6 +479,7 @@ export function Inspector({
                   ? 'bg-indigo-600 text-white shadow-md'
                   : 'text-slate-500 hover:bg-slate-200/60 hover:text-slate-800 dark:text-slate-400 dark:hover:bg-slate-800'
               }`}
+              aria-label="Simulation History (audit log)"
               title="Simulation History (audit log)"
             >
               <Clock className="size-4" />

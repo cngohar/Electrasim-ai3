@@ -234,7 +234,7 @@ test.describe('production Pages output', () => {
     await page.goto('/app/');
 
     await page.getByRole('button', { name: 'Menu' }).click();
-    await page.getByRole('button', { name: /^Settings\b/ }).click();
+    await page.getByRole('button', { name: /^Settings Preferences & display options$/ }).click();
     const settings = page.getByRole('dialog', { name: /Circuit Settings/ });
     await settings.getByRole('button', { name: /Display/ }).click();
     await settings.getByRole('button', { name: /Dark\s+Full dark mode/i }).click();
@@ -368,7 +368,7 @@ test.describe('production Pages output', () => {
       await page.keyboard.press('Escape');
 
       await page.getByRole('button', { name: 'Menu' }).click();
-      await page.getByRole('button', { name: /^Settings\b/ }).click();
+      await page.getByRole('button', { name: /^Settings Preferences & display options$/ }).click();
       await expect(page.getByRole('heading', { name: /Circuit Settings/ })).toBeVisible();
       await page.keyboard.press('Escape');
 

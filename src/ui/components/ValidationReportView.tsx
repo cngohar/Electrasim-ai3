@@ -6,6 +6,7 @@ import {
   FileText,
   Info,
   Loader2,
+  Play,
   RotateCcw,
   ShieldCheck,
   Wrench,
@@ -13,7 +14,7 @@ import {
 } from 'lucide-react';
 import { useState } from 'react';
 import type { ValidationIssue, ValidationReport } from '../../domain/circuitValidation';
-import { useCircuitStore } from '../../store';
+import { useCircuitStore, useSettingsStore } from '../../store';
 import { useUiStore } from '../../store/uiStore';
 
 interface Props {
@@ -26,8 +27,11 @@ export function ValidationReportView({ report, onRunValidation }: Props) {
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
 
   const isValidatingCircuit = useUiStore((s) => s.isValidatingCircuit);
+  const complianceGateBlocked = useUiStore((s) => s.complianceGateBlocked);
   const applyQuickFix = useUiStore((s) => s.applyQuickFix);
+  const runWithComplianceOverride = useUiStore((s) => s.runWithComplianceOverride);
   const setActiveValidationIssueModal = useUiStore((s) => s.setActiveValidationIssueModal);
+  const appMode = useSettingsStore((s) => s.appMode);
 
   // CASE 0: Currently Validating Circuit (Loading Spinner)
   if (isValidatingCircuit) {
@@ -183,9 +187,63 @@ export function ValidationReportView({ report, onRunValidation }: Props) {
       useCircuitStore.getState().selectWire(issue.wireId);
     }
   };
+  const firstBlockingIssue = issues.find((issue) => issue.blocking && issue.severity === 'error');
+  const blockingCount = report.blockingErrorsCount ?? 0;
 
   return (
     <div className="flex flex-col gap-3 p-3.5 text-xs">
+      {complianceGateBlocked && blockingCount > 0 && (
+        <div
+          role="alert"
+          data-compliance-gate-banner
+          className="rounded-xl border border-red-300 bg-red-50 p-3.5 text-red-950 shadow-sm dark:border-red-900 dark:bg-red-950/50 dark:text-red-100"
+        >
+          <div className="flex items-start gap-2">
+            <AlertTriangle className="mt-0.5 size-4 shrink-0 text-red-600 dark:text-red-400" />
+            <div className="min-w-0 flex-1">
+              <h3 className="text-xs font-bold">
+                Fix {blockingCount} blocking issue{blockingCount === 1 ? '' : 's'} to enable Run
+              </h3>
+              <p className="mt-1 text-[11px] leading-relaxed text-red-800 dark:text-red-200">
+                {firstBlockingIssue?.title ??
+                  'The active electrical standard has blocked this simulation.'}
+              </p>
+            </div>
+          </div>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {firstBlockingIssue && (
+              <button
+                type="button"
+                onClick={() => {
+                  handleSelectTarget(firstBlockingIssue);
+                  setActiveValidationIssueModal(firstBlockingIssue);
+                }}
+                className="flex items-center gap-1 rounded-lg border border-red-300 bg-white px-2.5 py-1.5 text-[10px] font-bold text-red-800 transition hover:bg-red-100 dark:border-red-800 dark:bg-red-950 dark:text-red-200 dark:hover:bg-red-900"
+              >
+                <FileText className="size-3" />
+                Review first issue
+              </button>
+            )}
+            {appMode === 'pro' && (
+              <button
+                type="button"
+                data-compliance-override
+                onClick={runWithComplianceOverride}
+                title="Teacher/demo override — starts the simulation and records an audit event. Physical faults cannot be bypassed."
+                className="flex items-center gap-1 rounded-lg bg-red-700 px-2.5 py-1.5 text-[10px] font-bold text-white transition hover:bg-red-600 dark:bg-red-600 dark:hover:bg-red-500"
+              >
+                <Play className="size-3" />
+                Run anyway (teacher/demo)
+              </button>
+            )}
+          </div>
+          <p className="mt-2 text-[9px] leading-relaxed text-red-700 dark:text-red-300">
+            Overrides are written to Simulation History. Tripped, blown, or melted equipment must
+            still be repaired.
+          </p>
+        </div>
+      )}
+
       {/* Score Header Card */}
       <div className={`rounded-xl border p-3.5 shadow-sm transition ${scoreColor}`}>
         <div className="flex items-center justify-between">

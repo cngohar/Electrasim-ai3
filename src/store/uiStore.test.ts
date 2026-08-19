@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { validateCircuitJSON } from '../lib/exportImport';
 import { clearHistory, useCircuitStore } from './circuitStore';
+import { useSettingsStore } from './settingsStore';
 import { MOBILE_SUITABILITY_STORAGE_KEY, shouldShowMobileSuitability, useUiStore } from './uiStore';
 
 const resetInteractionState = () => {
@@ -61,6 +62,77 @@ describe('simulation safety guards', () => {
 
     expect(useUiStore.getState().simRunning).toBe(false);
     expect(useUiStore.getState().faultAlert?.title).toContain('UNRESOLVED');
+  });
+
+  it('audits a Pro compliance override without allowing it to bypass physical faults', () => {
+    useSettingsStore.setState({ appMode: 'pro', regulationStandard: 'uk' });
+    useCircuitStore.setState({
+      components: [
+        { id: 'supply', type: 'ac-mains-supply', x: 0, y: 0, state: {} },
+        { id: 'socket', type: 'socket-3pin', x: 100, y: 0, state: {} },
+      ],
+      wires: [
+        {
+          id: 'live',
+          fromComponentId: 'supply',
+          fromPortIndex: 0,
+          toComponentId: 'socket',
+          toPortIndex: 0,
+          controlPoints: [],
+        },
+        {
+          id: 'neutral',
+          fromComponentId: 'supply',
+          fromPortIndex: 1,
+          toComponentId: 'socket',
+          toPortIndex: 1,
+          controlPoints: [],
+        },
+        {
+          id: 'earth',
+          fromComponentId: 'supply',
+          fromPortIndex: 2,
+          toComponentId: 'socket',
+          toPortIndex: 2,
+          controlPoints: [],
+        },
+      ],
+      globalVoltage: 230,
+    });
+    useUiStore.setState({
+      simRunning: false,
+      faultAlert: null,
+      complianceGateBlocked: false,
+      eventHistory: [],
+    });
+
+    useUiStore.getState().setSimRunning(true);
+    expect(useUiStore.getState().simRunning).toBe(false);
+    expect(useUiStore.getState().complianceGateBlocked).toBe(true);
+    expect(useUiStore.getState().faultAlert).toBeNull();
+
+    useUiStore.getState().runWithComplianceOverride();
+    expect(useUiStore.getState().simRunning).toBe(true);
+    expect(useUiStore.getState().complianceGateBlocked).toBe(false);
+    expect(useUiStore.getState().eventHistory[0]).toMatchObject({
+      eventType: 'manual_intervention',
+      severity: 'warning',
+      details: { standard: 'uk' },
+    });
+
+    useCircuitStore.setState((state) => ({
+      components: state.components.map((component) =>
+        component.id === 'socket'
+          ? { ...component, state: { ...component.state, isBlown: true } }
+          : component,
+      ),
+    }));
+    useUiStore.setState({ simRunning: false, faultAlert: null, complianceGateBlocked: true });
+    useUiStore.getState().runWithComplianceOverride();
+    expect(useUiStore.getState().simRunning).toBe(false);
+    expect(useUiStore.getState().faultAlert?.title).toContain('UNRESOLVED');
+
+    useSettingsStore.setState({ appMode: 'basic' });
   });
 });
 

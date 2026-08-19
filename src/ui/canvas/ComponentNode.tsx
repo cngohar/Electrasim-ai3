@@ -243,7 +243,10 @@ export function ComponentNode({
   const isDimmedByTrace = traceComponentIds != null && !traceComponentIds.has(component.id);
   const isHighlightedInTrace = Boolean(traceComponentIds?.has(component.id));
 
-  const thermalOverlayEnabled = useUiStore((s) => s.thermalOverlayEnabled);
+  const diagnosticOverlayMode = useSettingsStore((s) => s.diagnosticOverlayMode);
+  // Heat + V-drop gets its component halos from StressZoneOverlay; keeping the
+  // legacy temperature cards to Heat-only prevents two overlays stacking.
+  const showHeatOnlyCard = diagnosticOverlayMode === 'heat';
   const autoLabelsEnabled = useSettingsStore((s) => s.automaticComponentLabels);
   const compThermal = simulation?.thermalData?.[component.id];
   const powerW =
@@ -267,7 +270,7 @@ export function ComponentNode({
       onPointerLeave={() => onHoverChange(null)}
       onContextMenu={(event) => onContextMenu(component.id, event)}
     >
-      {thermalOverlayEnabled && (
+      {showHeatOnlyCard && (
         <g pointerEvents="none">
           <rect
             x={-6}

@@ -213,8 +213,8 @@ export interface UiState {
   /** Visual feedback mode: when true and a wire/component is selected, dims all unselected parts and highlights the traced path. */
   tracePathMode: boolean;
 
-  /** Thermal overlay visualization for component heat mapping. */
-  thermalOverlayEnabled: boolean;
+  /** True after Pro Run was stopped by blocking regulation issues. */
+  complianceGateBlocked: boolean;
 
   // Panel layout (Lab Glass · Light shell) ────────────────────────────────
   paletteOpen: boolean;
@@ -233,6 +233,8 @@ export interface UiState {
   // Actions ───────────────────────────────────────────────────────────────
   setSimRunning: (v: boolean) => void;
   toggleSim: () => void;
+  /** Pro teacher/demo escape hatch; physical damage remains non-bypassable. */
+  runWithComplianceOverride: () => void;
   setSimResult: (r: SimulationResult | null) => void;
   setFaultAlert: (alert: ElectricalFaultAlert | null) => void;
   setWhatHappenedOpen: (open: boolean) => void;
@@ -259,7 +261,6 @@ export interface UiState {
   ) => void;
   setTracePathMode: (active: boolean) => void;
   toggleTracePathMode: () => void;
-  setThermalOverlayEnabled: (enabled: boolean) => void;
   applyQuickFix: (action: QuickFixAction) => void;
   setMode: (m: InteractionMode) => void;
   togglePalette: () => void;

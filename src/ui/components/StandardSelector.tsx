@@ -36,6 +36,7 @@ export function StandardSelector({ compact = false }: Props) {
 
   const regulationStandard = useSettingsStore((s) => s.regulationStandard);
   const plugSystem = useSettingsStore((s) => s.plugSystem);
+  const appMode = useSettingsStore((s) => s.appMode);
   const setSetting = useSettingsStore((s) => s.setSetting);
   const setGlobalSupplyVoltage = useCircuitStore((s) => s.setGlobalSupplyVoltage);
   const runCircuitValidation = useUiStore((s) => s.runCircuitValidation);
@@ -64,6 +65,10 @@ export function StandardSelector({ compact = false }: Props) {
     const preset = getStandard(id);
     setSetting('regulationStandard', id);
     setGlobalSupplyVoltage(preset.nominalVoltage);
+
+    // Regulation and physical plug/socket selection are intentionally
+    // independent. Changing standards must not overwrite a user's regional
+    // hardware choice; the plug controls below remain the sole owner of it.
     setOpen(false);
     addLog(
       `Standard set to ${preset.flag} ${preset.label} (${preset.citation}) — ${preset.nominalVoltage} V / ${preset.frequencyHz} Hz.`,
@@ -81,6 +86,25 @@ export function StandardSelector({ compact = false }: Props) {
     useCircuitStore.getState().swapDemoSocketForPlug(primarySocketForPlug(id));
     addLog(`Plug type set to ${PLUG_SYSTEMS[id].label}.`, 'info');
   };
+
+  if (appMode === 'basic') {
+    return (
+      <div
+        data-standard-selector
+        data-standard-readonly
+        aria-label={`Active standard: ${current.shortLabel}, ${current.citation} (read-only in Student mode)`}
+        title={`${current.label} · ${current.citation}. Switch to Pro mode to change standards.`}
+        className="flex max-w-52 items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[10px] font-semibold text-slate-700 shadow-sm dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+      >
+        <Globe className="size-3.5 shrink-0 text-indigo-500" />
+        <span className="font-mono">{current.flag}</span>
+        <span className="shrink-0 font-bold">{current.shortLabel}</span>
+        <span className="truncate text-slate-500 dark:text-slate-400" data-standard-citation>
+          {current.citation}
+        </span>
+      </div>
+    );
+  }
 
   return (
     <div className="relative" ref={rootRef}>
