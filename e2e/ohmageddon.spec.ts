@@ -49,6 +49,76 @@ async function enableOhmageddon(page: import('@playwright/test').Page) {
     .click();
 }
 
+test.describe('Rage 4 — compound faults (§26, §27)', () => {
+  /**
+   * The evidence block must track the *live* circuit, not the briefing it was
+   * created with. Without this the compound tier is unsolvable in practice:
+   * the learner clears the masking fault, the installation genuinely starts
+   * misbehaving differently, and a frozen complaint tells them nothing
+   * happened.
+   *
+   * Driven entirely through real clicks — the repair target is unknown to the
+   * test (§14 hides it), so it walks the answer grid until the panel's own
+   * repair action changes what the panel reports.
+   */
+  test('the reported symptom follows the real circuit as faults are cleared', async ({ page }) => {
+    test.setTimeout(180_000);
+    await page.goto('/');
+    await enableOhmageddon(page);
+    await openDiagnosisLab(page);
+
+    const panel = page.locator('section[aria-label="Diagnosis Lab"]');
+    await panel.getByText('Rage 4', { exact: false }).first().click();
+    await panel
+      .getByRole('button', { name: /Intermediate/i })
+      .first()
+      .click();
+
+    const evidence = () =>
+      panel
+        .locator('div')
+        .filter({ hasText: /isn.t working correctly|running correctly now/ })
+        .last();
+
+    await expect(evidence()).toBeVisible();
+    const opening = await evidence().innerText();
+    // A rage scenario is a rage scenario: the id proves the tier was applied.
+    await expect(panel.getByText(/ES-RAGE-/)).toBeVisible();
+
+    const types = panel.locator('input[name="diagnosis-fault-type"]');
+    const locations = panel.locator('input[name="diagnosis-location"]');
+    const typeCount = await types.count();
+    const locationCount = await locations.count();
+
+    let latest = opening;
+    let repaired = false;
+    outer: for (let l = 0; l < locationCount; l++) {
+      for (let t = 0; t < typeCount; t++) {
+        await types.nth(t).check();
+        await locations.nth(l).check();
+        const repair = panel.getByRole('button', { name: /Carry out this repair/i });
+        if ((await repair.count()) === 0) continue;
+        await repair.click();
+        // eslint-disable-next-line playwright/no-wait-for-timeout
+        await page.waitForTimeout(150);
+        const now = await evidence().innerText();
+        if (now !== latest) {
+          latest = now;
+          repaired = true;
+          if (now.includes('running correctly now')) break outer;
+        }
+      }
+    }
+
+    // Some repair had to land, or the walk above proved nothing.
+    expect(repaired, 'no repair changed the reported symptom').toBe(true);
+    // Once the installation is sound the panel must say so rather than keep
+    // showing a complaint the learner has already fixed.
+    expect(latest).toContain('running correctly now');
+    expect(latest).not.toBe(opening);
+  });
+});
+
 test.describe('Ohmageddon Mode', () => {
   test('the toggle exists and defaults to OFF (§23)', async ({ page }) => {
     await page.goto('/');

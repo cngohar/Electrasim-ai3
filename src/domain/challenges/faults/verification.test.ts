@@ -11,6 +11,7 @@ import {
   describeSymptom,
   diffSymptom,
   isFullRecovery,
+  sameObservableWorld,
 } from './verification';
 
 function result(overrides: Partial<SimulationResult> = {}): SimulationResult {
@@ -194,5 +195,71 @@ describe('describeSymptom', () => {
 
   it('copes with a dead load whose label is unknown', () => {
     expect(describeSymptom({ ...base, primary: 'load-dead' }, [])).toMatch(/dead/i);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// sameObservableWorld (plan §26 masking)
+// ---------------------------------------------------------------------------
+
+describe('sameObservableWorld — "does this look the same to the learner?"', () => {
+  /**
+   * A symptom carries two kinds of field: what the *learner* can see (dead
+   * loads, a tripped breaker, a blown component) and what the *simulator*
+   * noticed (error flags on particular wires and components). Masking is a
+   * claim about the first kind only.
+   *
+   * The distinction is not academic — it is the reason the first compound
+   * search returned 0 matches out of 67,476 pairs. Every wire fault adds its
+   * own wire to `errorWires`, so any predicate that includes the error flags
+   * says "different" for every pair that could possibly exist.
+   */
+  const world = (over: Partial<Parameters<typeof sameObservableWorld>[0]> = {}) => ({
+    deEnergisedLoadIds: [],
+    tripped: false,
+    blown: false,
+    newErrorComponents: false,
+    newErrorWires: false,
+    newErrors: false,
+    observable: true,
+    primary: null,
+    ...over,
+  });
+
+  it('matches when the visible picture is identical', () => {
+    expect(
+      sameObservableWorld(world({ deEnergisedLoadIds: ['l1', 'l2'] }), world({ deEnergisedLoadIds: ['l1', 'l2'] })),
+    ).toBe(true);
+  });
+
+  it('ignores load ordering — the learner sees a set of dead lamps, not a list', () => {
+    expect(
+      sameObservableWorld(world({ deEnergisedLoadIds: ['l2', 'l1'] }), world({ deEnergisedLoadIds: ['l1', 'l2'] })),
+    ).toBe(true);
+  });
+
+  it('separates worlds that differ by one dead load', () => {
+    expect(
+      sameObservableWorld(world({ deEnergisedLoadIds: ['l1'] }), world({ deEnergisedLoadIds: ['l1', 'l2'] })),
+    ).toBe(false);
+  });
+
+  it('separates a tripped breaker from an untripped one', () => {
+    expect(sameObservableWorld(world({ tripped: true }), world({ tripped: false }))).toBe(false);
+  });
+
+  it('separates a blown component from an intact one', () => {
+    expect(sameObservableWorld(world({ blown: true }), world({ blown: false }))).toBe(false);
+  });
+
+  it('ignores simulator error flags, which every wire fault sets for itself', () => {
+    // The bug this pins: including these fields makes masking undetectable,
+    // because a fault always flags its own wire.
+    expect(
+      sameObservableWorld(
+        world({ newErrorWires: true, newErrorComponents: true, newErrors: true }),
+        world({ newErrorWires: false, newErrorComponents: false, newErrors: false }),
+      ),
+    ).toBe(true);
   });
 });

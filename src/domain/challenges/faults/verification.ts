@@ -193,6 +193,36 @@ export function isFullRecovery(baseline: SimulationResult, repaired: SimulationR
 }
 
 /**
+ * Do two symptoms look the same *to a person standing in front of the board*?
+ *
+ * Compares only the three signals a human can actually observe:
+ *
+ *   - which declared loads are dead,
+ *   - whether a protective device operated,
+ *   - whether something failed destructively.
+ *
+ * It deliberately ignores `newErrorWires`, `newErrorComponents` and
+ * `newErrors`. Those are *simulator* signals, and the simulator flags a faulted
+ * wire as being in error simply because it carries a fault
+ * (`simulate.ts:464` — measured at 1,176 of 1,176 wire faults). Including them
+ * turns any comparison of "does adding this fault change anything?" into "is
+ * this fault present?", to which the answer is trivially yes.
+ *
+ * That distinction is what makes {@link FaultSymptom.observable} the wrong
+ * predicate for masking questions and this the right one. Used by the §26
+ * compound-fault proof, which needs "the world with A and B present looks
+ * exactly like the world with only A".
+ */
+export function sameObservableWorld(a: FaultSymptom, b: FaultSymptom): boolean {
+  if (a.tripped !== b.tripped) return false;
+  if (a.blown !== b.blown) return false;
+  if (a.deEnergisedLoadIds.length !== b.deEnergisedLoadIds.length) return false;
+  const left = [...a.deEnergisedLoadIds].sort();
+  const right = [...b.deEnergisedLoadIds].sort();
+  return left.every((id, index) => id === right[index]);
+}
+
+/**
  * The learner-facing opening line for a symptom (plan §14).
  *
  * Deliberately vague: §14 requires that "the learner should NOT immediately

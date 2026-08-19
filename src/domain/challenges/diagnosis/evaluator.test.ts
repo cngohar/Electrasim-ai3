@@ -17,7 +17,7 @@ import type { Circuit } from '../../types';
 import { collectFaultCandidates } from '../faults/eligibility';
 import { createScenarioFault, withScenarioFaults, withoutFault } from '../faults/injection';
 import { diffSymptom } from '../faults/verification';
-import { evaluateDiagnosis } from './evaluator';
+import { evaluateDiagnosis, observeSymptom } from './evaluator';
 import {
   type DiagnosisScenario,
   type ScenarioFault,
@@ -438,5 +438,64 @@ describe('evaluateDiagnosis — multiple faults (§26/§27)', () => {
     expect(copy).not.toContain(second.fault.type);
     expect(copy).not.toContain(second.fault.type.replace(/-/g, ' '));
     expect(copy).not.toContain(second.locationKey.toLowerCase());
+  });
+});
+
+// ---------------------------------------------------------------------------
+// observeSymptom — live evidence (plan §14, §26)
+// ---------------------------------------------------------------------------
+
+describe('observeSymptom — what the installation is doing now (§14, §26)', () => {
+  it('reports the fault while the circuit is still broken', () => {
+    const scenario = buildDiagnosisScenario({ seed: 4242, difficulty: 'intermediate' });
+    const observed = observeSymptom(scenario, scenario.faultedCircuit);
+    expect(observed.healthy).toBe(false);
+    expect(observed.complaint.length).toBeGreaterThan(0);
+  });
+
+  it('reports health once the fault is cleared', () => {
+    const scenario = buildDiagnosisScenario({ seed: 4242, difficulty: 'intermediate' });
+    const repaired = scenario.faults.reduce(
+      (circuit, entry) => withoutFault(circuit, entry.fault.id),
+      scenario.faultedCircuit,
+    );
+    const observed = observeSymptom(scenario, repaired);
+    expect(observed.healthy).toBe(true);
+  });
+
+  /**
+   * §14 is absolute, and this function is the one place that re-reads the live
+   * circuit — the exact shape of the console leak found in Phase F3, where a
+   * message derived from simulator output named the faulted wire.
+   *
+   * So: the live complaint may never contain the fault's id, its target's id,
+   * or its type. Checked across many seeds because a leak that only fires on
+   * one fault family is still a leak.
+   */
+  it('never names the fault, its target or its id (§14)', () => {
+    for (const seed of [11, 23, 37, 41, 59, 67, 73, 89]) {
+      const scenario = buildDiagnosisScenario({ seed, difficulty: 'advanced' });
+      const observed = observeSymptom(scenario, scenario.faultedCircuit);
+      const text = observed.complaint.toLowerCase();
+      for (const entry of scenario.faults) {
+        expect(text, `seed ${seed}`).not.toContain(entry.fault.id.toLowerCase());
+        expect(text, `seed ${seed}`).not.toContain(entry.fault.type.toLowerCase());
+        // The location key embeds the component/wire id the learner must find.
+        for (const token of entry.locationKey.toLowerCase().split(':')) {
+          if (token.length < 3) continue;
+          expect(text, `seed ${seed}: leaked "${token}"`).not.toContain(token);
+        }
+      }
+    }
+  });
+
+  it('agrees with the scenario briefing before anything has been touched', () => {
+    // The opening complaint and the first live reading describe the same world,
+    // so the panel does not announce a "change" the learner never caused.
+    for (const seed of [11, 23, 37, 41]) {
+      const scenario = buildDiagnosisScenario({ seed, difficulty: 'intermediate' });
+      const observed = observeSymptom(scenario, scenario.faultedCircuit);
+      expect(observed.complaint, `seed ${seed}`).toBe(scenario.complaint);
+    }
   });
 });

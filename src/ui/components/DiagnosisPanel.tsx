@@ -44,6 +44,7 @@ import {
   RAGE_TIER_IDS,
   formatElapsed,
   locationKeyForTarget,
+  observeSymptom,
 } from '../../domain/challenges';
 import { useCircuitStore, useSettingsStore, useUiStore, useViewportStore } from '../../store';
 import { useDiagnosisStore } from '../../store/diagnosisStore';
@@ -126,6 +127,47 @@ export function DiagnosisPanel({ isPhone }: Props) {
   }, [ohmageddonMode]);
 
   const liveFaults = useCircuitStore((s) => s.faults);
+  const liveComponents = useCircuitStore((s) => s.components);
+  const liveWires = useCircuitStore((s) => s.wires);
+  const liveVoltage = useCircuitStore((s) => s.globalVoltage);
+
+  /**
+   * What the installation is doing **now** (§14, §26).
+   *
+   * `scenario.complaint` is a snapshot of the hand-over state and never
+   * changes. Showing only that would make a compound scenario unsolvable in
+   * practice: the learner clears the first fault, the symptom genuinely
+   * changes, and the panel would still be describing the original one — so the
+   * emergent second symptom, which is the entire point of §26's compound
+   * exercises, would be invisible.
+   *
+   * Re-derived from the learner's live circuit instead, by the same domain
+   * measurement that wrote the original complaint. It is still vague by
+   * construction (`describeSymptom`), so this reveals nothing §14 protects:
+   * it reports what is *seen*, never what is wrong or where.
+   */
+  const liveObservation = useMemo(() => {
+    if (!scenario || status !== 'active') return null;
+    return observeSymptom(scenario, {
+      components: liveComponents,
+      wires: liveWires,
+      globalVoltage: liveVoltage,
+      faults: liveFaults,
+    });
+  }, [scenario, status, liveComponents, liveWires, liveVoltage, liveFaults]);
+
+  /**
+   * Has the picture changed since the exercise began?
+   *
+   * Drives the "the symptom has changed" note. Compared against the scenario's
+   * own opening line so it fires exactly when what the learner is looking at
+   * stopped matching what they were told.
+   */
+  const symptomChanged =
+    liveObservation !== null &&
+    !liveObservation.healthy &&
+    liveObservation.complaint !== scenario?.complaint;
+
   /** §15: both halves of the answer are required before anything may be done. */
   const canSubmit = selectedFaultType !== null && selectedLocationKey !== null;
   const reducedMotion = usePrefersReducedMotion();
@@ -516,15 +558,49 @@ export function DiagnosisPanel({ isPhone }: Props) {
 
       <div className="min-h-0 flex-1 space-y-2.5 overflow-y-auto p-3">
         {/* §14: the reported symptom, never the fault. */}
-        <div className="rounded-lg bg-amber-50 p-2 dark:bg-amber-950/40">
-          <p className="flex items-start gap-1.5 text-[11px] font-semibold text-amber-900 dark:text-amber-200">
-            <CircleAlert className="mt-px size-3 shrink-0" aria-hidden="true" />
-            Something isn&rsquo;t working correctly.
-          </p>
-          <p className="mt-1 text-[10px] leading-relaxed text-amber-800 dark:text-amber-300">
-            {scenario.complaint}
-          </p>
-        </div>
+        {liveObservation?.healthy ? (
+          /**
+           * Everything measures healthy — but the exercise is not over, because
+           * §16 requires the diagnosis to be *named* as well as the fault
+           * cleared. Saying so plainly is honest and still gives nothing away:
+           * the learner can see the installation working, and telling them
+           * otherwise would be the sort of untruth §26 forbids.
+           */
+          <div className="rounded-lg bg-emerald-50 p-2 dark:bg-emerald-950/40">
+            <p className="flex items-start gap-1.5 text-[11px] font-semibold text-emerald-900 dark:text-emerald-200">
+              <CircleAlert className="mt-px size-3 shrink-0" aria-hidden="true" />
+              The installation is running correctly now.
+            </p>
+            <p className="mt-1 text-[10px] leading-relaxed text-emerald-800 dark:text-emerald-300">
+              Record what was wrong and where, then submit your diagnosis to finish.
+            </p>
+          </div>
+        ) : (
+          <div className="rounded-lg bg-amber-50 p-2 dark:bg-amber-950/40">
+            <p className="flex items-start gap-1.5 text-[11px] font-semibold text-amber-900 dark:text-amber-200">
+              <CircleAlert className="mt-px size-3 shrink-0" aria-hidden="true" />
+              Something isn&rsquo;t working correctly.
+            </p>
+            <p className="mt-1 text-[10px] leading-relaxed text-amber-800 dark:text-amber-300">
+              {liveObservation?.complaint ?? scenario.complaint}
+            </p>
+            {symptomChanged && (
+              /**
+               * §26: the compound payoff. The learner repaired something real
+               * and the installation now misbehaves differently — that change
+               * is evidence they earned, and it must be pointed out or it will
+               * be read as "my repair did nothing".
+               *
+               * It names no fault: it says only that the picture has moved,
+               * which the learner could establish themselves by re-running the
+               * simulation.
+               */
+              <p className="mt-1.5 border-t border-amber-200 pt-1.5 text-[10px] font-semibold leading-relaxed text-amber-900 dark:border-amber-800 dark:text-amber-200">
+                The symptom has changed since you started. Something else is still wrong.
+              </p>
+            )}
+          </div>
+        )}
         <p className="text-[10px] leading-relaxed text-slate-500 dark:text-slate-400">
           {scenario.brief}
         </p>

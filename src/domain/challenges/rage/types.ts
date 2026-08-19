@@ -254,7 +254,7 @@ export interface RageModifier {
 // Tiers (plan §27)
 // ---------------------------------------------------------------------------
 
-export type RageTierId = 'rage-1' | 'rage-2' | 'rage-3';
+export type RageTierId = 'rage-1' | 'rage-2' | 'rage-3' | 'rage-4';
 
 export interface RageTier {
   id: RageTierId;

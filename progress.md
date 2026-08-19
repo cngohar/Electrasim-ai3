@@ -3229,3 +3229,87 @@ wire to `errorWires` (1,176/1,176), which is why the first probe returned 0 of
 that `DiagnosisPanel` renders a *static* `scenario.complaint` and never re-derives
 evidence after a repair, so an emergent second symptom would currently be
 invisible — compound is pointless until that is fixed too.
+
+---
+
+## Session 2026-08-19 (cont.) — Phase F3: `compoundFault` + live evidence
+
+Both halves of the note that closed the last session are now done, because they
+were never really two tasks: a fault that hides another fault is worthless if
+the panel cannot show the symptom changing when the first one is cleared.
+
+### `compoundFault` (§25, §26, §27, §53.6)
+
+The modifier proposes partners nearest-load-first; the **proof lives in
+`diagnosis/scenario.ts`**, not in the modifier, because `rage/**` must not
+import the simulator (only `runner.ts` does, and it has no access to the
+scenario's baseline). The predicate is the new `sameObservableWorld`: combined
+picture ≡ primary's picture, and ≢ partner's picture.
+
+**The gate must ignore the simulator's error flags.** Including them found 0
+masking pairs in 67,476 — every wire fault flags its own wire, so nothing ever
+"looks the same". That was a measurement artefact, not a finding, and it is now
+pinned by a unit test that fails if the flags creep back in.
+
+### The honesty bug the probe caught
+
+The selection stage writes `compoundFault: applied` to mean "a partner was
+proposed and accepted". The masking verdict was appended as a *second* row with
+the same id, and `buildRageSummary` merges duplicates with "applied anywhere
+wins" — so **71 of 120 rage-4 scenarios claimed a compound that did not
+exist**. Invisible to typecheck and to every existing test.
+
+The verdict now **replaces** the proposal row (`findIndex` + `splice`). Worth
+remembering as a pattern: *wherever two stages write the same modifier id, the
+later authoritative one must remove the earlier optimistic one.*
+
+Two probe bugs preceded that finding, both worth recording. Reading a field
+that does not exist (`rage.modifiers`; it is `applications`) threw inside the
+probe's own try/catch and printed `built 120, failed 120` — **when two counters
+are suspiciously equal, suspect the probe.** Then counting `app.applied` as
+evidence of masking reported 94.2 % success where counting the actual proof
+reported 35 % — **a metric that reads the field under test rather than the
+property under test will confirm whatever the code claims.**
+
+### Rage 4 drops `remoteFault` deliberately
+
+Compound masking already forces the partner deep into the branch the primary
+de-energises. Also demanding the most-distant band empties the intersection —
+exactly how `remoteFault` + `multiFault` once made Rage 3 ship one fault. So
+Rage 4 = `[redHerring, compoundFault, limitedHints]`: *fewer* modifiers than
+Rage 3, strictly harder. That broke the tier-escalation test, which counted
+modifiers as a proxy for harshness; it now asserts the real burden (faults to
+find never decreases, hints are never restored).
+
+### Live evidence (§14, §26)
+
+New pure `observeSymptom(scenario, userCircuit)` in the diagnosis domain; the
+panel re-derives from the live circuit on every change and keeps owning no
+electrical logic. Same vague phrasing as the briefing, so §14 holds — a test
+asserts the live text never contains a fault's id, type or location. When the
+circuit measures healthy the block says so and asks for the diagnosis. ~0.3 ms
+median, memoised. When the picture changes mid-exercise the panel says *"the
+symptom has changed — something else is still wrong"*, which is the compound
+payoff made visible.
+
+### Measurements
+
+Honest compound rate **35.0 % → 56.7 %** after a bounded retry over reserve
+candidates (12 attempts; each costs two `simulate` calls on the interactive
+path). Full stress sweep: **52.5 %** across 360 rage-4 scenarios, build p95
+**3.45 ms**, misreported **0**. Seeds that cannot host a compound ship an
+honest plain multi-fault and say so in the note — the primary is fixed before
+the search begins, so rejecting those seeds would bias scenario selection.
+
+**Every new test was mutation-checked** (5 mutants: unconditional claim,
+append-instead-of-replace, error-flags-in-gate, order-sensitive loads, frozen
+complaint, leaked fault type). One "caught" mutant was initially a false
+positive — the patch script's assertion had thrown, so the run proved nothing;
+re-applied properly, it failed as intended.
+
+**Gates:** typecheck ✓, biome ✓ (same 4 pre-existing `Editor.tsx` warnings), 60
+files / **878** unit tests ✓ (was 863), all four stress harnesses ✓,
+`vite build` ✓, `e2e/ohmageddon.spec.ts` 9/9 on chromium.
+
+**Next:** F4 `misleadingSymptom`; F5 retire the rage-2 `remoteFault`
+substitution; F6 optional `timeLimit`.

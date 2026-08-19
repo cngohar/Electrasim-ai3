@@ -158,3 +158,53 @@ No unit test was looking. Decoys are now named `<prefix>-jN`, matching the
 generator's own convention, and both a unit test and an e2e test lock it. This
 is the third time in this project that screenshot review has caught a UI defect
 the suite missed.
+
+
+---
+
+## Addendum (Phase F3) — `compoundFault`, and where a claim gets proved
+
+**Context.** §26 asks for scenarios where one fault hides another. That is a
+statement about the electrical world, so it has to be *proved*, not arranged.
+
+**Decision 1 — the proof lives in `diagnosis/`, not in the modifier.**
+`rage/**` may not import the simulator (only `runner.ts` does), and the runner
+has no access to the scenario's healthy baseline, which masking is measured
+against. So the modifier only *proposes* partners, nearest-load-first, and
+`tryBuildScenario` proves or rejects the masking. This keeps the layering rule
+from ADR 0005 intact and puts the electrical judgement where the electrical
+context already is.
+
+**Decision 2 — masking is judged on the learner-visible world only.**
+`sameObservableWorld` compares dead loads, tripped protection and blown
+components; it ignores `newErrorWires` / `newErrorComponents` / `newErrors`.
+Not a simplification — a correction. Every wire fault adds its own wire to
+`errorWires`, so a predicate including them reports "different" for every pair
+in existence (0 of 67,476 in the first probe). The flags describe the
+simulator's bookkeeping; masking is about what the learner can observe.
+
+**Decision 3 — a failed proof degrades the scenario, it does not reject the
+seed.** The primary fault is chosen before the compound search starts, so
+rejecting unmaskable seeds would silently bias which circuits and which fault
+families ever appear. Instead the exercise ships as a plain multi-fault and the
+summary says so. Measured honest compound rate: 52.5 % of rage-4 scenarios.
+
+**Decision 4 — an authoritative later verdict must replace the earlier
+optimistic row.** `buildRageSummary` merges duplicate modifier ids with
+"applied anywhere wins". Appending the masking verdict next to the selection
+stage's provisional row therefore let the optimistic one win, and 71 of 120
+scenarios claimed a compound that did not exist. The verdict now splices the
+proposal out. **Anywhere two stages write the same modifier id, this hazard
+exists.**
+
+**Decision 5 — Rage 4 omits `remoteFault`.** Two individually-correct modifiers
+can cancel out: compound masking needs a partner inside the branch the primary
+de-energises, `remoteFault` needs the most distant band, and the intersection is
+usually empty — the failure that once made Rage 3 ship a single fault. Rage 4 is
+therefore *shorter* than Rage 3 and harder, so tier escalation is now asserted
+on the learner's burden rather than on modifier count.
+
+**Consequence for the UI.** A compound fault is unobservable unless the panel
+re-reads the circuit, so `observeSymptom` was added to the diagnosis domain and
+the panel now renders live evidence. §14 is preserved by reusing the same vague
+`describeSymptom` phrasing: it reports what is seen, never what is wrong.

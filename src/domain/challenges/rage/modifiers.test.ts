@@ -19,9 +19,12 @@ import { describe, expect, it } from 'vitest';
 import { validateCircuit } from '../../circuitValidation';
 import { validateCircuitRules } from '../../electrical/validation';
 import { simulate } from '../../simulation';
+import { observeSymptom } from '../diagnosis/evaluator';
 import { buildDiagnosisScenario } from '../diagnosis/scenario';
+import { withoutFault } from '../faults/injection';
 import { getDifficultyProfile } from '../difficulty/profiles';
 import { collectFaultCandidates } from '../faults/eligibility';
+import { diffSymptom, sameObservableWorld } from '../faults/verification';
 import { generateChallenge } from '../generator/generator';
 import { createSeededRng } from '../generator/seed';
 import { RAGE_MODIFIERS, getRageModifier, implementedRageModifiers } from './modifiers';
@@ -61,15 +64,16 @@ describe('rage modifier registry (plan §25)', () => {
     }
   });
 
-  it("ships §52's three modifiers plus multiFault", () => {
-    // §52's first three, plus `multiFault` once Phase F1 gave the scenario a
-    // plural fault list. `compoundFault`, `misleadingSymptom` and `timeLimit`
-    // must stay unimplemented until they can be supported truthfully (§25).
+  it("ships §52's three modifiers plus multiFault and compoundFault", () => {
+    // §52's first three, plus `multiFault` (Phase F1 gave the scenario a plural
+    // fault list) and `compoundFault` (Phase F3 added the masking proof that
+    // makes it truthful). `misleadingSymptom` and `timeLimit` must stay
+    // unimplemented until they too can be supported truthfully (§25).
     expect(
       implementedRageModifiers()
         .map((m) => m.id)
         .sort(),
-    ).toEqual(['limitedHints', 'multiFault', 'redHerring', 'remoteFault']);
+    ).toEqual(['compoundFault', 'limitedHints', 'multiFault', 'redHerring', 'remoteFault']);
   });
 
   it('never marks an unimplemented modifier as having hooks', () => {
@@ -98,9 +102,38 @@ describe('rage tiers (plan §27)', () => {
     }
   });
 
-  it('escalates: each tier is at least as harsh as the previous', () => {
-    const counts = RAGE_TIER_IDS.map((id) => RAGE_TIERS[id].modifiers.length);
-    expect(counts).toEqual([...counts].sort((a, b) => a - b));
+  it('escalates: every tier keeps the burdens of the one below it', () => {
+    /**
+     * Modifier *count* was the original proxy for harshness, and Rage 4 breaks
+     * it: it drops `remoteFault` on purpose, because compound masking already
+     * needs a partner deep inside the branch the first fault de-energises, and
+     * also demanding the most-distant band leaves nothing separable. Fewer
+     * modifiers, strictly harder exercise.
+     *
+     * So escalation is asserted on the thing that actually matters — the
+     * learner's burden — rather than on a list length:
+     *
+     *   - the number of faults to find never decreases;
+     *   - help is never restored once it has been taken away.
+     */
+    const faultCount = (id: (typeof RAGE_TIER_IDS)[number]) => {
+      const mods = RAGE_TIERS[id].modifiers;
+      // Both add exactly one extra fault, and Rage 4 swaps one for the other.
+      return 1 + (mods.includes('multiFault') || mods.includes('compoundFault') ? 1 : 0);
+    };
+    const hintsRationed = (id: (typeof RAGE_TIER_IDS)[number]) =>
+      RAGE_TIERS[id].modifiers.includes('limitedHints');
+
+    for (let i = 1; i < RAGE_TIER_IDS.length; i++) {
+      const prev = RAGE_TIER_IDS[i - 1]!;
+      const curr = RAGE_TIER_IDS[i]!;
+      expect(faultCount(curr), `${curr} finds fewer faults than ${prev}`).toBeGreaterThanOrEqual(
+        faultCount(prev),
+      );
+      if (hintsRationed(prev)) {
+        expect(hintsRationed(curr), `${curr} restores hints that ${prev} rationed`).toBe(true);
+      }
+    }
   });
 
   it('derives a distinct rage profile key per tier', () => {
@@ -913,5 +946,185 @@ describe('Rage 3 ships two faults without lying (plan §12, §26, §27)', () => 
       // The badge must describe what shipped, not what was attempted.
       expect(entry!.applied).toBe(scenario.faults.length >= 2);
     }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// compoundFault (plan §26 "compound diagnostic scenarios", §27 Rage 4, §53.6)
+// ---------------------------------------------------------------------------
+
+describe('compoundFault — one fault hiding another (plan §26, §27 Rage 4)', () => {
+  const seeds = [3, 8, 14, 19, 26, 31, 44, 57, 63, 71, 88, 95];
+
+  /**
+   * The load-bearing test in this block.
+   *
+   * When the summary says `compoundFault: applied`, that is a factual claim
+   * about the electrical world: fault A hides fault B. §26 forbids the mode
+   * from misrepresenting itself, so the claim is re-proved here from the
+   * simulator rather than trusted from the builder that made it.
+   *
+   * This is deliberately not a check that compounds are *common*. It is a
+   * check that every claimed one is real.
+   */
+  it('a claimed compound really is one: A masks B, and clearing A changes the symptom', () => {
+    let checked = 0;
+    for (const seed of seeds) {
+      const scenario = buildDiagnosisScenario({
+        seed,
+        difficulty: 'intermediate',
+        rageTier: 'rage-4',
+      });
+      const claim = scenario.rage?.applications.find((a) => a.id === 'compoundFault');
+      expect(claim, `seed ${seed}: compoundFault not reported at all`).toBeDefined();
+      if (!claim!.applied) continue;
+
+      expect(scenario.faults.length, `seed ${seed}`).toBeGreaterThanOrEqual(2);
+      const [primary, partner] = scenario.faults;
+      checked += 1;
+
+      const baseline = simulate(scenario.healthyCircuit, { appMode: 'pro' });
+      const loadIds = scenario.loadComponentIds;
+
+      // The world as the learner first meets it, with both faults present.
+      const combined = diffSymptom(
+        baseline,
+        simulate(scenario.faultedCircuit, { appMode: 'pro' }),
+        loadIds,
+      );
+
+      // 1. While A is present, B is invisible: the picture is A's picture.
+      expect(
+        sameObservableWorld(combined, primary!.symptom),
+        `seed ${seed}: the second fault is already visible, so nothing is masked`,
+      ).toBe(true);
+
+      // 2. Repair A and the complaint does not vanish — it *changes*. This is
+      //    what the learner is being taught to notice.
+      expect(
+        sameObservableWorld(combined, partner!.symptom),
+        `seed ${seed}: clearing the first fault leaves the symptom unchanged`,
+      ).toBe(false);
+
+      // 3. And B is a real, observable fault in its own right (§12), not a
+      //    silent passenger that only exists in the answer list.
+      expect(partner!.symptom.observable, `seed ${seed}`).toBe(true);
+    }
+    // Guard against the test passing because it never found a compound to
+    // check — the false-negative failure mode that hid the §14 console leak.
+    expect(checked, 'no rage-4 seed produced a compound to verify').toBeGreaterThan(0);
+  });
+
+  it('never claims a compound it did not achieve (§24, §26)', () => {
+    for (const seed of seeds) {
+      const scenario = buildDiagnosisScenario({
+        seed,
+        difficulty: 'advanced',
+        rageTier: 'rage-4',
+      });
+      const claim = scenario.rage?.applications.find((a) => a.id === 'compoundFault');
+      expect(claim).toBeDefined();
+      // `applied` and the human-readable note must agree. They are written in
+      // two different places and merged by `buildRageSummary`, which resolves
+      // duplicate ids with "applied anywhere wins" — a rule that silently
+      // upgraded a failed proof to a success until the proof learned to
+      // *replace* the proposal's entry rather than append to it.
+      expect(claim!.applied, `seed ${seed}: ${claim!.note}`).toBe(
+        claim!.note.includes('masking proven'),
+      );
+      // A scenario that failed the proof is still a valid exercise, just not a
+      // compound one — it must never ship a single fault while claiming two.
+      if (!claim!.applied) {
+        expect(scenario.faults.length, `seed ${seed}`).toBeGreaterThanOrEqual(1);
+      }
+    }
+  });
+
+  it('keeps the two faults on separate devices, so they read as two jobs', () => {
+    for (const seed of seeds) {
+      const scenario = buildDiagnosisScenario({
+        seed,
+        difficulty: 'intermediate',
+        rageTier: 'rage-4',
+      });
+      if (scenario.faults.length < 2) continue;
+      const keys = scenario.faults.map((f) => f.locationKey);
+      expect(new Set(keys).size, `seed ${seed}: two faults share a location`).toBe(keys.length);
+    }
+  });
+
+  it('still simulates honestly — the circuit is never left electrically absurd (§26)', () => {
+    for (const seed of seeds) {
+      const scenario = buildDiagnosisScenario({
+        seed,
+        difficulty: 'intermediate',
+        rageTier: 'rage-4',
+      });
+      // The healthy reference must be genuinely healthy: the learner's target
+      // state has to be reachable and clean.
+      const baseline = simulate(scenario.healthyCircuit, { appMode: 'pro' });
+      expect(baseline.errors, `seed ${seed}`).toEqual([]);
+      // And the faulted circuit must actually misbehave, or there is nothing
+      // to diagnose.
+      const symptom = diffSymptom(
+        baseline,
+        simulate(scenario.faultedCircuit, { appMode: 'pro' }),
+        scenario.loadComponentIds,
+      );
+      expect(symptom.observable, `seed ${seed}`).toBe(true);
+    }
+  });
+});
+
+/**
+ * The compound payoff, asserted exactly as the panel computes it.
+ *
+ * `DiagnosisPanel` shows "the symptom has changed" when the live observation
+ * is still unhealthy *and* its text differs from the opening complaint. That
+ * is the moment the second fault becomes findable, so it is worth pinning
+ * against the real builder rather than trusting the UI expression.
+ */
+describe('compoundFault — the learner sees the symptom change (§26)', () => {
+  it('clearing the masking fault reveals a different, still-broken picture', () => {
+    let checked = 0;
+    for (const seed of [3, 8, 14, 19, 26, 31, 44, 57, 63, 71, 88, 95]) {
+      const scenario = buildDiagnosisScenario({
+        seed,
+        difficulty: 'intermediate',
+        rageTier: 'rage-4',
+      });
+      const claim = scenario.rage?.applications.find((a) => a.id === 'compoundFault');
+      if (!claim?.applied) continue;
+      checked += 1;
+
+      const opening = observeSymptom(scenario, scenario.faultedCircuit);
+      expect(opening.healthy, `seed ${seed}`).toBe(false);
+      expect(opening.complaint, `seed ${seed}`).toBe(scenario.complaint);
+
+      // Repair fault #1 only — exactly what the panel's repair button does.
+      const afterFirst = observeSymptom(
+        scenario,
+        withoutFault(scenario.faultedCircuit, scenario.faults[0]!.fault.id),
+      );
+
+      // Still broken: the second fault is now doing the talking.
+      expect(afterFirst.healthy, `seed ${seed}: repairing one fault fixed everything`).toBe(false);
+      // And visibly different, or the learner has no reason to keep looking.
+      expect(
+        afterFirst.complaint,
+        `seed ${seed}: the complaint did not change, so the compound is invisible`,
+      ).not.toBe(opening.complaint);
+
+      // Clearing both must leave a healthy installation.
+      const afterBoth = observeSymptom(
+        scenario,
+        scenario.faults.reduce(
+          (circuit, entry) => withoutFault(circuit, entry.fault.id),
+          scenario.faultedCircuit,
+        ),
+      );
+      expect(afterBoth.healthy, `seed ${seed}`).toBe(true);
+    }
+    expect(checked, 'no compound scenario was available to check').toBeGreaterThan(0);
   });
 });

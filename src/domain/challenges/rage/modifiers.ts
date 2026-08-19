@@ -503,6 +503,107 @@ const limitedHints: RageModifier = {
 };
 
 // ---------------------------------------------------------------------------
+// compoundFault — one fault hiding behind another
+// ---------------------------------------------------------------------------
+
+/**
+ * **compoundFault** — a second fault the first one is currently hiding.
+ *
+ * §26 audit: *allowed*. This is the plan's own "compound diagnostic scenarios",
+ * and nothing about it is dishonest. Both faults are genuine candidates, both
+ * are really injected, and the symptom shown is measured by the simulator from
+ * the circuit that actually contains them. What makes it hard is a property of
+ * the electrical world, not of the presentation: while fault A is present it
+ * *masks* fault B, so the installation shows A's symptom only. Repair A and the
+ * installation is still wrong — and wrong in a **different way** than before.
+ * That second symptom was always true; it simply could not be observed yet.
+ *
+ * How it differs from {@link multiFault}, which it deliberately inverts:
+ *
+ * | | `multiFault` | `compoundFault` |
+ * |---|---|---|
+ * | wants | two *independent* faults | two *interacting* faults |
+ * | separation | different devices | different devices (kept — see below) |
+ * | combined symptom | usually both visible | B's contribution invisible |
+ * | after repairing A | remaining symptom unchanged | remaining symptom **changes** |
+ *
+ * Device separation is kept even though the faults interact. The reason is the
+ * one from `multiFault` rule 1: two faults on the same wire read as a single
+ * defect, so a learner who correctly repairs "that connection" would be marked
+ * wrong for a distinction they cannot see. Interaction here is *electrical*
+ * (upstream/downstream), not *physical*.
+ *
+ * **This modifier only proposes.** It cannot prove masking on its own, because
+ * proving it needs three simulator runs (A, B, A+B) and `modifiers.ts` is a
+ * pure proposal layer with no simulator access — that is why `runner.ts` is the
+ * only file in `rage/**` that imports `simulate`. The actual proof lives in
+ * `tryBuildScenario`, which already runs each fault solo for §12 and so can
+ * check the masking property for the price of one extra run. A proposal that
+ * fails the proof costs a standby, not the scenario.
+ *
+ * The ordering below is what makes that proof likely to succeed rather than a
+ * lottery. Measured over 75 seeds (25 per difficulty, 64,506 ordered pairs):
+ * every masking fault was an *open* type — `open-circuit`, `open-live`,
+ * `open-neutral` or `protection-forced-open` — which is exactly what physics
+ * predicts, since an open upstream de-energises the branch the downstream fault
+ * sits on, leaving it nothing to act upon. So partners are ranked **furthest
+ * from the supply first**: the deeper into the de-energised branch a candidate
+ * sits, the more likely the already-selected fault is upstream of it.
+ */
+const compoundFault: RageModifier = {
+  id: 'compoundFault',
+  label: 'Compound fault',
+  description: 'Faults that interact, so clearing one changes what the other looks like.',
+  implemented: true,
+
+  selectFaults(input: RageSelectionInput, ctx: RageContext): RageSelectionPatch | null {
+    const { circuit, candidates, pool, selected, loadComponentIds } = input;
+    if (selected.length === 0) return null;
+
+    const takenKeys = new Set(selected.map((c) => candidateKey(c.type, c.target)));
+    const takenLocations = new Set(selected.map(locationKeyOf));
+    const takenComponents = new Set(selected.flatMap((c) => touchedComponentIds(circuit, c)));
+
+    const separable = (candidate: FaultCandidate): boolean => {
+      if (takenKeys.has(candidateKey(candidate.type, candidate.target))) return false;
+      if (takenLocations.has(locationKeyOf(candidate))) return false;
+      return !touchedComponentIds(circuit, candidate).some((id) => takenComponents.has(id));
+    };
+
+    // Same ranked-then-full fallback as `multiFault`, and for the same measured
+    // reason: a ranking modifier narrows to one distance band, and a band is
+    // typically a cluster around a single node with nothing separable in it.
+    const fromRanked = candidates.filter(separable);
+    const eligible = fromRanked.length > 0 ? fromRanked : pool.filter(separable);
+    if (eligible.length === 0) return null;
+
+    // Distance from the loads, reused from `remoteFault`'s BFS. A *small* hop
+    // count means "near the load", i.e. deep in the branch and downstream of an
+    // upstream open — the opposite of what `remoteFault` wants, which is why
+    // the sort is ascending here and descending there.
+    const distance = hopsToNearestLoad(circuit, loadComponentIds);
+    const scored = eligible.map((candidate) => ({
+      candidate,
+      distance: candidateDistance(circuit, candidate, distance),
+    }));
+
+    // Shuffle first, then sort: ties keep a seeded-random order instead of the
+    // eligibility list's construction order, so two seeds that agree on the
+    // distance profile still explore different partners.
+    const shuffled = ctx.rng.shuffle(scored);
+    shuffled.sort((a, b) => a.distance - b.distance);
+    const ordered = shuffled.map((entry) => entry.candidate);
+
+    return {
+      additional: ordered,
+      note: `proposed ${ordered.length} masking-partner candidate(s) from the ${
+        fromRanked.length > 0 ? 'ranked' : 'full'
+      } pool, nearest-load first`,
+    };
+  },
+};
+
+// ---------------------------------------------------------------------------
 // Declared but not yet implemented (plan §25 closing rule, §53 Phase F)
 // ---------------------------------------------------------------------------
 
@@ -515,12 +616,6 @@ const limitedHints: RageModifier = {
  * separate document, because the reason is a *technical* constraint discovered
  * in Phases B–D, not a scheduling choice:
  *
- *   - `compoundFault` — needs two faults that *interact*, so that clearing one
- *     changes what the other looks like. `multiFault` deliberately picks two
- *     faults that do NOT share a device, which is the opposite property;
- *     shipping an interacting pair additionally requires proving the second
- *     symptom is still observable after the first repair, at build time. §53
- *     item 6.
  *   - `misleadingSymptom` — must be achieved by *selecting* a fault whose true
  *     symptom misleads (e.g. a fault upstream that kills a downstream load),
  *     never by rewriting symptom text, which §26 explicitly forbids. That
@@ -534,12 +629,6 @@ const notYetImplemented: RageModifier[] = [
     id: 'misleadingSymptom',
     label: 'Misleading symptom',
     description: 'A fault whose honest symptom points somewhere unhelpful.',
-    implemented: false,
-  },
-  {
-    id: 'compoundFault',
-    label: 'Compound fault',
-    description: 'Faults that interact, so clearing one changes what the other looks like.',
     implemented: false,
   },
   {
@@ -558,6 +647,7 @@ export const RAGE_MODIFIERS: Record<RageModifierId, RageModifier> = {
   redHerring,
   remoteFault,
   multiFault,
+  compoundFault,
   limitedHints,
   ...Object.fromEntries(notYetImplemented.map((m) => [m.id, m])),
 } as Record<RageModifierId, RageModifier>;

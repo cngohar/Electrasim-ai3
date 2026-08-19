@@ -11,6 +11,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — Session 2026-08-19 (v2 Phase F3): a fault that hides another fault 😈😈😈
+
+`compoundFault` (§25, §26, §27, §53.6) is now implemented, and **Rage 4** ships with it. A compound scenario is one where the first fault *masks* the second: while it is present the installation looks exactly as it would with that fault alone, and only when the learner repairs it does the real second complaint appear. This is the diagnostic habit the tier exists to teach — *re-test after every repair*.
+
+- **The claim is proved by simulation before it is made.** The builder simulates the pair, and requires that the combined picture matches the primary fault's picture and *does not* match the partner's. Both faults must also be independently observable (§12), so the second one is a real fault the learner can find, not a passenger in the answer list.
+- **Masking is judged on what the learner can see.** A new `sameObservableWorld` compares dead loads, tripped protection and blown components — and deliberately ignores the simulator's internal error flags. An earlier attempt that included them found **0 masking pairs out of 67,476**, because every wire fault flags its own wire and so no two faults ever "look the same". The gate was measuring the wrong thing, not reporting an absent phenomenon.
+- **An honesty bug was found and fixed by the probe that measured it.** The selection stage records `compoundFault: applied` meaning only "a partner was proposed and accepted"; the later masking verdict was *appended* beside it, and `buildRageSummary` merges duplicate rows with "applied anywhere wins" — so **71 of 120 rage-4 scenarios claimed a compound that did not exist**. The verdict now *replaces* the proposal's row. A regression test pins it, and a second test re-proves every `applied` claim against the simulator rather than trusting the flag.
+- **Graceful degradation, never a rejected seed.** The primary fault is fixed before the compound search begins, so not every circuit can host one. When no masking partner is found the exercise ships as an honest plain multi-fault and says so in its note. A bounded retry over reserve candidates lifted the honest compound rate from **35.0 % to 56.7 %** (52.5 % across the full 360-scenario stress sweep).
+- **Rage 4 drops `remoteFault` on purpose.** Compound masking already forces the partner deep into the branch the first fault de-energises; also demanding the most-distant band leaves the two constraints with an empty intersection — the same way `remoteFault` + `multiFault` once made Rage 3 ship a single fault. Fewer modifiers, strictly harder exercise, so the tier escalation test now asserts the learner's actual burden instead of counting list entries.
+
+### Fixed — Session 2026-08-19: the Diagnosis panel described a circuit that no longer existed (§14, §26)
+
+**The evidence block was a snapshot, not a reading.** `scenario.complaint` is written once when the exercise is built, and the panel rendered it unchanged for the whole session — so after a learner correctly repaired something, the panel still reported the original symptom.
+
+- For compound scenarios this defeated the entire tier: the payoff for repairing the masking fault is that *the complaint changes*, and a frozen briefing told the learner their correct repair had achieved nothing.
+- The panel now re-derives the symptom from the learner's live circuit after every change, via a new pure `observeSymptom` in the domain layer — the panel still owns no electrical logic. It uses the same deliberately-vague phrasing as the original briefing, so **§14 holds**: it reports what is *seen*, never what is wrong or where. A test asserts the live text never contains a fault's id, type or location across many seeds.
+- When everything measures healthy the block says so plainly and asks for the diagnosis, rather than showing a complaint the learner has already fixed. Verified end-to-end in a real browser by walking the answer grid until the repairs land.
+- Costs ~0.3 ms per change and is memoised. Mutation-checked: freezing the complaint back to `scenario.complaint` fails the compound test.
+
 ### Fixed — Session 2026-08-19: the console was printing the answer (§14)
 
 **Running the simulation during a Diagnosis exercise handed the learner the answer.** The simulator narrates every injected fault by name — `🔧 TERMINAL DISCONNECT: Loose terminal screw on Push Button port!` — and those lines went straight to the Console panel while "Loose / Disconnected Terminal" sat in the multiple-choice list directly beside them. Pressing **Run Simulation** is the single most natural thing to do when asked to investigate a circuit, so the intended exercise could be skipped entirely, by accident.

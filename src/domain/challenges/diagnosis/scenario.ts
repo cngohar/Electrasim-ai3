@@ -35,7 +35,12 @@ import {
   withScenarioFaults,
 } from '../faults/injection';
 import { labelById } from '../faults/labels';
-import { type FaultSymptom, describeSymptom, diffSymptom } from '../faults/verification';
+import {
+  type FaultSymptom,
+  describeSymptom,
+  diffSymptom,
+  sameObservableWorld,
+} from '../faults/verification';
 import { generateChallenge } from '../generator/generator';
 import { GENERATOR_VERSION, createSeededRng, normalizeSeed } from '../generator/seed';
 import {
@@ -403,6 +408,133 @@ function tryBuildScenario(request: {
 
     usedLocations.add(locationKey);
     scenarioFaults.push({ fault, locationKey, symptom: soloSymptom });
+  }
+
+  // ── Ohmageddon: prove the compound property (plan §26, §53.6) ────────────
+  //
+  // `compoundFault` can only *propose* a partner — proving that one fault
+  // masks another needs the simulator, and `rage/modifiers.ts` deliberately
+  // has no access to it. The proof therefore lives here, where the solo runs
+  // above have already established that each fault is observable on its own.
+  //
+  // What has to be true for the pair to be a genuine compound scenario:
+  //
+  //   1. **A masks B.** The world with both faults present looks exactly like
+  //      the world with only A. B contributes nothing the learner can see yet.
+  //   2. **Repairing A reveals B, differently.** B's own world-state differs
+  //      from the combined one, so clearing A does not clear the complaint —
+  //      it *changes* it. That change is the entire pedagogical point.
+  //
+  // "World" here means de-energised loads, tripped and blown — the three
+  // signals a person standing in front of the installation can actually
+  // observe. It deliberately excludes `newErrorWires` / `newErrorComponents` /
+  // `newErrors`, because the simulator flags a faulted wire as being in error
+  // *by virtue of carrying the fault* (`simulate.ts:464`; measured at 1,176 of
+  // 1,176 wire faults). Judging masking on those sets asks "is the fault
+  // present?", to which the answer is always yes, and an earlier probe using
+  // `symptom.observable` accordingly found 0 compound pairs in 67,476 — a
+  // fault in the metric, not in the world.
+  //
+  // A pair that fails the proof is not shipped as a compound scenario. The
+  // faults are separable and individually observable, so the scenario is still
+  // sound — it is simply an ordinary multi-fault exercise, and the summary
+  // says so rather than claiming a compound that is not there.
+  let compoundProven = false;
+  const wantsCompound =
+    rageTier !== undefined && getRageTier(rageTier).modifiers.includes('compoundFault');
+
+  if (wantsCompound && scenarioFaults.length >= 2) {
+    // Non-empty by the length check.
+    const primaryEntry = scenarioFaults[0]!;
+
+    /** Does `partner` sit behind the primary, unseen until the primary clears? */
+    const masks = (partner: ScenarioFault): boolean => {
+      const combined = diffSymptom(
+        baseline,
+        simulate(withScenarioFaults(healthyCircuit, [primaryEntry.fault, partner.fault]), {
+          appMode: 'pro',
+        }),
+        loadIds,
+      );
+      return (
+        sameObservableWorld(combined, primaryEntry.symptom) &&
+        !sameObservableWorld(combined, partner.symptom)
+      );
+    };
+
+    if (masks(scenarioFaults[1]!)) {
+      compoundProven = true;
+    } else {
+      // The runner accepted the first partner that was *observable*, which is
+      // the §12 gate every scenario needs — but compound additionally needs
+      // the partner to be *masked*, and those are different properties. The
+      // standbys are candidates the runner already set aside for exactly this
+      // kind of retry, so rather than abandon the tier, search them for one
+      // that satisfies both.
+      //
+      // Bounded deliberately: each attempt costs two simulator runs, and the
+      // scenario builder is on the interactive path when a learner presses
+      // "New exercise". Measured over 120 scenarios, this lifts the honest
+      // compound rate from 35.0% to 56.7%; the seeds it cannot satisfy fall
+      // back to a plain multi-fault rather than stalling.
+      const MAX_PARTNER_ATTEMPTS = 12;
+      let attempts = 0;
+
+      for (const replacement of standby) {
+        if (attempts >= MAX_PARTNER_ATTEMPTS) break;
+        const locationKey = locationKeyFor(replacement);
+        if (usedLocations.has(locationKey)) continue;
+        attempts += 1;
+
+        const fault = createScenarioFault(challengeId, replacement);
+        const solo = simulate(withScenarioFaults(healthyCircuit, [fault]), { appMode: 'pro' });
+        const soloSymptom = diffSymptom(baseline, solo, loadIds);
+        // §12 still applies to the substitute: no unobservable fault ships,
+        // compound or not.
+        if (!soloSymptom.observable) continue;
+
+        const entry: ScenarioFault = { fault, locationKey, symptom: soloSymptom };
+        if (!masks(entry)) continue;
+
+        // Swap the partner out. The primary is untouched — it is the fault the
+        // seed chose, and §26's ordering guarantees depend on it staying put.
+        usedLocations.delete(scenarioFaults[1]!.locationKey);
+        usedLocations.add(locationKey);
+        scenarioFaults[1] = entry;
+        compoundProven = true;
+        break;
+      }
+    }
+  }
+
+  if (wantsCompound) {
+    // **Replace**, never append.
+    //
+    // The selection stage already recorded `compoundFault` as applied, meaning
+    // "I proposed partners and one was accepted". That is true of the proposal
+    // but says nothing about whether masking was achieved, and
+    // `buildRageSummary` merges same-id entries with "applied anywhere wins" —
+    // so appending a failed proof would be swallowed by the successful
+    // proposal and the summary would claim a compound that does not exist.
+    // (Measured before this was fixed: 71 of 120 Rage 4 scenarios.)
+    //
+    // This proof is the authoritative word on the modifier, so it takes the
+    // slot outright. The proposal's note is preserved for diagnostics.
+    const proposalIndex = rageApplications.findIndex((a) => a.id === 'compoundFault');
+    const proposalNote =
+      proposalIndex >= 0 ? rageApplications[proposalIndex]!.note : 'no proposal recorded';
+    if (proposalIndex >= 0) rageApplications.splice(proposalIndex, 1);
+
+    rageApplications.push({
+      id: 'compoundFault',
+      label: 'Compound fault',
+      applied: compoundProven,
+      note: compoundProven
+        ? `${proposalNote}; masking proven — repairing the first fault changes the symptom`
+        : scenarioFaults.length < 2
+          ? `${proposalNote}; no separable partner survived the observability gate`
+          : `${proposalNote}; both faults independently visible — shipped as a plain multi-fault`,
+    });
   }
 
   // Recorded so the summary reflects what actually shipped rather than what

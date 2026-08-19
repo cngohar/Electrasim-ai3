@@ -40,7 +40,13 @@ import { isFaultResolved } from '../../faults';
 import { simulate } from '../../simulation';
 import type { Circuit, FaultType, SimulationResult } from '../../types';
 import { describeFaultTarget } from '../faults/injection';
-import { describeRecoveryGap, describeStructuralGap } from '../faults/verification';
+import { labelById } from '../faults/labels';
+import {
+  describeRecoveryGap,
+  describeStructuralGap,
+  describeSymptom,
+  diffSymptom,
+} from '../faults/verification';
 import type { DiagnosisScenario } from './scenario';
 
 /** §41 verdict — note the third state. */
@@ -302,4 +308,56 @@ function guide(
     return 'You are looking in the right place. Re-check what has actually failed there.';
   }
   return 'Re-read the symptom and trace the circuit again — use a hint if you are stuck.';
+}
+
+// ---------------------------------------------------------------------------
+// Live symptom (plan §14, §26 compound scenarios)
+// ---------------------------------------------------------------------------
+
+/**
+ * What the installation is doing **right now**, in the learner's own circuit.
+ *
+ * The scenario's `complaint` is written once at build time from the circuit as
+ * it was first handed over. That is the right thing to show at the start, and
+ * the wrong thing to show for ever: the moment the learner clears a fault the
+ * complaint becomes a description of the past.
+ *
+ * On a compound scenario (§26) that is not merely stale, it defeats the whole
+ * exercise. The entire point of a compound fault is that repairing the first
+ * one *changes* the symptom and reveals the second — and a learner staring at
+ * a frozen "the kitchen light is dead" has no way to notice that the complaint
+ * is now a different one. They would be told, in effect, that their correct
+ * repair had achieved nothing.
+ *
+ * So the panel re-derives this after every change to the circuit. It is the
+ * same measurement the scenario builder made (`diffSymptom` against the
+ * healthy baseline), applied to the live circuit instead of the faulted one,
+ * and phrased with the same deliberately-vague `describeSymptom` — so it can
+ * report *that* something is wrong and *what is seen*, and still never name
+ * the fault or its location. §14 holds throughout.
+ *
+ * Returns `null` when the installation is behaving correctly, which the panel
+ * renders as "everything is working" rather than as an empty complaint.
+ */
+export function observeSymptom(
+  scenario: DiagnosisScenario,
+  userCircuit: Circuit,
+  options: { appMode?: 'basic' | 'pro' } = {},
+): { complaint: string; healthy: boolean } {
+  const appMode = options.appMode ?? 'pro';
+  const baseline = simulate(scenario.healthyCircuit, { appMode });
+  const current = simulate(userCircuit, { appMode });
+  const symptom = diffSymptom(baseline, current, scenario.loadComponentIds);
+
+  if (!symptom.observable) {
+    return {
+      complaint: 'The installation is now behaving as it should.',
+      healthy: true,
+    };
+  }
+
+  const labels = symptom.deEnergisedLoadIds.map((id) =>
+    labelById(scenario.healthyCircuit, id, 'load'),
+  );
+  return { complaint: describeSymptom(symptom, labels), healthy: false };
 }

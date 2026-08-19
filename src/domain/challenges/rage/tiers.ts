@@ -6,14 +6,11 @@
  * difficulty curve, no XP and no unlock tree — three tiers, each a named
  * combination of the modifiers defined in `modifiers.ts`.
  *
- * The plan lists four tiers. Three shipped in Phase E; Phase F completes Rage 3
- * by adding the second fault §27 always specified for it. Rage 4 is still held
- * back, because §27 defines it as `2 faults + compound symptom + limited hints
- * + optional timer` and `compoundFault` remains honestly unimplementable — two
- * faults that *interact* is a different property from two that are independent,
- * and shipping the tier without it would mean labelling something "compound"
- * that is not. §24's rule that the mode must never mislead the user cuts both
- * ways, so the tier waits rather than pretending.
+ * All four tiers from the plan now exist. Three shipped in Phase E; Phase F
+ * completed Rage 3 by adding the second fault §27 always specified for it, and
+ * added Rage 4 once `compoundFault` could be supported honestly. §27 defines
+ * Rage 4 as `2 faults + compound symptom + limited hints + optional timer`; the
+ * timer is the one piece still outstanding, and §27 itself marks it optional.
  */
 
 import type { RageTier, RageTierId } from './types';
@@ -57,9 +54,43 @@ export const RAGE_TIERS: Record<RageTierId, RageTier> = {
      */
     modifiers: ['redHerring', 'remoteFault', 'multiFault', 'limitedHints'],
   },
+  'rage-4': {
+    id: 'rage-4',
+    label: 'Rage 4',
+    blurb: 'Two faults, and the first one is hiding the second.',
+    /**
+     * §27 Rage 4 — "2 faults + compound symptom + limited hints + optional
+     * timer". The timer is explicitly optional and is not shipped yet; the
+     * rest is.
+     *
+     * `compoundFault` replaces `multiFault` rather than joining it. Both add a
+     * second fault, so running the pair would either fight over the one slot
+     * §27 allows or push the scenario to three faults. They also want opposite
+     * things — `multiFault` wants two faults that are *independently* visible,
+     * `compoundFault` wants the first to hide the second — so whichever ran
+     * second would be proposing against the other's intent.
+     *
+     * `remoteFault` is deliberately absent. Compound masking already demands a
+     * partner deep in the branch the first fault de-energises, and narrowing
+     * the pool to the most distant band as well left almost nothing separable:
+     * the two constraints intersect to near-empty, exactly the way
+     * `remoteFault` + `multiFault` did in Phase E. `redHerring` stays, because
+     * a decoy costs the search nothing.
+     *
+     * When the masking proof fails, the scenario ships as an ordinary
+     * two-fault exercise and the summary says so — see the compound proof in
+     * `diagnosis/scenario.ts`. It never claims a compound it did not achieve.
+     */
+    modifiers: ['redHerring', 'compoundFault', 'limitedHints'],
+  },
 };
 
-export const RAGE_TIER_IDS: readonly RageTierId[] = ['rage-1', 'rage-2', 'rage-3'] as const;
+export const RAGE_TIER_IDS: readonly RageTierId[] = [
+  'rage-1',
+  'rage-2',
+  'rage-3',
+  'rage-4',
+] as const;
 
 export function getRageTier(id: RageTierId): RageTier {
   const tier = RAGE_TIERS[id];
