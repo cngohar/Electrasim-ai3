@@ -5,6 +5,20 @@
 
 A running, append-only log of work on the ElectraSim rewrite. Every coding session must add an entry.
 
+---
+
+## Session 2026-08-19 — v2 Phase F4–F6: finish Ohmageddon
+
+**Done:** the three leftover Phase F slices from the F3 close-out.
+
+- **F4 `misleadingSymptom`.** `rankCandidates` drops load-touching candidates. The claim is proved in `tryBuildScenario` via `isMisleadingPlacement` (verification.ts) against the *measured* symptom, and the verdict *replaces* the proposal row so a failed proof cannot ship as `applied`.
+- **F5 Rage 2 swap.** Rage 2 is now `[misleadingSymptom, limitedHints]`. `remoteFault` stays on Rage 3. Stress harness no longer asserts distance escalation on Rage 2; it asserts the misleading claim actually landed on a majority of seeds.
+- **F6 `timeLimit`.** Rage 4 writes `timeLimitSeconds = max(30, 1.5 × par)`. Store gains `remainingMs` / `expire` / `timed-out`. Panel shows remaining time and a TIME'S UP screen that scores what was found.
+
+**Close-out (same day):** Rage 4's tier table was missing `timeLimit` even though the modifier, store and tests existed — a labelled-but-empty timer. Wired it last so `limitedHints` still owns the hint note. The misleading-symptom primary swap now rematches candidates from `rankedPool` (not only selected/standby). `submit` refuses any non-`active` status so leftover radio selections cannot beat a timeout. The TIME'S UP screen now exists as a dedicated panel, not a fall-through to the live form.
+
+**Next:** Phase F is closed. Later work is outside Ohmageddon (Phase 8 GPU, Phase 9 backend, Phase 10 AI, or the Pro-mode follow-ups in IMPLEMENTATION_NOTES.md).
+
 Format per entry:
 
 ```

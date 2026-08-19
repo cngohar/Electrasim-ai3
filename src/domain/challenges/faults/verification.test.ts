@@ -11,6 +11,8 @@ import {
   describeSymptom,
   diffSymptom,
   isFullRecovery,
+  isMisleadingPlacement,
+  obviousLocationKeys,
   sameObservableWorld,
 } from './verification';
 
@@ -228,19 +230,28 @@ describe('sameObservableWorld — "does this look the same to the learner?"', ()
 
   it('matches when the visible picture is identical', () => {
     expect(
-      sameObservableWorld(world({ deEnergisedLoadIds: ['l1', 'l2'] }), world({ deEnergisedLoadIds: ['l1', 'l2'] })),
+      sameObservableWorld(
+        world({ deEnergisedLoadIds: ['l1', 'l2'] }),
+        world({ deEnergisedLoadIds: ['l1', 'l2'] }),
+      ),
     ).toBe(true);
   });
 
   it('ignores load ordering — the learner sees a set of dead lamps, not a list', () => {
     expect(
-      sameObservableWorld(world({ deEnergisedLoadIds: ['l2', 'l1'] }), world({ deEnergisedLoadIds: ['l1', 'l2'] })),
+      sameObservableWorld(
+        world({ deEnergisedLoadIds: ['l2', 'l1'] }),
+        world({ deEnergisedLoadIds: ['l1', 'l2'] }),
+      ),
     ).toBe(true);
   });
 
   it('separates worlds that differ by one dead load', () => {
     expect(
-      sameObservableWorld(world({ deEnergisedLoadIds: ['l1'] }), world({ deEnergisedLoadIds: ['l1', 'l2'] })),
+      sameObservableWorld(
+        world({ deEnergisedLoadIds: ['l1'] }),
+        world({ deEnergisedLoadIds: ['l1', 'l2'] }),
+      ),
     ).toBe(false);
   });
 
@@ -250,6 +261,55 @@ describe('sameObservableWorld — "does this look the same to the learner?"', ()
 
   it('separates a blown component from an intact one', () => {
     expect(sameObservableWorld(world({ blown: true }), world({ blown: false }))).toBe(false);
+  });
+
+  it('treats a fault on the dead load as obvious, and one elsewhere as misleading', () => {
+    const circuit = {
+      components: [
+        { id: 'lamp', type: 'bulb', x: 0, y: 0, state: {} },
+        { id: 'mcb', type: 'mcb', x: 100, y: 0, state: {} },
+      ],
+      wires: [
+        {
+          id: 'w-lamp',
+          fromComponentId: 'mcb',
+          fromPortIndex: 0,
+          toComponentId: 'lamp',
+          toPortIndex: 0,
+          controlPoints: [],
+        },
+        {
+          id: 'w-supply',
+          fromComponentId: 'mcb',
+          fromPortIndex: 1,
+          toComponentId: 'mcb',
+          toPortIndex: 1,
+          controlPoints: [],
+        },
+      ],
+    } as unknown as Circuit;
+    const deadLamp = world({
+      primary: 'load-dead',
+      deEnergisedLoadIds: ['lamp'],
+      observable: true,
+    });
+
+    const obvious = obviousLocationKeys(circuit, deadLamp);
+    expect(obvious.has('component:lamp')).toBe(true);
+    expect(obvious.has('wire:w-lamp')).toBe(true);
+    expect(obvious.has('component:mcb')).toBe(false);
+
+    expect(isMisleadingPlacement(circuit, { type: 'component', id: 'lamp' }, deadLamp)).toBe(false);
+    expect(isMisleadingPlacement(circuit, { type: 'wire', id: 'w-lamp' }, deadLamp)).toBe(false);
+    expect(isMisleadingPlacement(circuit, { type: 'component', id: 'mcb' }, deadLamp)).toBe(true);
+    expect(isMisleadingPlacement(circuit, { type: 'wire', id: 'w-supply' }, deadLamp)).toBe(true);
+    expect(
+      isMisleadingPlacement(
+        circuit,
+        { type: 'component', id: 'mcb' },
+        world({ observable: false }),
+      ),
+    ).toBe(false);
   });
 
   it('ignores simulator error flags, which every wire fault sets for itself', () => {

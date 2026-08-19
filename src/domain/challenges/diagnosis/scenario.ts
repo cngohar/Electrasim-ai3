@@ -39,6 +39,7 @@ import {
   type FaultSymptom,
   describeSymptom,
   diffSymptom,
+  isMisleadingPlacement,
   sameObservableWorld,
 } from '../faults/verification';
 import { generateChallenge } from '../generator/generator';
@@ -338,6 +339,10 @@ function tryBuildScenario(request: {
     rageApplications.push(...ranked.applications);
   }
 
+  // Kept so a later proof (misleadingSymptom) can swap the primary without
+  // reaching past the ranking that just ran.
+  const rankedPool: readonly FaultCandidate[] = candidates;
+
   const candidate = selectFaultCandidate(candidates, rng);
   if (!candidate) return { ok: false, reason: 'fault selection produced nothing' };
 
@@ -537,15 +542,85 @@ function tryBuildScenario(request: {
     });
   }
 
+  // ── Ohmageddon: prove the misleading-symptom property (plan §26, §53) ──
+  //
+  // Same replace-don't-append rule as compoundFault. The ranking stage
+  // records `misleadingSymptom: applied` meaning only "I dropped the
+  // load-touching candidates". That is a heuristic, not a proof: the
+  // complaint is written from the *measured* symptom, and a candidate that
+  // does not sit on a declared load can still be the obvious place to look
+  // (a trip with no dead load, a blown device). The summary is only allowed
+  // to claim the modifier once the measured symptom actually points
+  // somewhere other than the fault.
+  const wantsMisleading =
+    rageTier !== undefined && getRageTier(rageTier).modifiers.includes('misleadingSymptom');
+
+  if (wantsMisleading && scenarioFaults.length >= 1) {
+    const isMisleading = (entry: ScenarioFault): boolean =>
+      isMisleadingPlacement(healthyCircuit, entry.fault.target, entry.symptom);
+
+    let misleadingProven = isMisleading(scenarioFaults[0]!);
+
+    // Only swap the primary on a single-fault run. A second fault was
+    // chosen *relative* to the first; replacing the first afterwards
+    // would silently break a multi/compound pairing that is not this
+    // modifier's job.
+    if (!misleadingProven && scenarioFaults.length === 1) {
+      const used = new Set(scenarioFaults.map((entry) => entry.locationKey));
+      const MAX_ATTEMPTS = 16;
+      let attempts = 0;
+      for (const replacement of rankedPool) {
+        if (attempts >= MAX_ATTEMPTS) break;
+        const locationKey = locationKeyFor(replacement);
+        if (used.has(locationKey)) continue;
+        attempts += 1;
+
+        const fault = createScenarioFault(challengeId, replacement);
+        const solo = simulate(withScenarioFaults(healthyCircuit, [fault]), { appMode: 'pro' });
+        const soloSymptom = diffSymptom(baseline, solo, loadIds);
+        if (!soloSymptom.observable) continue;
+        const entry: ScenarioFault = { fault, locationKey, symptom: soloSymptom };
+        if (!isMisleading(entry)) continue;
+
+        used.delete(scenarioFaults[0]!.locationKey);
+        used.add(locationKey);
+        scenarioFaults[0] = entry;
+        misleadingProven = true;
+        break;
+      }
+    }
+
+    const proposalIndex = rageApplications.findIndex((a) => a.id === 'misleadingSymptom');
+    const proposalNote =
+      proposalIndex >= 0 ? rageApplications[proposalIndex]!.note : 'no proposal recorded';
+    if (proposalIndex >= 0) rageApplications.splice(proposalIndex, 1);
+
+    rageApplications.push({
+      id: 'misleadingSymptom',
+      label: 'Misleading symptom',
+      applied: misleadingProven,
+      note: misleadingProven
+        ? `${proposalNote}; proven — the complaint points at the load, the fault is elsewhere`
+        : `${proposalNote}; every candidate sat on the obvious symptom — shipped without the claim`,
+    });
+  }
+
   // Recorded so the summary reflects what actually shipped rather than what
   // was proposed — a multiFault run whose second fault was masked away is a
   // single-fault run, and §24 says the mode must not misrepresent itself.
   selected = scenarioFaults.map((entry) => {
-    const match = [...selected, ...alternatives].find(
+    // rankedPool is included because the misleading-symptom proof may
+    // swap the primary for a candidate that was never selected or put
+    // on standby — only ranked. A miss here is a builder bug.
+    const match = [...selected, ...alternatives, ...rankedPool].find(
       (c) => locationKeyFor(c) === entry.locationKey && c.type === entry.fault.type,
     );
-    // Every scenario fault came from one of those two lists.
-    return match!;
+    if (!match) {
+      throw new Error(
+        `scenario fault ${entry.fault.type} @ ${entry.locationKey} has no matching candidate`,
+      );
+    }
+    return match;
   });
 
   const faults = scenarioFaults.map((entry) => entry.fault);

@@ -211,9 +211,9 @@ export interface RageSelectionPatch {
  *
  * Note what is absent: nothing here can change the *symptom*. The symptom is
  * measured from two simulator runs (`diffSymptom`), and §26 forbids "random
- * symptoms unrelated to the actual circuit". `misleadingSymptom` — when it
- * lands — will work by choosing a fault whose true symptom is misleading, not
- * by rewriting the text.
+ * symptoms unrelated to the actual circuit". `misleadingSymptom` works by
+ * choosing a fault whose true measured symptom is misleading, not by
+ * rewriting the text.
  */
 export interface RagePresentation {
   /** Progressive hints (§17), possibly truncated. */
@@ -221,8 +221,9 @@ export interface RagePresentation {
   hintBudget: number;
   parTimeSeconds: number;
   /**
-   * Optional countdown in seconds (§27 Rage 4). `null` means untimed, which is
-   * the only value Phase E ever produces.
+   * Optional countdown in seconds (§27 Rage 4). `null` means untimed.
+   * `timeLimit` is the only modifier that writes this; every other tier
+   * leaves it null.
    */
   timeLimitSeconds: number | null;
 }

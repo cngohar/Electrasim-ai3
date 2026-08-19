@@ -86,6 +86,24 @@ function useElapsedLabel(active: boolean): string {
   return formatElapsed(totalElapsedMs());
 }
 
+/** Remaining time on a Rage 4 countdown; also settles the store when it hits 0. */
+function useRemainingLabel(active: boolean): string | null {
+  const remainingMs = useDiagnosisStore((s) => s.remainingMs);
+  const expire = useDiagnosisStore((s) => s.expire);
+  const [, force] = useState(0);
+  useEffect(() => {
+    if (!active) return;
+    const id = setInterval(() => {
+      const left = remainingMs();
+      if (left === 0) expire();
+      force((n) => n + 1);
+    }, 250);
+    return () => clearInterval(id);
+  }, [active, remainingMs, expire]);
+  const left = remainingMs();
+  return left === null ? null : formatElapsed(left);
+}
+
 export function DiagnosisPanel({ isPhone }: Props) {
   const status = useDiagnosisStore((s) => s.status);
   const scenario = useDiagnosisStore((s) => s.scenario);
@@ -171,7 +189,8 @@ export function DiagnosisPanel({ isPhone }: Props) {
   /** §15: both halves of the answer are required before anything may be done. */
   const canSubmit = selectedFaultType !== null && selectedLocationKey !== null;
   const reducedMotion = usePrefersReducedMotion();
-  const elapsedLabel = useElapsedLabel(status === 'active');
+  const elapsedLabel = useElapsedLabel(status === 'active' || status === 'timed-out');
+  const remainingLabel = useRemainingLabel(status === 'active');
 
   /**
    * Frame the installation under investigation.
@@ -521,6 +540,93 @@ export function DiagnosisPanel({ isPhone }: Props) {
     );
   }
 
+  // ── Timed out (plan §27 Rage 4) ─────────────────────────────────────────
+  // Expiry scores what was already found. It does not invent a fail, and it
+  // does not name the faults the learner never reached (§14).
+  if (status === 'timed-out') {
+    const found = scenario.faults
+      .filter((entry) => identifiedFaultIds.includes(entry.fault.id))
+      .map((entry) => ({
+        id: entry.fault.id,
+        typeLabel:
+          scenario.faultTypeChoices.find((choice) => choice.type === entry.fault.type)?.label ??
+          entry.fault.type,
+        locationLabel:
+          scenario.locationChoices.find((choice) => choice.key === entry.locationKey)?.label ??
+          'the affected part',
+      }));
+
+    return (
+      <section className={shell} aria-label="Time's up" data-canvas-occluder>
+        <div
+          className={[
+            'flex flex-col items-center gap-1 border-b border-rose-200/70 bg-rose-50 px-3 py-4 text-center dark:border-rose-900/60 dark:bg-rose-950/50',
+            reducedMotion ? '' : 'animate-in fade-in zoom-in-95 duration-300',
+          ].join(' ')}
+        >
+          <Timer className="size-6 text-rose-600 dark:text-rose-400" aria-hidden="true" />
+          <p className="text-[13px] font-bold text-rose-800 dark:text-rose-200">TIME&rsquo;S UP</p>
+          <p className="text-[10px] leading-relaxed text-rose-700/90 dark:text-rose-300/90">
+            The clock ran out. Whatever you already found still counts — the circuit was not
+            rewritten.
+          </p>
+          {found.length > 0 ? (
+            found.map((entry) => (
+              <div key={entry.id}>
+                <p className="text-[11px] font-semibold text-rose-800 dark:text-rose-200">
+                  {entry.typeLabel}
+                </p>
+                <p className="text-[10px] text-rose-700/80 dark:text-rose-300/80">
+                  {entry.locationLabel} identified before the bell
+                </p>
+              </div>
+            ))
+          ) : (
+            <p className="text-[10px] text-rose-700/80 dark:text-rose-300/80">
+              No faults logged in time.
+            </p>
+          )}
+          {score && (
+            <p className="mt-1 text-[20px] font-black tabular-nums text-rose-700 dark:text-rose-300">
+              {score.points}
+              <span className="ml-1 text-[11px] font-semibold uppercase">{score.grade}</span>
+            </p>
+          )}
+        </div>
+        <dl className="grid grid-cols-3 gap-px bg-slate-200 text-center dark:bg-slate-700">
+          {[
+            ['Time', elapsedLabel],
+            ['Found', `${identifiedFaultIds.length}/${scenario.faults.length}`],
+            ['Hints', String(hintsUsed)],
+          ].map(([label, value]) => (
+            <div key={label} className="bg-white px-2 py-2 dark:bg-slate-900">
+              <dt className="text-[9px] uppercase tracking-wide text-slate-500">{label}</dt>
+              <dd className="text-[13px] font-bold tabular-nums text-slate-800 dark:text-slate-100">
+                {value}
+              </dd>
+            </div>
+          ))}
+        </dl>
+        <div className="flex gap-2 p-3">
+          <button
+            type="button"
+            onClick={() => void start(scenario.difficulty, undefined, scenario.rage?.tier)}
+            className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-amber-500 px-3 py-2 text-[12px] font-semibold text-white hover:bg-amber-400"
+          >
+            Next Circuit <ChevronRight className="size-3.5" />
+          </button>
+          <button
+            type="button"
+            onClick={exit}
+            className="rounded-xl border border-slate-200 px-3 py-2 text-[12px] font-semibold text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
+          >
+            Done
+          </button>
+        </div>
+      </section>
+    );
+  }
+
   // ── Active ──────────────────────────────────────────────────────────────
   const attempts = misdiagnoses + incompleteRepairs;
 
@@ -550,9 +656,20 @@ export function DiagnosisPanel({ isPhone }: Props) {
             <span aria-hidden="true">😈</span> Rage Bait
           </span>
         )}
-        <span className="flex items-center gap-1 rounded-md bg-slate-100 px-1.5 py-0.5 text-[10px] font-bold tabular-nums text-slate-700 dark:bg-slate-800 dark:text-slate-200">
+        <span
+          className={[
+            'flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-bold tabular-nums',
+            remainingLabel !== null
+              ? 'bg-rose-100 text-rose-800 dark:bg-rose-950/70 dark:text-rose-200'
+              : 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200',
+          ].join(' ')}
+        >
           <Timer className="size-3" aria-hidden="true" />
-          <span aria-label={`Elapsed time ${elapsedLabel}`}>{elapsedLabel}</span>
+          {remainingLabel !== null ? (
+            <span aria-label={`Time remaining ${remainingLabel}`}>{remainingLabel}</span>
+          ) : (
+            <span aria-label={`Elapsed time ${elapsedLabel}`}>{elapsedLabel}</span>
+          )}
         </span>
       </header>
 

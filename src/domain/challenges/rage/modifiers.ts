@@ -1,12 +1,13 @@
 /**
  * The Ohmageddon modifiers (plan §25, §26; Phase E step 6, §52).
  *
- * §52 names the three to build first — `redHerring`, `remoteFault`,
- * `limitedHints` — precisely because each can be made *truthful* with the
- * simulator as it stands. The other four names from §25 are declared here as
- * unimplemented stubs so the tier tables and the tests share one vocabulary
- * and nothing can silently ship half-done (§25: "Only implement modifiers that
- * can be supported truthfully by the current simulator").
+ * §52 named the three to build first — `redHerring`, `remoteFault`,
+ * `limitedHints` — because each could be made *truthful* with the simulator
+ * as it stood. Phase F then shipped the remaining four (`multiFault`,
+ * `compoundFault`, `misleadingSymptom`, `timeLimit`) once each had a proof
+ * that did not invent physics. There are no remaining stubs in the §25
+ * vocabulary (§25: "Only implement modifiers that can be supported
+ * truthfully by the current simulator").
  *
  * Read every modifier below against the §26 test: does it make the *diagnosis*
  * harder, or does it make the *physics* wrong? Each one is annotated with the
@@ -604,40 +605,122 @@ const compoundFault: RageModifier = {
 };
 
 // ---------------------------------------------------------------------------
-// Declared but not yet implemented (plan §25 closing rule, §53 Phase F)
+// misleadingSymptom — the complaint points at the wrong place
 // ---------------------------------------------------------------------------
 
 /**
- * The remaining §25 names.
+ * Does this candidate sit on (or on a wire into) one of the declared loads?
  *
- * Each is declared so the vocabulary is complete and the tier tables type-check,
- * and each is `implemented: false` so {@link applyRageModifiers} refuses to run
- * it. The reason each one is deferred is recorded here rather than in a
- * separate document, because the reason is a *technical* constraint discovered
- * in Phases B–D, not a scheduling choice:
- *
- *   - `misleadingSymptom` — must be achieved by *selecting* a fault whose true
- *     symptom misleads (e.g. a fault upstream that kills a downstream load),
- *     never by rewriting symptom text, which §26 explicitly forbids. That
- *     requires a symptom-scoring pass over candidates.
- *   - `timeLimit` — §27 puts it in Rage 4 and §53 says "optional timer only
- *     after the above are stable". The presentation hook already carries
- *     `timeLimitSeconds`, so it lands without an interface change.
+ * Pre-simulation stand-in for "the symptom will name this device". This file
+ * cannot import the simulator — only `runner.ts` does — so the heuristic uses
+ * the recipe's load list. The real proof (`isMisleadingPlacement`) runs later
+ * in `tryBuildScenario` against the measured symptom, and is what the summary
+ * is allowed to claim.
  */
-const notYetImplemented: RageModifier[] = [
-  {
-    id: 'misleadingSymptom',
-    label: 'Misleading symptom',
-    description: 'A fault whose honest symptom points somewhere unhelpful.',
-    implemented: false,
+function touchesDeclaredLoad(
+  circuit: Circuit,
+  candidate: FaultCandidate,
+  loadComponentIds: readonly string[],
+): boolean {
+  const loads = new Set(loadComponentIds);
+  const target = candidate.target;
+  if (target.type === 'component') return loads.has(target.id);
+  if (target.type === 'port') return loads.has(target.componentId);
+  const wireId = target.id;
+  const wire = circuit.wires.find((w) => w.id === wireId);
+  return wire ? loads.has(wire.fromComponentId) || loads.has(wire.toComponentId) : false;
+}
+
+/**
+ * **misleadingSymptom** — the honest complaint points the learner at the
+ * wrong place.
+ *
+ * §26 audit: *allowed*, provided we never rewrite the symptom. The plan's
+ * own example is "a fault upstream that kills a downstream load": the
+ * briefing says the lamp is dead (true), so the obvious first look is the
+ * lamp, and the fault is not there. That is a *selection*, not a lie.
+ *
+ * How it differs from {@link remoteFault}:
+ *
+ * | | `remoteFault` | `misleadingSymptom` |
+ * |---|---|---|
+ * | asks | how *far* is the fault? | does the *complaint* point at it? |
+ * | keeps | the single most-distant hop band | anything that is not on a dead load |
+ * | can keep a load-side wire? | only if that is the farthest band | never |
+ *
+ * Rage 2 used `remoteFault` as a stand-in for this until the proof existed.
+ * They are not interchangeable: a one-hop jam on the MCB is misleading
+ * ("the lamp is dead") without being remote, and that is the beginner-safe
+ * case §27 wants for Rage 2.
+ *
+ * **This modifier only proposes.** The claim "the symptom is misleading" is
+ * a statement about a measured simulation, so the authoritative verdict
+ * lives in `tryBuildScenario` and *replaces* the proposal row — the same
+ * pattern as {@link compoundFault}.
+ */
+const misleadingSymptom: RageModifier = {
+  id: 'misleadingSymptom',
+  label: 'Misleading symptom',
+  description: 'A fault whose honest symptom points somewhere unhelpful.',
+  implemented: true,
+
+  rankCandidates(input: RageCandidateInput, _ctx: RageContext): RageCandidatePatch | null {
+    const { circuit, candidates, loadComponentIds } = input;
+    if (candidates.length < 2) return null;
+
+    const awayFromLoad = candidates.filter(
+      (candidate) => !touchesDeclaredLoad(circuit, candidate, loadComponentIds),
+    );
+    // Nothing to choose: either every candidate is already "elsewhere"
+    // (claiming we selected a misleading one would be vacuous) or every
+    // candidate sits on a load (there is no honest misleading pick).
+    if (awayFromLoad.length === 0 || awayFromLoad.length === candidates.length) return null;
+
+    return {
+      candidates: awayFromLoad,
+      note: `restricted to ${awayFromLoad.length} candidate(s) not sitting on a declared load`,
+    };
   },
-  {
-    id: 'timeLimit',
-    label: 'Time limit',
-    description: 'A countdown on the exercise.',
-    implemented: false,
+};
+
+// ---------------------------------------------------------------------------
+// timeLimit — a countdown, after the rest of Phase F is stable
+// ---------------------------------------------------------------------------
+
+/**
+ * Rage 4's optional timer as a multiple of par (§27, §53).
+ *
+ * 1.5× is deliberate: scoring still rewards finishing *under* par, so the
+ * hard stop has to sit above the medal cutoff or the timer would just be a
+ * second name for "you missed gold". 30 s is the floor so a zero/corrupt
+ * par cannot produce an unplayable exercise.
+ */
+export const RAGE_TIME_LIMIT_FACTOR = 1.5;
+
+/**
+ * **timeLimit** — the exercise has a clock.
+ *
+ * §26 audit: *allowed*. It withholds time, it does not misinform. The
+ * presentation hook already carried `timeLimitSeconds`; this is the first
+ * consumer. §53 said "optional timer only after the above are stable" —
+ * `misleadingSymptom` and `compoundFault` now are.
+ *
+ * The modifier does not fail the learner. Expiry is a store concern: the
+ * session ends, whatever they have already found is scored, and the
+ * circuit is not rewritten.
+ */
+const timeLimit: RageModifier = {
+  id: 'timeLimit',
+  label: 'Time limit',
+  description: 'A countdown on the exercise.',
+  implemented: true,
+
+  adjustPresentation(input: RagePresentation, _ctx: RageContext): RagePresentation | null {
+    if (input.timeLimitSeconds !== null) return null;
+    const seconds = Math.max(30, Math.round(input.parTimeSeconds * RAGE_TIME_LIMIT_FACTOR));
+    return { ...input, timeLimitSeconds: seconds };
   },
-];
+};
 
 // ---------------------------------------------------------------------------
 // Registry
@@ -649,8 +732,9 @@ export const RAGE_MODIFIERS: Record<RageModifierId, RageModifier> = {
   multiFault,
   compoundFault,
   limitedHints,
-  ...Object.fromEntries(notYetImplemented.map((m) => [m.id, m])),
-} as Record<RageModifierId, RageModifier>;
+  misleadingSymptom,
+  timeLimit,
+};
 
 export function getRageModifier(id: RageModifierId): RageModifier {
   const modifier = RAGE_MODIFIERS[id];

@@ -84,6 +84,9 @@ test.describe('Rage 4 — compound faults (§26, §27)', () => {
     const opening = await evidence().innerText();
     // A rage scenario is a rage scenario: the id proves the tier was applied.
     await expect(panel.getByText(/ES-RAGE-/)).toBeVisible();
+    // F6: Rage 4 carries the optional timer. The header swaps the elapsed
+    // clock for remaining time, announced as "Time remaining mm:ss".
+    await expect(panel.getByLabel(/Time remaining/i)).toBeVisible();
 
     const types = panel.locator('input[name="diagnosis-fault-type"]');
     const locations = panel.locator('input[name="diagnosis-location"]');

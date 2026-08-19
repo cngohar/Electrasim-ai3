@@ -434,7 +434,7 @@ for (const difficulty of DIFFICULTIES) {
     return entry[field] / entry.built;
   };
 
-  // remoteFault runs in rage-2 and rage-3; both must beat normal.
+  // remoteFault runs in rage-3 only (Rage 2 retired it for `misleadingSymptom`).
   //
   // Measured on the *primary* fault, not the nearest one. `remoteFault` ranks
   // the pool the first fault is drawn from; `multiFault` then adds a second
@@ -444,11 +444,30 @@ for (const difficulty of DIFFICULTIES) {
   // 0.00 at beginner/rage-3 while the primary fault was as remote as ever.
   // Asserting on it would have forced a real modifier to be weakened to
   // satisfy a metric that had stopped measuring it.
-  for (const tier of ['rage-2', 'rage-3']) {
-    if (avg(tier, 'primaryDistanceSum') <= avg('normal', 'primaryDistanceSum')) {
+  if (avg('rage-3', 'primaryDistanceSum') <= avg('normal', 'primaryDistanceSum')) {
+    fail(
+      `${difficulty}: rage-3 mean primary fault distance ${avg('rage-3', 'primaryDistanceSum').toFixed(2)} does not exceed normal ${avg('normal', 'primaryDistanceSum').toFixed(2)}`,
+    );
+  }
+  // Rage 2's load-bearing claim is now "the complaint does not point at the
+  // fault", not "the fault is far away". The applied-count is the honest
+  // metric: a seed that cannot host a misleading placement ships without
+  // the claim, so the rate is allowed to be below 100% but must be the
+  // majority — otherwise we are back to a labelled-but-empty tier.
+  const rage2 = stats.get(`${difficulty}/rage-2`);
+  if (rage2 && rage2.built > 0) {
+    const rate = (rage2.applied.get('misleadingSymptom') ?? 0) / rage2.built;
+    if (rate < 0.5) {
       fail(
-        `${difficulty}: ${tier} mean primary fault distance ${avg(tier, 'primaryDistanceSum').toFixed(2)} does not exceed normal ${avg('normal', 'primaryDistanceSum').toFixed(2)}`,
+        `${difficulty}: rage-2 applied misleadingSymptom in only ${(rate * 100).toFixed(1)}% of scenarios`,
       );
+    }
+  }
+  const rage4 = stats.get(`${difficulty}/rage-4`);
+  if (rage4 && rage4.built > 0) {
+    const timed = (rage4.applied.get('timeLimit') ?? 0) / rage4.built;
+    if (timed < 1) {
+      fail(`${difficulty}: rage-4 is missing a timer on ${(1 - timed) * rage4.built} scenario(s)`);
     }
   }
   // limitedHints runs in rage-2 and rage-3; rage-3 must be the harshest.
