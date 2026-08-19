@@ -25,12 +25,16 @@ import { useEffect, useRef } from 'react';
 import { COMPONENT_DEFS } from '../domain';
 import { simulateAsync } from '../sim-worker/client';
 import { useCircuitStore } from './circuitStore';
+import { useDiagnosisStore } from './diagnosisStore';
 import { useSettingsStore } from './settingsStore';
 import { useUiStore } from './uiStore';
 
 // Keep continuous drags out of the worker-clone path. A 50 ms quiet period is
 // still effectively instant for toggles and edits, while a gesture becomes one run.
 const DEBOUNCE_MS = 50;
+
+/** Shared empty set — avoids allocating one per simulation run. */
+const EMPTY_INDEX_SET: ReadonlySet<number> = new Set<number>();
 
 export function useSimulation() {
   const components = useCircuitStore((s) => s.components);
@@ -124,16 +128,22 @@ export function useSimulation() {
             const trip = result.trippedComponents[0];
             const ui = useUiStore.getState();
             ui.setSimRunning(false); // Stop simulation immediately
+            // §14: a tripped breaker is a legitimate observable symptom, so the
+            // learner still sees that it tripped — but not *why*. `trip.reason`
+            // is the fault type they are being asked to name, and the normal
+            // hint points straight at the faulted component.
+            const diagnosing = useDiagnosisStore.getState().status === 'active';
             const faultAlert = {
               title: '⚡ CIRCUIT PROTECTION TRIPPED!',
               kind: 'trip' as const,
               deviceName: trip.label,
               deviceId: trip.id,
-              reason: trip.reason,
+              reason: diagnosing ? 'protection operated' : trip.reason,
               currentAmps: trip.currentAmps,
               limitAmps: trip.ratingAmps,
-              resolutionHint:
-                trip.reason === 'overload'
+              resolutionHint: diagnosing
+                ? 'The protective device has operated. Work out what caused it, then submit your diagnosis.'
+                : trip.reason === 'overload'
                   ? 'Lower load power/current in the Inspector panel or upgrade breaker rating before resuming simulation.'
                   : 'Clear the injected fault (right-click the faulted component or wire → Clear fault), then reset the tripped breaker in the Inspector before resuming simulation.',
               timestamp: Date.now(),
@@ -143,11 +153,13 @@ export function useSimulation() {
               eventType: 'component_tripped',
               componentName: trip.label,
               componentId: trip.id,
-              description: `Circuit breaker/fuse tripped due to ${trip.reason}`,
+              description: diagnosing
+                ? 'Circuit breaker/fuse tripped.'
+                : `Circuit breaker/fuse tripped due to ${trip.reason}`,
               severity: 'critical',
               details: {
                 currentAmps: trip.currentAmps,
-                reason: trip.reason,
+                reason: diagnosing ? 'protection operated' : trip.reason,
               },
             });
           } else if (result.wireMeltEvents && result.wireMeltEvents.length > 0) {
@@ -190,7 +202,14 @@ export function useSimulation() {
             const ui = useUiStore.getState();
             ui.setSimRunning(false); // Stop simulation immediately on manual fault injection
 
-            if (faultedComp?.state.fault) {
+            // §14: this whole branch exists to narrate the injected fault by
+            // name ("MANUAL SHORT CIRCUIT FAULT!", "...injected on Fuse (13A)").
+            // During a Diagnosis exercise that is precisely the answer under
+            // test, so stop the simulation but say nothing.
+            const inDiagnosis = useDiagnosisStore.getState().status === 'active';
+            if (inDiagnosis) {
+              // fall through: no alert, no event-history entry
+            } else if (faultedComp?.state.fault) {
               const fType = faultedComp.state.fault;
               const def = COMPONENT_DEFS[faultedComp.type];
               const compLabel = faultedComp.state.autoLabel ?? def?.label ?? faultedComp.type;
@@ -320,8 +339,24 @@ export function useSimulation() {
           lastSignatureRef.current = signature;
 
           const ui = useUiStore.getState();
-          for (const e of result.errors) ui.addLog(e, 'error');
-          for (const w of result.warnings) ui.addLog(w, 'warning');
+          // §14: during a Diagnosis exercise the console must not name the
+          // fault the learner is being asked to identify. The simulator tags
+          // those messages by index; consequence messages ("MCB tripped",
+          // "voltage mismatch") are untagged and still shown.
+          const hideNarration = useDiagnosisStore.getState().status === 'active';
+          const hiddenErrors = hideNarration
+            ? new Set(result.faultNarrationErrors ?? [])
+            : EMPTY_INDEX_SET;
+          const hiddenWarnings = hideNarration
+            ? new Set(result.faultNarrationWarnings ?? [])
+            : EMPTY_INDEX_SET;
+
+          result.errors.forEach((e, i) => {
+            if (!hiddenErrors.has(i)) ui.addLog(e, 'error');
+          });
+          result.warnings.forEach((w, i) => {
+            if (!hiddenWarnings.has(i)) ui.addLog(w, 'warning');
+          });
           if (result.errors.length === 0 && result.energizedComponents.size > 0) {
             ui.addLog(
               `Circuit energised — ${result.energizedComponents.size} component${

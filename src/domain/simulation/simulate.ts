@@ -146,6 +146,9 @@ export function simulate(circuit: Circuit, options: SimulateOptions = {}): Simul
   };
   const errors: string[] = [];
   const warnings: string[] = [];
+  // Indices into `errors` / `warnings` that name an injected fault outright.
+  const faultNarrationErrors: number[] = [];
+  const faultNarrationWarnings: number[] = [];
   const blownComponents: { id: string; reason: 'overvoltage' | 'overcurrent' | 'overload' }[] = [];
   const wireCalculations: NonNullable<SimulationResult['wireCalculations']> = {};
   // Per-component live telemetry (voltage / current / power). Populated so the
@@ -426,6 +429,21 @@ export function simulate(circuit: Circuit, options: SimulateOptions = {}): Simul
   const faultDiagnostics: FaultDiagnostic[] = [];
   const activeFaults = index.activeFaults;
 
+  // Messages emitted below narrate the *injected fault itself* ("TERMINAL
+  // DISCONNECT: ...", "SHORT CIRCUIT FAULT: ..."). In Diagnosis mode that is
+  // the answer the learner is being asked to work out, so the UI must be able
+  // to withhold them. Record their exact indices as they are pushed rather
+  // than re-matching strings downstream, which would be brittle and would also
+  // catch legitimate consequence messages the learner should still see.
+  const pushFaultNarrationError = (message: string) => {
+    faultNarrationErrors.push(errors.length);
+    errors.push(message);
+  };
+  const pushFaultNarrationWarning = (message: string) => {
+    faultNarrationWarnings.push(warnings.length);
+    warnings.push(message);
+  };
+
   for (const fault of activeFaults) {
     const def = FAULT_REGISTRY[fault.type] ?? {
       id: fault.type,
@@ -483,27 +501,27 @@ export function simulate(circuit: Circuit, options: SimulateOptions = {}): Simul
 
     // Specific category behaviors and messages
     if (fault.type === 'short-circuit') {
-      errors.push(`⚡ SHORT CIRCUIT FAULT: Direct short circuit detected on ${def.label}!`);
+      pushFaultNarrationError(`⚡ SHORT CIRCUIT FAULT: Direct short circuit detected on ${def.label}!`);
       // Bolted short must operate the upstream protective device(s)
       if (faultAnchorId) tripProtectionForFault(faultAnchorId, 'short-circuit');
     } else if (fault.type === 'open-circuit' || fault.type === 'open-live') {
-      errors.push(`✂ OPEN CIRCUIT FAULT: Conductor break on ${def.label} — path interrupted.`);
+      pushFaultNarrationError(`✂ OPEN CIRCUIT FAULT: Conductor break on ${def.label} — path interrupted.`);
     } else if (fault.type === 'open-neutral') {
-      errors.push(
+      pushFaultNarrationError(
         '⚠ FLOATING NEUTRAL FAULT: Broken neutral return path — voltage reaches load without return!',
       );
     } else if (fault.type === 'open-earth') {
-      warnings.push(`🛡 MISSING CPC / OPEN EARTH: Protective bonding broken on ${def.label}!`);
+      pushFaultNarrationWarning(`🛡 MISSING CPC / OPEN EARTH: Protective bonding broken on ${def.label}!`);
     } else if (fault.type === 'terminal-disconnect') {
-      errors.push(`🔧 TERMINAL DISCONNECT: Loose terminal screw on ${def.label} port!`);
+      pushFaultNarrationError(`🔧 TERMINAL DISCONNECT: Loose terminal screw on ${def.label} port!`);
     } else if (fault.type === 'reverse-polarity') {
-      errors.push('↔ REVERSED POLARITY: Live and Neutral conductors reversed (BS 7671 Reg 643.6)!');
+      pushFaultNarrationError('↔ REVERSED POLARITY: Live and Neutral conductors reversed (BS 7671 Reg 643.6)!');
     } else if (fault.type === 'switched-neutral') {
-      errors.push(
+      pushFaultNarrationError(
         '⛔ SWITCHED NEUTRAL HAZARD: Switch cuts Neutral; appliance remains LIVE at 230V when OFF (BS 7671 Reg 132.14 / 537.1)!',
       );
     } else if (fault.type === 'live-to-earth' || fault.type === 'earth-fault') {
-      errors.push(`🔥 EARTH LEAKAGE / FAULT: Insulation breakdown to earth on ${def.label}!`);
+      pushFaultNarrationError(`🔥 EARTH LEAKAGE / FAULT: Insulation breakdown to earth on ${def.label}!`);
       // Trip only the RCD/RCBO devices guarding the faulted network
       // (previously tripped every RCD/RCBO on the canvas, even on isolated networks)
       if (faultAnchorId) {
@@ -514,7 +532,7 @@ export function simulate(circuit: Circuit, options: SimulateOptions = {}): Simul
         );
       }
     } else if (fault.type === 'smooth-dc-residual') {
-      errors.push(
+      pushFaultNarrationError(
         `🌊 SMOOTH DC RESIDUAL: Power-electronic earth leakage on ${def.label} — only Type B residual devices can detect a smooth DC component (BS EN 62423, BS 7671 Reg 531.3.3).`,
       );
       if (faultAnchorId) {
@@ -534,19 +552,19 @@ export function simulate(circuit: Circuit, options: SimulateOptions = {}): Simul
           if (rcdType === 'B') continue;
           const devLabel = defs[dev.type]?.label ?? dev.type;
           const tolerance = rcdType === 'F' ? '≤10 mA' : rcdType === 'A' ? '≤6 mA' : 'none';
-          errors.push(
+          pushFaultNarrationError(
             `🚫 ${devLabel} (Type ${rcdType}) DID NOT TRIP: smooth DC residual current is outside Type ${rcdType} detection (superimposed-DC tolerance ${tolerance}) — this load needs a Type B device or 6 mA RDC-DD protection.`,
           );
           errorComponents.add(dev.id);
         }
         if (residualDevices.length === 0) {
-          warnings.push(
+          pushFaultNarrationWarning(
             `No residual-current device guards this network — no ${residualName} present to evaluate for DC blinding.`,
           );
         }
       }
     } else if (fault.type === 'arc-fault') {
-      errors.push(
+      pushFaultNarrationError(
         `🔥 ARC FAULT: Series/parallel arcing on ${def.label} — arc current rides at/below load current with no earth imbalance, so thermal-magnetic and residual-current devices cannot see it (BS EN 62606).`,
       );
       if (faultAnchorId) {
@@ -555,15 +573,15 @@ export function simulate(circuit: Circuit, options: SimulateOptions = {}): Simul
           d.type.includes('afdd'),
         );
         if (afdds.length === 0) {
-          errors.push(
+          pushFaultNarrationError(
             '🚫 NO AFDD IN THIS NETWORK: the arc keeps burning while MCB/RCD/RCBO stay closed. BS 7671 Reg 421.1.7 requires AFDDs on single-phase socket final circuits up to 32 A in higher-risk residential buildings, HMOs, student accommodation and care homes — and recommends them for all other premises.',
           );
         }
       }
     } else if (fault.type === 'protection-bypass') {
-      warnings.push(`⚡ PROTECTION BYPASS: Overcurrent protection bypassed on ${def.label}!`);
+      pushFaultNarrationWarning(`⚡ PROTECTION BYPASS: Overcurrent protection bypassed on ${def.label}!`);
     } else if (fault.type === 'protection-forced-open') {
-      warnings.push('🔒 BREAKER JAMMED OPEN: Device mechanism locked in open state.');
+      pushFaultNarrationWarning('🔒 BREAKER JAMMED OPEN: Device mechanism locked in open state.');
     }
 
     faultDiagnostics.push({
@@ -693,6 +711,9 @@ export function simulate(circuit: Circuit, options: SimulateOptions = {}): Simul
     trippedComponents: trippedComponents.length > 0 ? trippedComponents : undefined,
     wireMeltEvents: wireMeltEvents.length > 0 ? wireMeltEvents : undefined,
     faultDiagnostics: faultDiagnostics.length > 0 ? faultDiagnostics : undefined,
+    faultNarrationErrors: faultNarrationErrors.length > 0 ? faultNarrationErrors : undefined,
+    faultNarrationWarnings:
+      faultNarrationWarnings.length > 0 ? faultNarrationWarnings : undefined,
     activeInjectedFaults: activeFaults.length > 0 ? activeFaults : undefined,
     faultsCleared: errors.length === 0,
     thermalData,

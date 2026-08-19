@@ -391,6 +391,15 @@ export interface SimulationResult {
   errors: string[];
   /** Human-readable warnings for the log panel. */
   warnings: string[];
+  /**
+   * Indices into `errors` that name an injected fault outright (e.g. "TERMINAL
+   * DISCONNECT: ..."). Diagnosis mode hides these so the console cannot hand
+   * the learner the answer they are being asked to work out; the consequence
+   * messages ("MCB tripped", "voltage mismatch") stay visible. See §14.
+   */
+  faultNarrationErrors?: number[];
+  /** Indices into `warnings` that name an injected fault outright. */
+  faultNarrationWarnings?: number[];
   /** Structured diagnostics for all active/detected faults. */
   faultDiagnostics?: FaultDiagnostic[];
   /** All active injected faults evaluated in this simulation run. */

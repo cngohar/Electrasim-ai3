@@ -149,6 +149,79 @@ test.describe('Diagnosis Lab', () => {
     }
   });
 
+  test('running the simulation does not name the fault (plan §14)', async ({ page }) => {
+    // Four scenarios, each with a full simulation pass — WebKit needs more
+    // than the 30 s default.
+    test.setTimeout(120_000);
+    // Regression: the simulator narrates every injected fault by name
+    // ("🔧 TERMINAL DISCONNECT: ...", "⚡ SHORT CIRCUIT FAULT: ...") and those
+    // messages were rendered in the Console panel and the fault-alert modal
+    // during a Diagnosis exercise — handing over the answer that the learner
+    // was simultaneously being asked to pick from a list. The previous §14
+    // test only inspected the panel's own briefing, so it never saw this.
+    const GIVEAWAYS = [
+      'short circuit',
+      'open circuit',
+      'reversed polarity',
+      'reverse polarity',
+      'earth leakage',
+      'terminal disconnect',
+      'floating neutral',
+      'protection bypass',
+      'breaker jammed',
+      'missing cpc',
+    ];
+
+    // Sweep several seeds: only some fault types trip protection, and the
+    // narration differs per type. The difficulty picker disappears once a
+    // scenario is live, so roll subsequent seeds with "New diagnosis exercise".
+    await startExercise(page);
+    for (let round = 0; round < 4; round++) {
+      if (round > 0) {
+        await panel(page).getByRole('button', { name: 'New diagnosis exercise' }).click();
+        await expect(panel(page).getByText(/Something isn.t working correctly/i)).toBeVisible();
+      }
+
+      await page
+        .getByRole('button', { name: /Run Simulation/i })
+        .first()
+        .click();
+      await page.waitForTimeout(1500);
+
+      // Expand the console so its entries are in the DOM. It is not mounted on
+      // narrow viewports, hence the count guard.
+      const toggle = page.getByRole('button', { name: /Console · \d+ entries/ }).first();
+      if ((await toggle.count()) > 0) {
+        await toggle.click({ timeout: 5000 }).catch(() => {});
+        await page.waitForTimeout(200);
+      }
+
+      // Scan everything the learner can actually read, whatever the viewport:
+      // the answer must not appear anywhere outside the multiple-choice list.
+      const optionsText = (
+        (await panel(page).textContent().catch(() => '')) ?? ''
+      ).toLowerCase();
+      const screenText = ((await page.locator('body').textContent()) ?? '').toLowerCase();
+      for (const giveaway of GIVEAWAYS) {
+        // The option list legitimately contains these phrases; anything beyond
+        // those occurrences is a leak.
+        const inOptions = optionsText.split(giveaway).length - 1;
+        const onScreen = screenText.split(giveaway).length - 1;
+        expect(onScreen - inOptions, `"${giveaway}" leaked outside the answer list`).toBe(0);
+      }
+
+      // Any fault-alert modal must not name the fault type either.
+      const dialog = page.locator('dialog[open]');
+      if ((await dialog.count()) > 0 && (await dialog.first().isVisible().catch(() => false))) {
+        const modalText = ((await dialog.first().textContent()) ?? '').toLowerCase();
+        for (const giveaway of GIVEAWAYS) {
+          expect(modalText, `fault alert leaked "${giveaway}"`).not.toContain(giveaway);
+        }
+        await page.keyboard.press('Escape');
+      }
+    }
+  });
+
   test('confirms before discarding an exercise in progress (plan §22)', async ({ page }) => {
     await startExercise(page, 'Beginner');
 

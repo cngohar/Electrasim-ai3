@@ -9,6 +9,7 @@ const { simulateAsync } = vi.hoisted(() => ({
 vi.mock('../sim-worker/client', () => ({ simulateAsync }));
 
 import { useCircuitStore } from './circuitStore';
+import { useDiagnosisStore } from './diagnosisStore';
 import { useUiStore } from './uiStore';
 import { useSimulation } from './useSimulation';
 
@@ -39,6 +40,7 @@ describe('useSimulation request sequencing', () => {
     simulateAsync.mockReset();
     useCircuitStore.getState().setCircuit(EMPTY_CIRCUIT);
     useUiStore.setState({ simRunning: false, simResult: null, logs: [] });
+    useDiagnosisStore.setState({ status: 'idle' });
   });
 
   afterEach(() => {
@@ -114,5 +116,55 @@ describe('useSimulation request sequencing', () => {
     });
 
     expect(useUiStore.getState().simRunning).toBe(false);
+  });
+  it('withholds fault-narration log lines while a Diagnosis exercise is active (plan §14)', async () => {
+    // The simulator narrates the injected fault by name. During a Diagnosis
+    // exercise that is the answer under test, so it must not reach the console
+    // — while the consequence messages around it still must.
+    const narrated: SimulationResult = {
+      ...resultFor('bulb-1'),
+      errors: [
+        '⚡ Cartridge Fuse (13A) TRIPPED: bolted short circuit — cleared in <0.1 s.',
+        '🔧 TERMINAL DISCONNECT: Loose terminal screw on Push Button port!',
+      ],
+      warnings: ['🔒 BREAKER JAMMED OPEN: Device mechanism locked in open state.'],
+      // index 1 of errors, index 0 of warnings name the fault outright
+      faultNarrationErrors: [1],
+      faultNarrationWarnings: [0],
+    };
+    simulateAsync.mockResolvedValue(narrated);
+    useDiagnosisStore.setState({ status: 'active' });
+
+    renderHook(() => useSimulation());
+    act(() => useUiStore.getState().setSimRunning(true));
+    await act(async () => vi.advanceTimersByTime(50));
+    await act(async () => Promise.resolve());
+
+    const messages = useUiStore.getState().logs.map((l) => l.message);
+    expect(messages.some((m) => m.includes('TERMINAL DISCONNECT'))).toBe(false);
+    expect(messages.some((m) => m.includes('BREAKER JAMMED OPEN'))).toBe(false);
+    // The observable consequence is still reported.
+    expect(messages.some((m) => m.includes('TRIPPED'))).toBe(true);
+  });
+
+  it('still reports fault narration when no Diagnosis is active (negative control)', async () => {
+    const narrated: SimulationResult = {
+      ...resultFor('bulb-1'),
+      errors: ['🔧 TERMINAL DISCONNECT: Loose terminal screw on Push Button port!'],
+      warnings: ['🔒 BREAKER JAMMED OPEN: Device mechanism locked in open state.'],
+      faultNarrationErrors: [0],
+      faultNarrationWarnings: [0],
+    };
+    simulateAsync.mockResolvedValue(narrated);
+    useDiagnosisStore.setState({ status: 'idle' });
+
+    renderHook(() => useSimulation());
+    act(() => useUiStore.getState().setSimRunning(true));
+    await act(async () => vi.advanceTimersByTime(50));
+    await act(async () => Promise.resolve());
+
+    const messages = useUiStore.getState().logs.map((l) => l.message);
+    expect(messages.some((m) => m.includes('TERMINAL DISCONNECT'))).toBe(true);
+    expect(messages.some((m) => m.includes('BREAKER JAMMED OPEN'))).toBe(true);
   });
 });

@@ -3177,3 +3177,55 @@ one changes what the other looks like. Note this is the opposite property from
 a build-time proof that the second symptom is still observable *after* the first
 repair — a third simulator pass per candidate pair — before it can be honest
 enough to ship. Only then can Rage 4 exist.
+
+---
+
+## Session 2026-08-19 — the console was printing the answer (§14)
+
+F3 (`compoundFault`) is still the headline task, but the groundwork for it
+uncovered a live defect in shipped behaviour that outranked the new feature.
+
+While probing whether the canvas paints the faulted wire red (it does not — 10
+scenarios, sim confirmed running, zero `#dc2626` strokes; that hypothesis is now
+closed), a failure screenshot caught something else: a modal reading
+**`⚡ CIRCUIT PROTECTION TRIPPED! … short-circuit`**. `simulate()` narrates every
+injected fault by name, and in Diagnosis mode those messages were rendered
+verbatim in the Console panel — `🔧 TERMINAL DISCONNECT: Loose terminal screw on
+Push Button port!` — while "Loose / Disconnected Terminal" sat in the answer list
+beside it. Clicking **Run Simulation**, the most natural response to "investigate
+this circuit", skipped the exercise.
+
+Measured before fixing: over 180 scenarios, **72 %** emit at least one message
+naming the fault, **8.9 %** also trip protection (11 of 13 short-circuits).
+
+The fix tags the offending messages by index at the point they are pushed
+(`faultNarrationErrors` / `faultNarrationWarnings`) rather than pattern-matching
+text downstream, which would have been brittle and would also have hidden the
+legitimate consequence messages a diagnostician reasons from. A tripped breaker
+still says it tripped; it no longer says *why*, nor how to undo it. Outside
+Diagnosis mode nothing changed at all — proven by a negative control, because a
+"fix" that silently disabled the simulator's reporting would be the worse bug.
+
+The existing §14 test only inspected the panel's own briefing text, which is why
+this survived four phases of green suites. The replacement sweeps four seeds and
+asserts no fault name appears anywhere on screen outside the answer list.
+
+**Both new tests were mutation-checked** — reverting the fix makes them fail.
+
+**WebKit now runs.** `sudo npx playwright install-deps webkit` fixed the missing
+`pw_run.sh`, taking the suite from 114 passed / 63 "failed" (all launch errors)
+to **170 passed / 16 skipped / 6 failed**. All 6 are `tablet-safari`-only and
+**pre-existing**: 5 reproduce on the unmodified `26ffda1` (verified via `git
+stash`), and the 6th passes in isolation — WebKit flake, not a regression.
+
+**Gates:** typecheck ✓, biome ✓ (same 4 pre-existing `Editor.tsx` warnings), 60
+files / **863** unit tests ✓ (was 861), all four stress harnesses ✓,
+`vite build` ✓.
+
+**Next:** F3 proper. Probes already banked: the compound gate must judge masking
+on `deEnergisedLoadIds`/`tripped`/`blown` only — every wire fault adds its own
+wire to `errorWires` (1,176/1,176), which is why the first probe returned 0 of
+67,476 pairs. Under the corrected definition ~79 % of pairs are viable. Note also
+that `DiagnosisPanel` renders a *static* `scenario.complaint` and never re-derives
+evidence after a repair, so an emergent second symptom would currently be
+invisible — compound is pointless until that is fixed too.

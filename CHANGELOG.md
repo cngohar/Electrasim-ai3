@@ -11,6 +11,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed — Session 2026-08-19: the console was printing the answer (§14)
+
+**Running the simulation during a Diagnosis exercise handed the learner the answer.** The simulator narrates every injected fault by name — `🔧 TERMINAL DISCONNECT: Loose terminal screw on Push Button port!` — and those lines went straight to the Console panel while "Loose / Disconnected Terminal" sat in the multiple-choice list directly beside them. Pressing **Run Simulation** is the single most natural thing to do when asked to investigate a circuit, so the intended exercise could be skipped entirely, by accident.
+
+- **Measured, not guessed.** A domain sweep over 180 scenarios found **72 %** emitted at least one error or warning naming the fault outright, and **8.9 %** additionally tripped protection — including 11 of 13 short-circuit scenarios, which also raised a modal reading `⚡ CIRCUIT PROTECTION TRIPPED! … short-circuit`. Confirmed in a real browser at three viewports before any code changed.
+- **Tagged at the source rather than filtered by string.** `simulate()` now records the exact indices of the messages that name an injected fault (`faultNarrationErrors` / `faultNarrationWarnings`). Matching on text downstream would have been brittle and would also have swallowed the legitimate *consequence* messages — "MCB tripped", "voltage mismatch" — that a diagnostician is supposed to reason from.
+- **The symptom survives; only the diagnosis is withheld.** A tripped breaker still reports that it tripped, because that is an observable symptom. What it no longer reports is *why* (`reason: 'short-circuit'`) or where to click to undo it ("right-click the faulted component → Clear fault"). The whole manual-fault alert branch, which exists purely to name the injected fault, stays silent during an exercise.
+- **Nothing is deleted outside Diagnosis mode.** In the ordinary Fault Lab workflow every message and modal still names the fault exactly as before — verified by a negative control, since a fix that quietly disabled the simulator's reporting would be a worse bug than the one being fixed.
+- **The old §14 test only read the panel's own briefing**, which is why this survived four phases of green suites. The regression test now sweeps four seeds and asserts that no fault name appears anywhere on screen outside the answer list, at every viewport. Both the unit and e2e tests were mutation-checked: reverting the fix makes them fail.
+
 ### Added — Session 2026-08-18 (v2 Phase F2): two faults at once 😈😈
 
 `multiFault` (§25, §26, §27, §53.3) is now implemented, so Rage 3 ships the two faults §27 always specified for it — on 120/120 seeds at every difficulty. Both faults are ordinary eligible candidates, really injected and really simulated: the difficulty is in the search, not in a lie.
