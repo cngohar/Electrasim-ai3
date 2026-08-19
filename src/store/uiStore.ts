@@ -47,6 +47,60 @@ let toastTimer: ReturnType<typeof setTimeout> | null = null;
 let validationTimer: ReturnType<typeof setTimeout> | null = null;
 let validationRevision = 0;
 
+/**
+ * Apply the non-bypassable physical-safety check and the Pro compliance gate
+ * shared by every ordinary simulation-start path.
+ */
+function canStartSimulation(state: UiState): boolean {
+  const circuit = useCircuitStore.getState();
+  const hasDamagedOrTripped = circuit.components.some(
+    (component) => component.state?.isBlown || component.state?.isTripped,
+  );
+  const hasBustedWire = circuit.wires.some((wire) => wire.isBusted);
+
+  if (hasDamagedOrTripped || hasBustedWire) {
+    state.simRunning = false;
+    state.faultAlert = {
+      title: '⚠️ UNRESOLVED ELECTRICAL FAULT',
+      kind: 'trip',
+      reason:
+        'Cannot run simulation while components are tripped/blown or wires are melted. Please fix circuit parameter overload or click Repair.',
+      currentAmps: 0,
+      limitAmps: 0,
+      resolutionHint:
+        'Adjust power (W) or current (A) in the Inspector panel or increase cable gauge, then click "Repair & Reset Circuit" to resume.',
+    };
+    return false;
+  }
+
+  // Student mode treats compliance as guidance. Pro mode blocks Run and
+  // sends the user directly to the report without presenting a fake trip.
+  if (useSettingsStore.getState().appMode === 'pro') {
+    const report = validateCircuit(
+      {
+        components: circuit.components,
+        wires: circuit.wires,
+        globalVoltage: circuit.globalVoltage,
+      },
+      state.simResult,
+      useSettingsStore.getState().regulationStandard,
+    );
+    if ((report.blockingErrorsCount ?? 0) > 0) {
+      state.simRunning = false;
+      state.faultAlert = null;
+      state.validationReport = report;
+      state.complianceGateBlocked = true;
+      state.inspectorOpen = true;
+      state.inspectorCollapsed = false;
+      state.activeInspectorTab = 'validation';
+      return false;
+    }
+  }
+
+  state.complianceGateBlocked = false;
+  return true;
+}
+
 export const useUiStore = create<UiState>()(
   immer<UiState>((set) => ({
     simRunning: false,
@@ -88,7 +142,7 @@ export const useUiStore = create<UiState>()(
     activeValidationIssueModal: null,
     activeInspectorTab: 'properties',
     tracePathMode: true,
-    thermalOverlayEnabled: false,
+    complianceGateBlocked: false,
 
     paletteOpen: typeof window !== 'undefined' ? window.innerWidth >= 1024 : true,
     logOpen: false,
@@ -99,116 +153,86 @@ export const useUiStore = create<UiState>()(
     shortcutsOpen: false,
     undoToast: null,
 
-    setSimRunning: (v) =>
-      set((s) => {
-        if (v) {
-          const cs = useCircuitStore.getState();
-          const hasDamagedOrTripped = cs.components.some(
-            (c) => c.state?.isBlown || c.state?.isTripped,
-          );
-          const hasBusted = cs.wires.some((w) => w.isBusted);
-          if (hasDamagedOrTripped || hasBusted) {
-            s.simRunning = false;
-            s.faultAlert = {
-              title: '⚠️ UNRESOLVED ELECTRICAL FAULT',
-              kind: 'trip',
-              reason:
-                'Cannot run simulation while components are tripped/blown or wires are melted. Please fix circuit parameter overload or click Repair.',
-              currentAmps: 0,
-              limitAmps: 0,
-              resolutionHint:
-                'Adjust power (W) or current (A) in the Inspector panel or increase cable gauge, then click "Repair & Reset Circuit" to resume.',
-            };
-            return;
-          }
-          // Compliance gate (Pro mode only): the active regulation standard's
-          // blocking errors (voltage drop, missing RCD, wrong MCB curve) must
-          // be resolved before simulation can run. In Basic / Student mode the
-          // check is advisory — learners are free to run whatever they build.
-          const appMode = useSettingsStore.getState().appMode;
-          const isPro = appMode === 'pro';
-          const standard = useSettingsStore.getState().regulationStandard;
-          const report = validateCircuit(
-            { components: cs.components, wires: cs.wires, globalVoltage: cs.globalVoltage },
-            s.simResult,
-            standard,
-          );
-          if (isPro && (report.blockingErrorsCount ?? 0) > 0) {
-            s.simRunning = false;
-            s.validationReport = report;
-            s.inspectorOpen = true;
-            s.inspectorCollapsed = false;
-            s.activeInspectorTab = 'validation';
-            const firstBlocking = report.issues.find((i) => i.blocking && i.severity === 'error');
-            s.faultAlert = {
-              title: '⛔ COMPLIANCE CHECK FAILED',
-              kind: 'trip',
-              reason: firstBlocking
-                ? `Simulation blocked: ${firstBlocking.title}`
-                : 'Simulation blocked by regulatory compliance violations.',
-              currentAmps: 0,
-              limitAmps: 0,
-              resolutionHint:
-                'Open the Validation tab to review and fix the highlighted violations, then run the simulation again.',
-            };
-            return;
-          }
-        }
-        s.simRunning = v;
+    setSimRunning: (running) =>
+      set((state) => {
+        if (running && !canStartSimulation(state)) return;
+        state.simRunning = running;
       }),
     toggleSim: () =>
+      set((state) => {
+        const nextState = !state.simRunning;
+        if (nextState && !canStartSimulation(state)) return;
+        state.simRunning = nextState;
+      }),
+    runWithComplianceOverride: () =>
       set((s) => {
-        const nextState = !s.simRunning;
-        if (nextState) {
-          const cs = useCircuitStore.getState();
-          const hasDamagedOrTripped = cs.components.some(
-            (c) => c.state?.isBlown || c.state?.isTripped,
-          );
-          const hasBusted = cs.wires.some((w) => w.isBusted);
-          if (hasDamagedOrTripped || hasBusted) {
-            s.simRunning = false;
-            s.faultAlert = {
-              title: '⚠️ UNRESOLVED ELECTRICAL FAULT',
-              kind: 'trip',
-              reason:
-                'Cannot run simulation while components are tripped/blown or wires are melted. Please fix circuit parameter overload or click Repair.',
-              currentAmps: 0,
-              limitAmps: 0,
-              resolutionHint:
-                'Adjust power (W) or current (A) in the Inspector panel or increase cable gauge, then click "Repair & Reset Circuit" to resume.',
-            };
-            return;
-          }
-          const appMode = useSettingsStore.getState().appMode;
-          const isPro = appMode === 'pro';
-          const standard = useSettingsStore.getState().regulationStandard;
-          const report = validateCircuit(
-            { components: cs.components, wires: cs.wires, globalVoltage: cs.globalVoltage },
-            s.simResult,
-            standard,
-          );
-          if (isPro && (report.blockingErrorsCount ?? 0) > 0) {
-            s.simRunning = false;
-            s.validationReport = report;
-            s.inspectorOpen = true;
-            s.inspectorCollapsed = false;
-            s.activeInspectorTab = 'validation';
-            const firstBlocking = report.issues.find((i) => i.blocking && i.severity === 'error');
-            s.faultAlert = {
-              title: '⛔ COMPLIANCE CHECK FAILED',
-              kind: 'trip',
-              reason: firstBlocking
-                ? `Simulation blocked: ${firstBlocking.title}`
-                : 'Simulation blocked by regulatory compliance violations.',
-              currentAmps: 0,
-              limitAmps: 0,
-              resolutionHint:
-                'Open the Validation tab to review and fix the highlighted violations, then run the simulation again.',
-            };
-            return;
-          }
+        // This action is intentionally inert outside Pro, even if called
+        // directly rather than through the Pro-only Validation control.
+        if (useSettingsStore.getState().appMode !== 'pro') return;
+
+        const cs = useCircuitStore.getState();
+        const hasDamagedOrTripped = cs.components.some(
+          (component) => component.state?.isBlown || component.state?.isTripped,
+        );
+        const hasBusted = cs.wires.some((wire) => wire.isBusted);
+
+        // A regulatory teaching override must never bypass an actual simulated
+        // electrical failure. The ordinary repair flow remains mandatory.
+        if (hasDamagedOrTripped || hasBusted) {
+          s.simRunning = false;
+          s.faultAlert = {
+            title: '⚠️ UNRESOLVED ELECTRICAL FAULT',
+            kind: 'trip',
+            reason:
+              'Cannot run simulation while components are tripped/blown or wires are melted. Compliance overrides do not bypass physical faults.',
+            currentAmps: 0,
+            limitAmps: 0,
+            resolutionHint:
+              'Repair or reset the damaged component or wire before restarting the simulation.',
+          };
+          return;
         }
-        s.simRunning = nextState;
+
+        const standard = useSettingsStore.getState().regulationStandard;
+        const report = validateCircuit(
+          { components: cs.components, wires: cs.wires, globalVoltage: cs.globalVoltage },
+          s.simResult,
+          standard,
+        );
+        const blockingCount = report.blockingErrorsCount ?? 0;
+        if (blockingCount === 0) {
+          s.validationReport = report;
+          s.complianceGateBlocked = false;
+          s.simRunning = true;
+          return;
+        }
+
+        const blockingReasons = report.issues
+          .filter((issue) => issue.blocking && issue.severity === 'error')
+          .map((issue) => issue.title)
+          .join('; ');
+        const now = Date.now();
+        s.eventHistory.unshift({
+          id: `event-${now}-${Math.random().toString(36).slice(2, 7)}`,
+          timestamp: now,
+          eventType: 'manual_intervention',
+          description: `Teacher/demo override: simulation started with ${blockingCount} blocking compliance issue${blockingCount === 1 ? '' : 's'}.`,
+          severity: 'warning',
+          details: {
+            reason: blockingReasons || 'Teacher/demo compliance override',
+            standard: report.standard,
+          },
+        });
+        if (s.eventHistory.length > 100) s.eventHistory.length = 100;
+        s.logs.unshift({
+          id: `log-${++nextLogId}`,
+          type: 'warning',
+          message: `Compliance override recorded: simulation started with ${blockingCount} blocking issue${blockingCount === 1 ? '' : 's'}.`,
+        });
+        if (s.logs.length > MAX_LOGS) s.logs.length = MAX_LOGS;
+        s.validationReport = report;
+        s.complianceGateBlocked = false;
+        s.simRunning = true;
       }),
     setSimResult: (r) =>
       set((s) => {
@@ -260,6 +284,9 @@ export const useUiStore = create<UiState>()(
     setValidationReport: (report) =>
       set((s) => {
         s.validationReport = report;
+        if (!report || (report.blockingErrorsCount ?? 0) === 0) {
+          s.complianceGateBlocked = false;
+        }
       }),
 
     setActiveValidationIssueModal: (issue) =>
@@ -280,11 +307,6 @@ export const useUiStore = create<UiState>()(
     toggleTracePathMode: () =>
       set((s) => {
         s.tracePathMode = !s.tracePathMode;
-      }),
-
-    setThermalOverlayEnabled: (enabled) =>
-      set((s) => {
-        s.thermalOverlayEnabled = enabled;
       }),
 
     runCircuitValidation: () => {
@@ -318,6 +340,7 @@ export const useUiStore = create<UiState>()(
           if (revision !== validationRevision) return;
           s.validationReport = report;
           s.isValidatingCircuit = false;
+          if ((report.blockingErrorsCount ?? 0) === 0) s.complianceGateBlocked = false;
           s.logs.unshift({
             id: `log-${++nextLogId}`,
             type:

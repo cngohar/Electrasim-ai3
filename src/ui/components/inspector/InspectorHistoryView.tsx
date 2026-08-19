@@ -86,7 +86,10 @@ export function InspectorHistoryView() {
       e.eventType === 'component_blown',
   );
   const interventions = eventHistory.filter(
-    (e) => e.eventType === 'fault_cleared' || e.eventType === 'component_repaired',
+    (e) =>
+      e.eventType === 'fault_cleared' ||
+      e.eventType === 'component_repaired' ||
+      e.eventType === 'manual_intervention',
   );
 
   return (
@@ -138,6 +141,7 @@ export function InspectorHistoryView() {
               return (
                 <li
                   key={event.id}
+                  data-history-event={event.eventType}
                   className="rounded-lg border border-slate-200 bg-white p-2 dark:border-slate-800 dark:bg-slate-900/60"
                 >
                   <div className="flex items-start gap-2">

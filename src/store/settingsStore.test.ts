@@ -81,10 +81,9 @@ describe('settingsStore — Phase 6.1', () => {
       canvasPreset: 'high-contrast',
       wireColorStandard: 'uk_eu',
       automaticComponentLabels: true,
-      thermalOverlayEnabled: false,
+      diagnosticOverlayMode: 'off',
       regulationStandard: 'uk',
       manualFaultInjection: true,
-      stressZonesEnabled: false,
       autoWireJoints: false,
       plugSystem: 'bs1363',
       // A stored blob that predates Ohmageddon must hydrate it OFF (plan §23).
@@ -117,6 +116,50 @@ describe('settingsStore — Phase 6.1', () => {
     expect(__parsePersistedSettings({ version: 1, settings: {} })).toEqual(__SETTINGS_DEFAULTS);
     expect(__parsePersistedSettings({ version: 99, settings: {} })).toBeNull();
     expect(__parsePersistedSettings({ version: 2, settings: [] })).toBeNull();
+  });
+
+  it('migrates legacy overlay booleans and preserves a valid new mode', () => {
+    expect(
+      __parsePersistedSettings({
+        version: 2,
+        settings: { thermalOverlayEnabled: true },
+      })?.diagnosticOverlayMode,
+    ).toBe('heat');
+    expect(
+      __parsePersistedSettings({
+        version: 2,
+        settings: { thermalOverlayEnabled: true, stressZonesEnabled: true },
+      })?.diagnosticOverlayMode,
+    ).toBe('heat-vdrop');
+    expect(
+      __parsePersistedSettings({
+        version: 2,
+        settings: {
+          diagnosticOverlayMode: 'off',
+          thermalOverlayEnabled: true,
+          stressZonesEnabled: true,
+        },
+      })?.diagnosticOverlayMode,
+    ).toBe('off');
+  });
+
+  it('hydrates the International regulation standard', () => {
+    const parsed = __parsePersistedSettings({
+      version: 2,
+      settings: { regulationStandard: 'int' },
+    });
+    expect(parsed?.regulationStandard).toBe('int');
+  });
+
+  it('keeps the physical plug system independent when the regulation standard changes', () => {
+    useSettingsStore.setState({ regulationStandard: 'uk', plugSystem: 'schuko' });
+
+    useSettingsStore.getState().setSetting('regulationStandard', 'us');
+
+    expect(useSettingsStore.getState()).toMatchObject({
+      regulationStandard: 'us',
+      plugSystem: 'schuko',
+    });
   });
 
   it('debounce-saves toggled values to IDB', async () => {

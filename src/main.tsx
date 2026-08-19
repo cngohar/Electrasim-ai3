@@ -8,6 +8,7 @@ import {
   stripShareURLPayload,
 } from './lib/exportImport';
 import { useCircuitStore } from './store/circuitStore';
+import { startEventHistoryPersistence } from './store/eventHistoryPersistence';
 import { hydrateCircuit, persistCircuit, startAutosave } from './store/persistence';
 import { startSettingsPersistence, useSettingsStore } from './store/settingsStore';
 import { applyDocumentTheme, readThemeHint, resolveThemePreference } from './ui/themePreference';
@@ -20,8 +21,9 @@ void (async () => {
     ? import('./lib/FpsOverlay').then((module) => module.FpsOverlay).catch(() => null)
     : Promise.resolve(null);
 
-  // Both stores must hydrate before the first frame, but their IDB reads are independent.
-  await Promise.all([hydrateCircuit(), startSettingsPersistence()]);
+  // Circuit, settings, and the audit trail hydrate before the first frame;
+  // their IndexedDB reads are independent and can run concurrently.
+  await Promise.all([hydrateCircuit(), startSettingsPersistence(), startEventHistoryPersistence()]);
   applyDocumentTheme(resolveThemePreference(useSettingsStore.getState().colorScheme));
   const DevOverlay = await devOverlayPromise;
 

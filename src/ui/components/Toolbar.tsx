@@ -58,8 +58,24 @@ export function Toolbar({ isPhone, simRunning, dashboardOpen, onToggleDashboard 
   const hasBustedWires = simResult?.bustedWires && simResult.bustedWires.size > 0;
   const isBlocked = !simRunning && (hasTrippedComponents || hasBlownComponents || hasBustedWires);
 
-  const stressZonesEnabled = useSettingsStore((s) => s.stressZonesEnabled);
+  const diagnosticOverlayMode = useSettingsStore((s) => s.diagnosticOverlayMode);
   const faultLabOpen = useUiStore((s) => s.faultLabOpen);
+  const overlayLabel =
+    diagnosticOverlayMode === 'off'
+      ? 'Off'
+      : diagnosticOverlayMode === 'heat'
+        ? 'Heat only'
+        : 'Heat + V-drop';
+
+  const cycleDiagnosticOverlay = () => {
+    const next =
+      diagnosticOverlayMode === 'off'
+        ? 'heat'
+        : diagnosticOverlayMode === 'heat'
+          ? 'heat-vdrop'
+          : 'off';
+    setSetting('diagnosticOverlayMode', next);
+  };
 
   const toggleFaultLab = () => {
     // Arm manual fault injection and open the dedicated Fault Lab panel.
@@ -98,8 +114,9 @@ export function Toolbar({ isPhone, simRunning, dashboardOpen, onToggleDashboard 
       <IconBtn icon={Undo2} title="Undo (Ctrl+Z)" onClick={undo} />
       <IconBtn icon={Redo2} title="Redo (Ctrl+Shift+Z)" onClick={redo} />
 
-      {/* Country / region selector — sets voltage, wire colours, ratings, and
-          the regional socket set. Always visible (not Pro-only). */}
+      {/* Active electrical standard — sets voltage, wire colours, and ratings.
+          Student mode sees a read-only citation; Pro can change it. Physical
+          plug/socket selection remains an independent control in the popover. */}
       {!isPhone && (
         <>
           <StandardSelector compact />
@@ -230,18 +247,19 @@ export function Toolbar({ isPhone, simRunning, dashboardOpen, onToggleDashboard 
       {appMode === 'pro' && !isPhone && (
         <button
           type="button"
-          onClick={() => setSetting('stressZonesEnabled', !stressZonesEnabled)}
-          title="Overlay a heatmap highlighting components and wiring with high heat dissipation or voltage drop under the current regulation standard"
-          aria-pressed={stressZonesEnabled}
+          onClick={cycleDiagnosticOverlay}
+          title={`Diagnostic overlay: ${overlayLabel}. Click to cycle Off, Heat only, and Heat + V-drop.`}
+          aria-label={`Diagnostic overlay: ${overlayLabel}`}
+          data-diagnostic-overlay-mode={diagnosticOverlayMode}
           className={[
             'flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-semibold shadow-sm transition',
-            stressZonesEnabled
+            diagnosticOverlayMode !== 'off'
               ? 'border-orange-500 bg-orange-600 text-white shadow-orange-500/20'
               : 'border-orange-200 bg-orange-50 text-orange-700 hover:bg-orange-100 dark:border-orange-800 dark:bg-orange-950/60 dark:text-orange-300 dark:hover:bg-orange-900/70',
           ].join(' ')}
         >
           <Flame className="size-3.5" />
-          <span className="hidden lg:inline">Stress Zones</span>
+          <span className="hidden lg:inline">Diagnostics: {overlayLabel}</span>
         </button>
       )}
 

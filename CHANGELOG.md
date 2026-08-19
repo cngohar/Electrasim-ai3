@@ -11,6 +11,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — Session 2026-08-19: Pro standards, audited compliance, and routed diagnostics
+
+- Added one shared Pro simulation-start gate for regulatory blockers, while preserving non-bypassable physical-fault checks and advisory Student-mode validation.
+- Added a teacher/demo compliance override that bypasses regulatory blockers only and records the active standard and blocking issues as a `manual_intervention` audit event.
+- Added schema-versioned IndexedDB persistence for Simulation History with strict input reconstruction, malformed-entry rejection, and a 100-event cap.
+- Added a read-only Student standard badge, independent Pro electrical-standard and plug-system controls, and standard/plug-aware palette recommendations.
+- Consolidated the two legacy diagnostic toggles into **Off / Heat only / Heat + V-drop**, including settings migration and wire bands that follow routed orthogonal or curved paths.
+- Added deterministic Pro Playwright coverage for compliance gating, override auditing and reload persistence, diagnostic states, Student restrictions, recommendations, and standard/plug independence.
+
+### Fixed — Session 2026-08-19: Pro follow-up correctness and validation
+
+- All ordinary start paths now use the same compliance and physical-safety decision instead of allowing direct setters to bypass validation.
+- Changing the electrical standard no longer rewrites the independently selected physical plug system.
+- Recent palette entries now obey the same region and Student/Pro eligibility rules as normal component tiles.
+- The opt-in dense browser benchmark now imports a deterministic 202-component/300-wire circuit instead of relying on the removed development Stress button.
+- Production Settings tests use the control's exact accessible name, avoiding strict-locator collisions.
+
 ### Added — Session 2026-08-19 (v2 Phase F4–F6): misleading symptom, Rage 2 swap, Rage 4 timer
 
 Phase F is complete. The last two modifiers that were still `implemented: false` now ship honestly, Rage 2 stops pretending `remoteFault` is a misleading symptom, and Rage 4 finally has the optional clock §27 listed for it.

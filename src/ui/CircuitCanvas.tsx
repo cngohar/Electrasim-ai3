@@ -563,7 +563,12 @@ export function CircuitCanvas({
 
           {/* Pro-only heatmap overlay. Sits above wires and components so
               the stress halos are always visible; pointer-events disabled. */}
-          <StressZoneOverlay circuit={circuit} simulation={simResult ?? null} />
+          <StressZoneOverlay
+            circuit={circuit}
+            simulation={simResult ?? null}
+            componentsById={byId}
+            orthogonalPaths={orthogonalPathD}
+          />
         </g>
 
         {/* Tooltip — drawn outside the world transform so size stays

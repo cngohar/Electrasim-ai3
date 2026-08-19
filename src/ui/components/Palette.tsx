@@ -7,7 +7,12 @@
 import { ChevronLeft, ChevronRight, Layers, Search, X } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { COMPONENT_DEFS } from '../../domain';
-import { PLUG_SYSTEMS } from '../../domain/standards';
+import {
+  PLUG_SYSTEMS,
+  type StandardId,
+  getStandard,
+  primarySocketForPlug,
+} from '../../domain/standards';
 import { useUiStore } from '../../store';
 import { useSettingsStore } from '../../store/settingsStore';
 import { getDefaultArt } from '../canvas/componentArt';
@@ -208,6 +213,16 @@ function buildGroups(): Group[] {
   }));
 }
 
+/** High-value starting components promoted for the active rule set. */
+export function recommendedPaletteTypes(
+  standard: StandardId,
+  plugSystem: keyof typeof PLUG_SYSTEMS,
+) {
+  const standardProtection =
+    standard === 'us' ? ['mcb-type-c', 'socket-gfci'] : ['rcbo', 'mcb', 'rcd'];
+  return ['ac-mains-supply', ...standardProtection, primarySocketForPlug(plugSystem), 'bulb'];
+}
+
 interface Props {
   open: boolean;
   isPhone: boolean;
@@ -259,6 +274,7 @@ export function Palette({ open, isPhone }: Props) {
   const groups = useMemo(buildGroups, []);
   const placingType = useUiStore((s) => s.placingType);
   const appMode = useSettingsStore((s) => s.appMode);
+  const regulationStandard = useSettingsStore((s) => s.regulationStandard);
   const plugSystem = useSettingsStore((s) => s.plugSystem);
   const recentComponents = useSettingsStore((s) => s.recentComponents);
   const setPaletteOpen = useUiStore((s) => s.setPaletteOpen);
@@ -267,23 +283,46 @@ export function Palette({ open, isPhone }: Props) {
   // Regional socket set — only show the selected plug type's sockets (plus
   // universal components). Keeps the palette relevant, not bloated.
   const regionalSockets = useMemo(() => new Set(PLUG_SYSTEMS[plugSystem].sockets), [plugSystem]);
+  const isAvailable = (entry: PaletteEntry) => {
+    if (appMode === 'basic' && entry.tier === 'pro') return false;
+    return !REGIONAL_SOCKET_TYPES.has(entry.type) || regionalSockets.has(entry.type);
+  };
+  const allEntries = useMemo(() => groups.flatMap((group) => group.items), [groups]);
+  const recommendedTypeOrder = useMemo(
+    () => recommendedPaletteTypes(regulationStandard, plugSystem),
+    [regulationStandard, plugSystem],
+  );
+  const recommended = recommendedTypeOrder
+    .map((type) => allEntries.find((entry) => entry.type === type))
+    .filter((entry): entry is PaletteEntry => Boolean(entry && isAvailable(entry)));
+  const visibleRecentComponents = recentComponents.filter((type) => {
+    const entry = allEntries.find((item) => item.type === type);
+    return Boolean(entry && isAvailable(entry));
+  });
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
+    const rank = new Map(recommendedTypeOrder.map((type, index) => [type, index]));
     return groups
       .map((g) => ({
         ...g,
-        items: g.items.filter((it) => {
-          if (appMode === 'basic' && it.tier === 'pro') return false;
-          // Region-filter regional sockets only. Universal socket types
-          // (switched-socket, USB, GFCI, industrial) stay visible everywhere.
-          if (REGIONAL_SOCKET_TYPES.has(it.type) && !regionalSockets.has(it.type)) return false;
-          if (!q) return true;
-          return it.label.toLowerCase().includes(q) || it.type.toLowerCase().includes(q);
-        }),
+        items: g.items
+          .filter((it) => {
+            if (appMode === 'basic' && it.tier === 'pro') return false;
+            // Region-filter regional sockets only. Universal socket types
+            // (switched-socket, USB, GFCI, industrial) stay visible everywhere.
+            if (REGIONAL_SOCKET_TYPES.has(it.type) && !regionalSockets.has(it.type)) return false;
+            if (!q) return true;
+            return it.label.toLowerCase().includes(q) || it.type.toLowerCase().includes(q);
+          })
+          .sort(
+            (a, b) =>
+              (rank.get(a.type) ?? Number.MAX_SAFE_INTEGER) -
+              (rank.get(b.type) ?? Number.MAX_SAFE_INTEGER),
+          ),
       }))
       .filter((g) => g.items.length > 0);
-  }, [groups, query, appMode, regionalSockets]);
+  }, [groups, query, appMode, regionalSockets, recommendedTypeOrder]);
 
   // The phone branch returns before the desktop `if (!open)` guard below, so
   // it must honour `open` itself — otherwise the bottom sheet is permanently
@@ -343,6 +382,39 @@ export function Palette({ open, isPhone }: Props) {
                 No components match &ldquo;{query}&rdquo;
               </div>
             )}
+            {!query && recommended.length > 0 && (
+              <div className="mb-4" data-standard-recommendations={regulationStandard}>
+                <div className="px-1 pb-1.5 text-[11px] font-semibold uppercase tracking-wider text-indigo-500 dark:text-indigo-400">
+                  {getStandard(regulationStandard).shortLabel} essentials
+                </div>
+                <div className="grid grid-cols-3 gap-2">
+                  {recommended.map((item) => {
+                    const active = placingType === item.type;
+                    const definition = COMPONENT_DEFS[item.type];
+                    const isLighting = definition?.category === 'lighting';
+                    return (
+                      <button
+                        type="button"
+                        key={`recommended-${item.type}`}
+                        data-palette-type={item.type}
+                        onClick={() =>
+                          useUiStore.getState().setPlacingType(active ? null : item.type)
+                        }
+                        className="flex flex-col items-center gap-1.5 rounded-xl border border-indigo-200 bg-indigo-50/60 px-2 py-3 text-[11px] font-medium text-indigo-800 shadow-sm transition active:scale-95 dark:border-indigo-800 dark:bg-indigo-950/40 dark:text-indigo-200"
+                      >
+                        <TileIcon
+                          type={item.type}
+                          label={item.label}
+                          icon={item.icon}
+                          isLighting={isLighting}
+                        />
+                        <span className="w-full truncate text-center">{item.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
             {filtered.map((cat) => (
               <div key={cat.category} className="mb-4">
                 <div className="px-1 pb-1.5 text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
@@ -360,6 +432,7 @@ export function Palette({ open, isPhone }: Props) {
                       <button
                         type="button"
                         key={it.type}
+                        data-palette-type={it.type}
                         onClick={() =>
                           useUiStore.getState().setPlacingType(active ? null : it.type)
                         }
@@ -464,13 +537,13 @@ export function Palette({ open, isPhone }: Props) {
       </div>
 
       {/* Recent components */}
-      {!query && recentComponents.length > 0 && (
+      {!query && visibleRecentComponents.length > 0 && (
         <div className="border-b border-slate-100 px-2.5 pb-2 pt-2 dark:border-slate-700/60">
           <div className="px-1 pb-1 text-[10px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
             Recent
           </div>
           <div className="grid grid-cols-2 gap-2">
-            {recentComponents.map((type) => {
+            {visibleRecentComponents.map((type) => {
               const def = COMPONENT_DEFS[type];
               if (!def) return null;
               const active = placingType === type;
@@ -483,6 +556,7 @@ export function Palette({ open, isPhone }: Props) {
                 <button
                   key={type}
                   type="button"
+                  data-palette-type={type}
                   title={`Click to place ${def.label} on canvas`}
                   onClick={() => useUiStore.getState().setPlacingType(active ? null : type)}
                   className={[
@@ -503,6 +577,46 @@ export function Palette({ open, isPhone }: Props) {
 
       {/* Categories & Components */}
       <div className="flex-1 overflow-y-auto p-2.5">
+        {!query && recommended.length > 0 && (
+          <div
+            className="mb-3 rounded-xl border border-indigo-200/80 bg-indigo-50/50 p-2 dark:border-indigo-900 dark:bg-indigo-950/30"
+            data-standard-recommendations={regulationStandard}
+          >
+            <div className="px-1 pb-1.5 text-[10px] font-semibold uppercase tracking-wider text-indigo-600 dark:text-indigo-400">
+              {getStandard(regulationStandard).shortLabel} essentials
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              {recommended.map((item) => {
+                const active = placingType === item.type;
+                const definition = COMPONENT_DEFS[item.type];
+                const isLighting = definition?.category === 'lighting';
+                return (
+                  <button
+                    type="button"
+                    key={`recommended-${item.type}`}
+                    data-palette-type={item.type}
+                    title={`Recommended for ${getStandard(regulationStandard).shortLabel}: ${item.label}`}
+                    onClick={() => useUiStore.getState().setPlacingType(active ? null : item.type)}
+                    className={[
+                      'flex flex-col items-center gap-1 rounded-lg border px-2 py-2 text-[10px] font-medium shadow-sm transition hover:scale-[1.02]',
+                      active
+                        ? 'border-blue-400 bg-blue-50 text-blue-700 ring-2 ring-blue-200 dark:border-blue-600 dark:bg-blue-950/60 dark:text-blue-300'
+                        : 'border-indigo-200 bg-white/80 text-slate-700 hover:border-indigo-400 hover:text-indigo-700 dark:border-indigo-800 dark:bg-slate-900/70 dark:text-slate-200 dark:hover:border-indigo-600',
+                    ].join(' ')}
+                  >
+                    <TileIcon
+                      type={item.type}
+                      label={item.label}
+                      icon={item.icon}
+                      isLighting={isLighting}
+                    />
+                    <span className="w-full truncate text-center">{item.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
         {filtered.length === 0 && (
           <div className="py-4 text-center text-xs text-slate-400">
             No components match &ldquo;{query}&rdquo;
@@ -526,6 +640,7 @@ export function Palette({ open, isPhone }: Props) {
                   <div key={it.type} className="relative group">
                     <button
                       type="button"
+                      data-palette-type={it.type}
                       title={`Click to place ${it.label} on canvas${isProItem ? ' (Pro Component)' : ''}`}
                       onClick={() => useUiStore.getState().setPlacingType(active ? null : it.type)}
                       className={[

@@ -6,7 +6,7 @@
 import { Activity, Sparkles, Thermometer } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { COMPONENT_DEFS, type ComponentInstance, type SimulationResult } from '../../../domain';
-import { useCircuitStore, useUiStore } from '../../../store';
+import { useCircuitStore, useSettingsStore, useUiStore } from '../../../store';
 import { AnimatedNumber } from '../AnimatedNumber';
 
 interface Props {
@@ -22,7 +22,8 @@ export function InspectorAnalyticsView({ simResult, selectedComp }: Props) {
   const globalVoltage = useCircuitStore((s) => s.globalVoltage);
   const wires = useCircuitStore((s) => s.wires);
   const componentGroups = useCircuitStore((s) => s.componentGroups);
-  const thermalOverlayEnabled = useUiStore((s) => s.thermalOverlayEnabled);
+  const diagnosticOverlayMode = useSettingsStore((s) => s.diagnosticOverlayMode);
+  const setSetting = useSettingsStore((s) => s.setSetting);
 
   const [time, setTime] = useState(0);
   useEffect(() => {
@@ -513,22 +514,35 @@ export function InspectorAnalyticsView({ simResult, selectedComp }: Props) {
         </div>
       </div>
 
-      {/* ─── Thermal Overlay Toggle ─── */}
+      {/* ─── Unified diagnostic overlay ─── */}
       <div className="rounded-xl border border-slate-200 bg-white p-3 dark:border-slate-800 dark:bg-slate-900">
-        <div className="flex items-center justify-between mb-2">
-          <span className="font-bold text-slate-800 dark:text-slate-200 text-[11px] uppercase tracking-wider flex items-center gap-1.5">
-            <Thermometer className="size-3.5 text-red-500" /> Thermal Overlay
-          </span>
-          <label className="flex items-center gap-2 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={thermalOverlayEnabled}
-              onChange={(e) => useUiStore.getState().setThermalOverlayEnabled(e.target.checked)}
-              className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
-            />
-            <span className="text-[10px] text-slate-600 dark:text-slate-400">Enable</span>
+        <div className="flex items-center justify-between gap-3 mb-2">
+          <label
+            htmlFor="diagnostic-overlay-mode"
+            className="font-bold text-slate-800 dark:text-slate-200 text-[11px] uppercase tracking-wider flex items-center gap-1.5"
+          >
+            <Thermometer className="size-3.5 text-red-500" /> Diagnostic Overlay
           </label>
+          <select
+            id="diagnostic-overlay-mode"
+            aria-label="Diagnostic overlay"
+            value={diagnosticOverlayMode}
+            onChange={(event) =>
+              setSetting(
+                'diagnosticOverlayMode',
+                event.currentTarget.value as 'off' | 'heat' | 'heat-vdrop',
+              )
+            }
+            className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-[10px] font-semibold text-slate-700 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200"
+          >
+            <option value="off">Off</option>
+            <option value="heat">Heat only</option>
+            <option value="heat-vdrop">Heat + V-drop</option>
+          </select>
         </div>
+        <p className="mb-2 text-[10px] leading-relaxed text-slate-500 dark:text-slate-400">
+          Heat + V-drop compares routed conductors with the active regulation limit.
+        </p>
         <div className="flex items-center gap-2 text-[10px] text-slate-500 dark:text-slate-400">
           <div className="flex items-center gap-1">
             <div className="w-3 h-3 rounded bg-[#22c55e]"></div>

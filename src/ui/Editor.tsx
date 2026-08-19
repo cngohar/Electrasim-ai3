@@ -223,8 +223,7 @@ export function Editor() {
       useUiStore.getState().setInspectorCollapsed(savedInspectorCollapsed);
       useUiStore.getState().setLogOpen(savedLogOpen);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [isPhone, savedInspectorCollapsed, savedLogOpen, savedPaletteOpen]);
 
   useEffect(() => {
     setSetting('paletteOpen', paletteOpen);

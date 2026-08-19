@@ -23,5 +23,6 @@ export {
   clearPersistedSettings,
   startSettingsPersistence,
   useSettingsStore,
+  type DiagnosticOverlayMode,
   type UserSettings,
 } from './settingsStore';
