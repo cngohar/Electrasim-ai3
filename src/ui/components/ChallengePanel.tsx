@@ -18,6 +18,7 @@ import {
   Check,
   ChevronRight,
   CircleAlert,
+  Copy,
   Lightbulb,
   ListChecks,
   Play,
@@ -29,9 +30,15 @@ import {
 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import type { ChallengeDifficulty } from '../../domain/challenges';
-import { formatElapsed } from '../../domain/challenges';
+import {
+  GENERATOR_VERSION,
+  formatElapsed,
+  formatShareText,
+  parseShareText,
+} from '../../domain/challenges';
 import { useCircuitStore, useUiStore } from '../../store';
 import { useChallengeStore } from '../../store/challengeStore';
+import { useCopyToClipboard } from '../hooks/useCopyToClipboard';
 
 interface Props {
   isPhone: boolean;
@@ -92,6 +99,30 @@ export function ChallengePanel({ isPhone }: Props) {
 
   const componentCount = useCircuitStore((s) => s.components.length);
   const reducedMotion = usePrefersReducedMotion();
+
+  // §30 replay: the pasted ticket, and the note we show about it.
+  const [replayText, setReplayText] = useState('');
+  const [replayNote, setReplayNote] = useState<string | null>(null);
+  const [seedCopied, copySeed] = useCopyToClipboard();
+
+  /**
+   * Replay a shared challenge (plan §30). The ticket carries identity inputs
+   * only; the target circuit is rebuilt by the same deterministic generator.
+   */
+  const replaySharedSeed = () => {
+    const parsed = parseShareText(replayText, { difficulty: 'beginner', mode: 'challenge' });
+    if (!parsed) {
+      setReplayNote("That doesn't look like a seed or share code.");
+      return;
+    }
+    setReplayNote(
+      parsed.versionMismatch
+        ? `Replaying seed ${parsed.seed} on generator v${GENERATOR_VERSION}. It was created on v${parsed.generatorVersion}, so the circuit may differ.`
+        : null,
+    );
+    setReplayText('');
+    void start(parsed.difficulty, parsed.seed);
+  };
   const elapsedLabel = useElapsedLabel(status === 'active');
 
   const [showChecklist, setShowChecklist] = useState(true);
@@ -163,6 +194,55 @@ export function ChallengePanel({ isPhone }: Props) {
               <ChevronRight className="size-3.5 text-slate-400" />
             </button>
           ))}
+
+          {/* §30 replay — the same affordance the Diagnosis Lab offers. */}
+          <div className="space-y-1.5 rounded-xl border border-slate-200 p-2 dark:border-slate-700">
+            <label
+              htmlFor="challenge-replay-seed"
+              className="block text-[10px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400"
+            >
+              Replay a seed
+            </label>
+            <div className="flex gap-1.5">
+              <input
+                id="challenge-replay-seed"
+                type="text"
+                value={replayText}
+                onChange={(event) => {
+                  setReplayText(event.target.value);
+                  if (replayNote) setReplayNote(null);
+                }}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter') {
+                    event.preventDefault();
+                    replaySharedSeed();
+                  }
+                }}
+                placeholder="482917 or ES1:482917:…"
+                aria-describedby="challenge-replay-help"
+                className="min-h-[32px] min-w-0 flex-1 rounded-lg border border-slate-200 px-2 py-1 text-[11px] text-slate-800 placeholder:text-slate-400 focus:border-blue-400 focus:outline-none focus:ring-1 focus:ring-blue-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+              />
+              <button
+                type="button"
+                onClick={replaySharedSeed}
+                disabled={replayText.trim().length === 0}
+                className="min-h-[32px] rounded-lg bg-blue-600 px-2.5 text-[11px] font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                Replay
+              </button>
+            </div>
+            <p
+              id="challenge-replay-help"
+              className="text-[9px] leading-relaxed text-slate-500 dark:text-slate-400"
+            >
+              Paste a seed or share code to rebuild the exact same challenge.
+            </p>
+            {replayNote && (
+              <output className="block text-[9px] font-medium leading-relaxed text-blue-700 dark:text-blue-300">
+                {replayNote}
+              </output>
+            )}
+          </div>
         </div>
       </section>
     );
@@ -227,11 +307,17 @@ export function ChallengePanel({ isPhone }: Props) {
 
   return (
     <section className={shell} aria-label="Challenge Mode">
-      <header className="flex items-center gap-2 border-b border-slate-200/80 px-3 py-2 dark:border-slate-700/80">
-        <span className="grid size-6 place-items-center rounded-lg bg-blue-600 text-white">
+      {/*
+       * Same tablet-width collapse guarded against in DiagnosisPanel: the
+       * trailing badges are intrinsically sized, so a bare `flex-1 min-w-0`
+       * title column resolves to 0px in the narrow panel and the title spills
+       * out one character wide. Wrap + a real minimum basis keeps it readable.
+       */}
+      <header className="flex flex-wrap items-center gap-2 border-b border-slate-200/80 px-3 py-2 dark:border-slate-700/80">
+        <span className="grid size-6 shrink-0 place-items-center rounded-lg bg-blue-600 text-white">
           <Target className="size-3.5" />
         </span>
-        <div className="min-w-0 flex-1">
+        <div className="min-w-[7rem] flex-1">
           <h2 className="truncate text-[12px] font-semibold text-slate-800 dark:text-slate-100">
             {scenario.title}
           </h2>
@@ -239,6 +325,31 @@ export function ChallengePanel({ isPhone }: Props) {
             {scenario.difficulty} · {scenario.challengeId}
           </p>
         </div>
+        {/* §30 "Copy Seed" — share or replay this exact challenge. */}
+        <button
+          type="button"
+          onClick={() =>
+            copySeed(
+              formatShareText({
+                seed: scenario.seed,
+                difficulty: scenario.difficulty,
+                mode: 'challenge',
+                generatorVersion: scenario.generatorVersion,
+                rageTier: null,
+              }),
+            )
+          }
+          aria-label={`Copy seed ${scenario.seed}`}
+          title={`Copy seed ${scenario.seed} — replay this exact challenge`}
+          className="rounded-lg p-1 text-slate-500 transition hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-200"
+        >
+          {seedCopied ? (
+            <Check className="size-3.5 text-emerald-600 dark:text-emerald-400" />
+          ) : (
+            <Copy className="size-3.5" />
+          )}
+          <output className="sr-only">{seedCopied ? 'Seed copied to clipboard' : ''}</output>
+        </button>
         <span className="flex items-center gap-1 rounded-md bg-slate-100 px-1.5 py-0.5 text-[10px] font-bold tabular-nums text-slate-700 dark:bg-slate-800 dark:text-slate-200">
           <Timer className="size-3" aria-hidden="true" />
           <span aria-label={`Elapsed time ${elapsedLabel}`}>{elapsedLabel}</span>

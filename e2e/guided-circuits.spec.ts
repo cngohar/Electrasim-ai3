@@ -63,4 +63,21 @@ async function loadGuide(page: Page, templateId: string, title: string): Promise
   await guideCard.getByRole('button', { name: 'Load guide' }).click();
 
   await expect(page.getByRole('heading', { name: title })).toBeVisible();
+
+  /*
+   * Below `lg` the component palette is a fixed overlay over the left of the
+   * canvas, so it intercepts clicks aimed at components beneath it. Collapse
+   * it up front — the same accommodation the guide sheet already gets on
+   * phones. No-op when it is already collapsed.
+   */
+  const collapse = page.getByRole('button', { name: 'Collapse panel' });
+  if (
+    await collapse
+      .first()
+      .isVisible()
+      .catch(() => false)
+  ) {
+    await collapse.first().click();
+    await expect(collapse.first()).toBeHidden();
+  }
 }

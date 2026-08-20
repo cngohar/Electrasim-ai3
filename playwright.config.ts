@@ -39,7 +39,12 @@ export default defineConfig({
   webServer: process.env.PLAYWRIGHT_BASE_URL
     ? undefined
     : {
+        // HMR off: a dev-server full-reload landing mid-test surfaced as a
+        // random "unexpected navigation" failure (seen in ohmageddon and
+        // challenge-mode specs under load). Nothing edits source during a
+        // run, so hot reload has no value here and only adds a race.
         command: 'vite --port=3000 --strictPort --host=127.0.0.1',
+        env: { ...process.env, DISABLE_HMR: 'true' },
         url: localBaseURL,
         reuseExistingServer: !process.env.CI,
         timeout: 60_000,

@@ -44,12 +44,30 @@ const MobileSuitabilityModal = lazy(() =>
 const WelcomeModal = lazy(() =>
   import('./components/WelcomeModal').then((m) => ({ default: m.WelcomeModal })),
 );
+/**
+ * Deferred surfaces (docs/PERFORMANCE.md).
+ *
+ * Each of these renders nothing until a store flag opens it, but importing
+ * them eagerly still shipped their code — and their icon and content tables —
+ * in the first-paint bundle. They are gated on the same flag they already
+ * check internally, so behaviour is unchanged; only the download moves.
+ */
+const ComponentInfoModal = lazy(() =>
+  import('./components/ComponentInfoModal').then((m) => ({ default: m.ComponentInfoModal })),
+);
+const WhatHappenedModal = lazy(() =>
+  import('./components/WhatHappenedModal').then((m) => ({ default: m.WhatHappenedModal })),
+);
+const ValidationDetailsModal = lazy(() =>
+  import('./components/ValidationDetailsModal').then((m) => ({
+    default: m.ValidationDetailsModal,
+  })),
+);
 import type { PendingDeletion } from '../store/uiStore';
 import { cancelPendingDeletion, confirmPendingDeletion } from './canvas-actions';
 import { AlignmentBar } from './components/AlignmentBar';
 import { CanvasToolbar } from './components/CanvasToolbar';
 import { CommandPalette } from './components/CommandPalette';
-import { ComponentInfoModal } from './components/ComponentInfoModal';
 import { ConfirmDialog } from './components/ConfirmDialog';
 import { ContextMenu } from './components/ContextMenu';
 import { EventHistoryPanel } from './components/EventHistoryPanel';
@@ -68,8 +86,6 @@ import { SubHeaderBar } from './components/SubHeaderBar';
 import { ToolDock } from './components/ToolDock';
 import { Toolbar } from './components/Toolbar';
 import { UndoToast } from './components/UndoToast';
-import { ValidationDetailsModal } from './components/ValidationDetailsModal';
-import { WhatHappenedModal } from './components/WhatHappenedModal';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 import { useResolvedTheme } from './hooks/useResolvedTheme';
 import {
@@ -194,6 +210,11 @@ export function Editor() {
   const diagnosisOpen = useUiStore((s) => s.diagnosisOpen);
   const mobileSuitabilityOpen = useUiStore((s) => s.mobileSuitabilityOpen);
   const welcomeOpen = useUiStore((s) => s.welcomeOpen);
+  // Gates for the deferred surfaces above — each mirrors the flag the modal
+  // already checks internally, so mounting behaviour is unchanged.
+  const whatHappenedOpen = useUiStore((s) => s.whatHappenedOpen);
+  const activeValidationIssueModal = useUiStore((s) => s.activeValidationIssueModal);
+  const activeComponentInfoType = useUiStore((s) => s.activeComponentInfoType);
   const menuOpen = useUiStore((s) => s.menuOpen);
   const docsOpen = useUiStore((s) => s.docsOpen);
   const contactOpen = useUiStore((s) => s.contactOpen);
@@ -379,9 +400,21 @@ export function Editor() {
       <FaultLabPanel />
       <ShortcutsOverlay />
       <UndoToast />
-      <WhatHappenedModal />
-      <ValidationDetailsModal />
-      <ComponentInfoModal />
+      {whatHappenedOpen && (
+        <Suspense fallback={null}>
+          <WhatHappenedModal />
+        </Suspense>
+      )}
+      {activeValidationIssueModal && (
+        <Suspense fallback={null}>
+          <ValidationDetailsModal />
+        </Suspense>
+      )}
+      {activeComponentInfoType && (
+        <Suspense fallback={null}>
+          <ComponentInfoModal />
+        </Suspense>
+      )}
       <ContextMenu />
 
       <ConfirmDialog

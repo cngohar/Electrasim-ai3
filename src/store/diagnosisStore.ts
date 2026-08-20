@@ -48,6 +48,7 @@ import {
   saveActiveDiagnosis,
 } from './diagnosisPersistence';
 import { useSettingsStore } from './settingsStore';
+import { useUiStore } from './uiStore';
 
 export interface DiagnosisState {
   status: DiagnosisStatus;
@@ -600,6 +601,26 @@ function persistProgress(
     elapsedMs: useDiagnosisStore.getState().totalElapsedMs(),
   });
 }
+
+/**
+ * Mirror `status === 'active'` onto the UI store (plan §14).
+ *
+ * `useSimulation` must know whether an exercise is in progress so it can
+ * withhold the fault reason from trip alerts and narration. It used to read
+ * this store directly, but `useSimulation` is eagerly loaded, so that import
+ * pulled the whole challenge generator into the first-paint bundle. A one-way
+ * subscription keeps the behaviour identical while letting the learning modes
+ * stay in their own lazy chunk.
+ *
+ * Declared as a subscription rather than folded into each `set` call so no
+ * future status transition can forget to update it.
+ */
+useDiagnosisStore.subscribe((state, previous) => {
+  const active = state.status === 'active';
+  if (active !== (previous.status === 'active')) {
+    useUiStore.getState().setDiagnosisActive(active);
+  }
+});
 
 /** Non-hook accessor mirroring the other stores' convention. */
 export const diagnosisState = () => useDiagnosisStore.getState();

@@ -94,11 +94,13 @@ test.describe('app shell', () => {
       await expect(page.getByRole('button', { name: 'Add' })).toBeVisible();
     } else {
       await expect(page.locator('header').getByText('ElectraSim', { exact: true })).toBeVisible();
-      if (viewport && viewport.width >= 1024) {
-        await expect(page.locator('aside').getByText('Components', { exact: true })).toBeVisible();
-      } else {
-        await expect(page.getByRole('button', { name: 'Components', exact: true })).toBeVisible();
-      }
+      /*
+       * The palette defaults to expanded at `lg`+ and collapsed below it, but
+       * either way it is an <aside> labelled "Components" — the collapsed rail
+       * renders the same word vertically. There has never been a "Components"
+       * button, so assert on what actually ships.
+       */
+      await expect(page.locator('aside').getByText('Components', { exact: true })).toBeVisible();
     }
   });
 

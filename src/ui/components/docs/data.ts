@@ -1,5 +1,6 @@
 import {
   Cpu,
+  GraduationCap,
   Keyboard,
   Lightbulb,
   type LucideIcon,
@@ -32,7 +33,45 @@ export const DOCS_TOC: Array<{ id: string; label: string; icon: LucideIcon }> = 
   { id: 'wiring', label: 'Wiring Guide', icon: Zap },
   { id: 'shortcuts', label: 'Keyboard Shortcuts', icon: Keyboard },
   { id: 'simulation', label: 'Simulation & Faults', icon: Shield },
+  { id: 'learning-modes', label: 'Learning Modes', icon: GraduationCap },
   { id: 'tips', label: 'Tips & Tricks', icon: Lightbulb },
+];
+
+/**
+ * The v2 learning modes (plan §49: "Document — seed system, difficulty levels,
+ * Diagnosis Lab, Ohmageddon Mode, IndexedDB statistics, deterministic
+ * generation").
+ *
+ * Held as data next to the other docs content so the section stays declarative
+ * and the copy can be reviewed without reading JSX.
+ */
+export const LEARNING_MODES: Array<{
+  name: string;
+  tagline: string;
+  body: string;
+}> = [
+  {
+    name: 'Challenge Mode',
+    tagline: 'Build this',
+    body: 'You are given an objective and the supply terminals; you wire the installation yourself. Your circuit is compared against a generated target using the same electrical rules as the rest of the simulator, so any wiring that is genuinely equivalent is accepted — you are not required to match it component for component.',
+  },
+  {
+    name: 'Diagnosis Lab',
+    tagline: 'Fix this',
+    body: 'A working installation develops one intentional fault. You are told only that something is wrong — never what or where. Investigate by running the simulation, operating switches and tracing wires, then name both the fault type and its location. The exercise is complete only once the installation actually recovers, not merely when you guess the right name.',
+  },
+  {
+    name: 'Ohmageddon Mode',
+    tagline: 'Survive this',
+    body: 'Off by default; enable it in Settings. It adds deliberately harder scenarios — decoy components, faults far from the visible symptom, two faults at once, fewer hints and an optional timer. It never makes the simulation dishonest: every symptom you see is what the circuit genuinely does.',
+  },
+];
+
+/** Difficulty profiles, shared by every learning mode (plan §9, §49). */
+export const LEARNING_DIFFICULTIES: Array<[name: string, description: string]> = [
+  ['Beginner', 'Few components, simple topology, one obvious load, generous hints.'],
+  ['Intermediate', 'More components and branches; the fault may sit away from the symptom.'],
+  ['Advanced', 'Larger topology, complex switching, subtle symptoms, minimal hints.'],
 ];
 
 export const CATEGORY_ORDER = [

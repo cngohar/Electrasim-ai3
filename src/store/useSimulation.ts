@@ -25,7 +25,6 @@ import { useEffect, useRef } from 'react';
 import { COMPONENT_DEFS } from '../domain';
 import { simulateAsync } from '../sim-worker/client';
 import { useCircuitStore } from './circuitStore';
-import { useDiagnosisStore } from './diagnosisStore';
 import { useSettingsStore } from './settingsStore';
 import { useUiStore } from './uiStore';
 
@@ -132,7 +131,7 @@ export function useSimulation() {
             // learner still sees that it tripped — but not *why*. `trip.reason`
             // is the fault type they are being asked to name, and the normal
             // hint points straight at the faulted component.
-            const diagnosing = useDiagnosisStore.getState().status === 'active';
+            const diagnosing = useUiStore.getState().diagnosisActive;
             const faultAlert = {
               title: '⚡ CIRCUIT PROTECTION TRIPPED!',
               kind: 'trip' as const,
@@ -206,7 +205,7 @@ export function useSimulation() {
             // name ("MANUAL SHORT CIRCUIT FAULT!", "...injected on Fuse (13A)").
             // During a Diagnosis exercise that is precisely the answer under
             // test, so stop the simulation but say nothing.
-            const inDiagnosis = useDiagnosisStore.getState().status === 'active';
+            const inDiagnosis = useUiStore.getState().diagnosisActive;
             if (inDiagnosis) {
               // fall through: no alert, no event-history entry
             } else if (faultedComp?.state.fault) {
@@ -343,7 +342,7 @@ export function useSimulation() {
           // fault the learner is being asked to identify. The simulator tags
           // those messages by index; consequence messages ("MCB tripped",
           // "voltage mismatch") are untagged and still shown.
-          const hideNarration = useDiagnosisStore.getState().status === 'active';
+          const hideNarration = useUiStore.getState().diagnosisActive;
           const hiddenErrors = hideNarration
             ? new Set(result.faultNarrationErrors ?? [])
             : EMPTY_INDEX_SET;

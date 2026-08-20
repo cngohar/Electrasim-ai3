@@ -199,7 +199,9 @@ test.describe('Diagnosis Lab', () => {
       // Scan everything the learner can actually read, whatever the viewport:
       // the answer must not appear anywhere outside the multiple-choice list.
       const optionsText = (
-        (await panel(page).textContent().catch(() => '')) ?? ''
+        (await panel(page)
+          .textContent()
+          .catch(() => '')) ?? ''
       ).toLowerCase();
       const screenText = ((await page.locator('body').textContent()) ?? '').toLowerCase();
       for (const giveaway of GIVEAWAYS) {
@@ -212,7 +214,13 @@ test.describe('Diagnosis Lab', () => {
 
       // Any fault-alert modal must not name the fault type either.
       const dialog = page.locator('dialog[open]');
-      if ((await dialog.count()) > 0 && (await dialog.first().isVisible().catch(() => false))) {
+      if (
+        (await dialog.count()) > 0 &&
+        (await dialog
+          .first()
+          .isVisible()
+          .catch(() => false))
+      ) {
         const modalText = ((await dialog.first().textContent()) ?? '').toLowerCase();
         for (const giveaway of GIVEAWAYS) {
           expect(modalText, `fault alert leaked "${giveaway}"`).not.toContain(giveaway);
@@ -242,5 +250,81 @@ test.describe('Diagnosis Lab', () => {
       .click();
     await expect(panel(page).getByText(/Start another exercise\?/i)).toBeHidden();
     await expect(panel(page).getByRole('button', { name: /Submit diagnosis/i })).toBeVisible();
+  });
+  /**
+   * §30 "Copy Seed" / replay.
+   *
+   * The offline tests prove the codec round-trips and that a parsed ticket
+   * rebuilds an identical scenario. What only a browser can show is that the
+   * two controls are wired to each other: copy an exercise, start a different
+   * one, paste the seed back, and land on the original circuit again.
+   */
+  test('copies a seed and replays the identical exercise (plan §30)', async ({
+    page,
+    context,
+    browser,
+    browserName,
+  }) => {
+    test.skip(browserName !== 'chromium', 'clipboard permissions are Chromium-only here');
+    await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+
+    await startExercise(page, 'Beginner');
+    const originalId = await panel(page)
+      .locator('p', { hasText: /ES-(DIAG|RAGE)-\d+/ })
+      .first()
+      .innerText();
+
+    await panel(page)
+      .getByRole('button', { name: /Copy seed/i })
+      .click();
+    const copied = await page.evaluate(() => navigator.clipboard.readText());
+    // The block §30 asks for: seed, difficulty, mode.
+    expect(copied).toMatch(/Seed: \d+/);
+    expect(copied).toMatch(/Difficulty: Beginner/i);
+    expect(copied).toMatch(/Mode: Diagnosis/i);
+
+    // A different exercise must genuinely differ, otherwise the replay
+    // assertion below would pass on any two runs.
+    await panel(page).getByRole('button', { name: 'New diagnosis exercise' }).click();
+    await expect(panel(page).getByText(/Something isn.t working correctly/i)).toBeVisible();
+    const otherId = await panel(page)
+      .locator('p', { hasText: /ES-(DIAG|RAGE)-\d+/ })
+      .first()
+      .innerText();
+    expect(otherId).not.toBe(originalId);
+
+    // Replay in a clean context — separate IndexedDB, so nothing is restored
+    // from the first session. This is the real §30 promise: the seed alone,
+    // carried to another browser, rebuilds the identical exercise.
+    const fresh = await browser.newContext();
+    const replayPage = await fresh.newPage();
+    await replayPage.addInitScript(() => {
+      window.localStorage.setItem('electrasim:welcomed', '1');
+      window.localStorage.setItem('electrasim:mobile-suitability:v1', '1');
+    });
+    await openDiagnosisLab(replayPage);
+    await replayPage.getByLabel('Replay a seed').fill(copied);
+    await replayPage.getByRole('button', { name: 'Replay' }).click();
+
+    await expect(panel(replayPage).getByText(/Something isn.t working correctly/i)).toBeVisible();
+    const replayedId = await panel(replayPage)
+      .locator('p', { hasText: /ES-(DIAG|RAGE)-\d+/ })
+      .first()
+      .innerText();
+    expect(replayedId).toBe(originalId);
+    expect(replayedId).not.toBe(otherId);
+    await fresh.close();
+  });
+
+  test('rejects text that is not a seed, without starting anything (plan §47)', async ({
+    page,
+  }) => {
+    await openDiagnosisLab(page);
+    await page.getByLabel('Replay a seed').fill('not a seed at all');
+    await page.getByRole('button', { name: 'Replay' }).click();
+
+    await expect(panel(page).getByText(/doesn.t look like a seed/i)).toBeVisible();
+    // Still on the picker — no half-started exercise.
+    await expect(page.getByRole('button', { name: /Beginner/ })).toBeVisible();
   });
 });

@@ -112,4 +112,49 @@ test.describe('Challenge Mode', () => {
     // steals a keyboard tab stop from the editor's controls.
     expect(await meter.evaluate((node) => node.tagName)).toBe('PROGRESS');
   });
+  test('copies a seed and replays the identical challenge (plan §30)', async ({
+    page,
+    context,
+    browser,
+    browserName,
+  }) => {
+    test.skip(browserName !== 'chromium', 'clipboard permissions are Chromium-only here');
+    await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+
+    await openChallengeMode(page);
+    await page.getByRole('button', { name: /Beginner/ }).click();
+    const panel = page.locator('section[aria-label="Challenge Mode"]');
+    const idOf = () =>
+      panel
+        .locator('p', { hasText: /ES-CHAL-\d+/ })
+        .first()
+        .innerText();
+    const originalId = await idOf();
+
+    await panel.getByRole('button', { name: /Copy seed/i }).click();
+    const copied = await page.evaluate(() => navigator.clipboard.readText());
+    expect(copied).toMatch(/Seed: \d+/);
+    expect(copied).toMatch(/Mode: Challenge/i);
+
+    // Replay in a clean context so nothing can be restored from the first run.
+    const fresh = await browser.newContext();
+    const replayPage = await fresh.newPage();
+    await replayPage.addInitScript(() => {
+      window.localStorage.setItem('electrasim:welcomed', '1');
+      window.localStorage.setItem('electrasim:mobile-suitability:v1', '1');
+    });
+    await openChallengeMode(replayPage);
+    await replayPage.getByLabel('Replay a seed').fill(copied);
+    await replayPage.getByRole('button', { name: 'Replay' }).click();
+
+    const replayPanel = replayPage.locator('section[aria-label="Challenge Mode"]');
+    await expect(replayPanel.locator('p', { hasText: /ES-CHAL-\d+/ }).first()).toBeVisible();
+    expect(
+      await replayPanel
+        .locator('p', { hasText: /ES-CHAL-\d+/ })
+        .first()
+        .innerText(),
+    ).toBe(originalId);
+    await fresh.close();
+  });
 });

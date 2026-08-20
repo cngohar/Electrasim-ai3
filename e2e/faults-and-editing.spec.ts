@@ -32,11 +32,33 @@ async function loadGuide(page: Page, templateId: string, title: string) {
     await studentToggle.click({ force: true });
     await page.waitForTimeout(250);
   }
+  await collapsePalette(page);
 }
 
 async function runSim(page: Page) {
   await page.getByRole('button', { name: /^Run Simulation$/ }).click();
   await expect(page.getByRole('button', { name: /^Stop$/ })).toBeVisible();
+}
+
+/**
+ * Below `lg` the component palette is a fixed overlay pinned over the left of
+ * the canvas rather than a column beside it, so it swallows clicks aimed at
+ * components underneath. Desktop opens with it expanded and wide enough not to
+ * matter; tablet does not. Collapsing it first is the same accommodation the
+ * guide drawer and inspector already get, and it is a no-op when the palette
+ * is already collapsed.
+ */
+async function collapsePalette(page: Page) {
+  const collapse = page.getByRole('button', { name: 'Collapse panel' });
+  if (
+    await collapse
+      .first()
+      .isVisible()
+      .catch(() => false)
+  ) {
+    await collapse.first().click();
+    await expect(collapse.first()).toBeHidden();
+  }
 }
 
 /** Amber dashed frame + badge rendered on a tripped protection device. */

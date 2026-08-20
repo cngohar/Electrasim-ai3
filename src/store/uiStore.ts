@@ -128,6 +128,7 @@ export const useUiStore = create<UiState>()(
     activeGuideId: null,
     challengeOpen: false,
     diagnosisOpen: false,
+    diagnosisActive: false,
     guideHidden: false,
     welcomeOpen: !hasWelcomed() && !mobileSuitabilityInitiallyOpen,
     mobileSuitabilityOpen: mobileSuitabilityInitiallyOpen,
@@ -706,6 +707,10 @@ export const useUiStore = create<UiState>()(
       set((s) => {
         s.diagnosisOpen = open;
         if (open) s.challengeOpen = false;
+      }),
+    setDiagnosisActive: (active) =>
+      set((s) => {
+        s.diagnosisActive = active;
       }),
     setTemplatesOpen: (open) =>
       set((s) => {

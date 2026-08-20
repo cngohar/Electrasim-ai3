@@ -7,6 +7,44 @@ A running, append-only log of work on the ElectraSim rewrite. Every coding sessi
 
 ---
 
+## Session 2026-08-19 (later) — gate closure, first WebKit run, iPad Safari layout fix
+
+**Done:** finished the verification work the previous entry left open, and fixed everything it turned up. Every §55 gate now runs; all pass except `check:perf`, which is a budget decision (below).
+
+- **Superseded the previous entry's "Not verified here".** That note blamed Node 20; Node 22.12 is now in use and both gates run. **`npm run e2e:production` → 11/11 passed** and **`npm run benchmark:browser` → passed** (p95 pan frame 50.1 ms, idle 16.8 ms, long-frame ratio 0.5%). `npm run build` (including the Astro step) and `check:links` (138 files) pass.
+- **First-ever `tablet-safari` run — 8 failures, 1 of them a real bug.** WebKit and its system libraries had never been installable here, so the project had never executed. Installed both and ran it.
+  - **Real defect:** the Challenge/Diagnosis panel header collapsed its title column to **0px** on iPad Safari. `flex-1 min-w-0` next to intrinsically-sized badges leaves nothing for the title at the ~224px tablet panel width; WebKit resolves it to zero and the heading + challenge id render one character wide. Verified by measuring the live box in WebKit (`width: 0` → `136` after the fix) rather than eyeballing a screenshot. Fixed in both `DiagnosisPanel.tsx` and `ChallengePanel.tsx` — the second had the identical pattern and would have failed the moment a test looked at it.
+  - **Harness bugs (not app bugs):** the component palette is a fixed overlay over the canvas below `lg` and swallowed component clicks — collapsed it in the `loadGuide` helpers; `pro-features` clicked a component at hardcoded coordinates `(937, 347)` that lie off-screen at 834px — now targets it by `data-component-id`; `smoke` asserted a `Components` **button** that exists in no viewport — the palette is an `<aside>` whose collapsed rail renders the label vertically, so the assertion now matches shipped markup.
+- **Flake fixed and proven.** The intermittent Ohmageddon/diagnosis "unexpected navigation to `/`" was an HMR full-reload mid-test, caused by build output inside the watched tree. Added `**/.vite/**`, `**/node_modules/.vite/**`, `**/stats.html` to `server.watch.ignored` and set `DISABLE_HMR=true` on the Playwright web server. **Three consecutive full Chromium runs: 66 passed, 0 failed, 0 flaky.**
+- **Bundle work (partial).** Broke the eager `store/index.ts → useSimulation → diagnosisStore → challenges/index → recipes` chain by moving the §14 `diagnosisActive` flag into `uiStore` and mirroring it via a store subscription, and lazy-loaded three modals. Initial JS **259,791 → 232,410 B gzip (−27 KB, −10.5%)**. Note the earlier attempt at removing the `./challenges` re-export from `src/domain/index.ts` alone was a measured **no-op** — the chain had other parents; found the real one by BFS upward over `importedBy` in `stats.html`.
+
+**Verification:** Vitest 910/910 / 62 files; typecheck (app + e2e) and `npm run lint` clean (356 files); Playwright chromium 66 ×3, chromium+mobile-chrome 122, tablet-safari 64, production 11; build, links, both benchmarks green.
+
+**Open decision — `check:perf` budgets.** JS 232,413 B vs 115,000; CSS 20,470 B vs 15,000. Pre-existing, fails identically on a pristine checkout, budget never revised since written. **It cannot be met:** React + react-dom-client are ~99 KB gzip = 86% of the JS budget before any app code, and the CSS is Tailwind theme/utility output at maximum compression. Further code-splitting is exhausted — what remains in the entry is core editor code. This needs an explicit budget revision (with the floor documented in `docs/PERFORMANCE.md`), not more optimisation, and not a quiet lowering of the number.
+
+**Next step:** the budget decision above; optionally an ADR for the §30 share format (would be `0006`).
+
+---
+
+## Session 2026-08-19 — v2 plan audit: seed replay (§30) + Learning Modes docs (§49)
+
+**Done:** audited the whole v2 plan (Circuit Generator / Challenge Mode / Diagnosis Lab / Ohmageddon) against the code, then implemented the two items that had no implementation.
+
+- **Audit result.** Phases A–H are genuinely present, not stubbed: deterministic seeded generator with bounded retries and version stamping, 12 recipes across three difficulties, structural + electrical + baseline-simulation validation, fault injection through the *existing* fault engine with observability verification, two-part diagnosis requiring real recovery before completion, progressive hints, unlimited attempts, all seven Ohmageddon modifiers, IndexedDB stats/active-exercise/settings persistence, five ADRs. The §57 production gate and the Definition-of-Done checklist were satisfied except as below.
+- **Gap 1 — §30 "Copy Seed" was missing entirely.** No copy control, no replay entry point, no share codec anywhere in the tree. Added `src/domain/challenges/share.ts` (pure: no clock, no storage, no DOM) with `formatShareText` / `formatShareCode` / `parseShareText` over `seed + difficulty + mode + rageTier + generatorVersion`. Wired a **Copy seed** button and a **Replay a seed** field into *both* the Diagnosis Lab and Challenge Mode, sharing one `useCopyToClipboard` hook (first pass shipped Diagnosis only — caught on review that §30 is mode-agnostic and Challenge Mode had no seed affordance at all). Parsing is deliberately tolerant of real pasted text (whole block, bare code, bare number, stray case/whitespace) and returns `null` rather than guessing.
+- **Gap 2 — §49 documentation was missing.** In-app docs and README never mentioned Challenge Mode, the Diagnosis Lab, Ohmageddon, seeds or the local statistics. Added a seventh docs section (`Learning Modes`) and a README highlight.
+- **Deliberately not changed.** The core generator, fault engine, simulator, stores and persistence were left untouched — the gaps were a missing UI affordance and missing prose, not missing engine capability.
+
+**Verification:** typecheck (app + e2e) and `npm run lint` clean; **910/910 tests / 62 files** (12 new). The replay test rebuilds a real scenario from a round-tripped ticket and asserts an identical `faultedCircuit`, so the codec cannot pass while silently reproducing a different circuit. Stress gates re-run green: generator 3,726 challenges / 223,656 faults / 414,574 repairs / 0 failures / 0 identity collisions in 60,000 samples; Challenge Mode 750 scenarios / 4,500 evaluations; diagnosis 600 scenarios / 10,973 evaluations; Ohmageddon 1,800 scenarios / 6,816 evaluations. Playwright Chromium 67 passed / 2 intentional skips.
+
+**Not verified here:** `npm run check:perf` and `npm run e2e:production` both require the Astro marketing build, which cannot run in this sandbox (Node 20.20.2 < required 22.12). The app bundle itself builds clean via `vite build`. These two gates from §55 remain unrun and should be executed on a Node 22 machine before release. — **SUPERSEDED by the later 2026-08-19 session:** both gates were subsequently run on Node 22.12. `e2e:production` passes 11/11; `check:perf` fails on a pre-existing, arithmetically unreachable budget (see that entry).
+
+**Note:** `e2e/ohmageddon.spec.ts` "a Rage 3 exercise takes two findings" failed once on a full-suite run with an unexpected navigation, then passed in isolation, on a clean tree, and on two subsequent full runs — treated as pre-existing flake, not a regression from this session. Worth a retry/stabilisation pass if it recurs.
+
+**Next step:** production hardening per §60 — no further feature work.
+
+---
+
 ## Session 2026-08-19 — Pro standards and diagnostics follow-up complete
 
 **Done:** closed the remaining implementation notes around Pro compliance, standards, auditability, diagnostics, palette recommendations, and deterministic browser coverage.

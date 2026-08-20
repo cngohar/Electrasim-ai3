@@ -146,6 +146,13 @@ export default defineConfig(({ command }) => {
           '**/coverage/**',
           '**/playwright-report/**',
           '**/test-results/**',
+          // Vite's own dep-optimizer cache and the opt-in bundle report.
+          // A write in either used to reach the watcher and trigger a
+          // full-page reload, which surfaced as a random mid-test navigation
+          // during Playwright runs.
+          '**/.vite/**',
+          '**/node_modules/.vite/**',
+          '**/stats.html',
         ],
       },
     },

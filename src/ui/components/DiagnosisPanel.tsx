@@ -24,8 +24,10 @@
  */
 
 import {
+  Check,
   ChevronRight,
   CircleAlert,
+  Copy,
   Lightbulb,
   MapPin,
   Play,
@@ -40,16 +42,20 @@ import { useEffect, useMemo, useState } from 'react';
 import { COMP_H, COMP_W } from '../../domain';
 import type { ChallengeDifficulty, FaultLocationChoice, RageTierId } from '../../domain/challenges';
 import {
+  GENERATOR_VERSION,
   RAGE_TIERS,
   RAGE_TIER_IDS,
   formatElapsed,
+  formatShareText,
   locationKeyForTarget,
   observeSymptom,
+  parseShareText,
 } from '../../domain/challenges';
 import { useCircuitStore, useSettingsStore, useUiStore, useViewportStore } from '../../store';
 import { useDiagnosisStore } from '../../store/diagnosisStore';
 import { MAX_ZOOM, MIN_ZOOM } from '../../store/viewportStore';
 import { fitCircuitIntoVisibleRegion } from '../canvas/fitRegion';
+import { useCopyToClipboard } from '../hooks/useCopyToClipboard';
 
 interface Props {
   isPhone: boolean;
@@ -189,6 +195,11 @@ export function DiagnosisPanel({ isPhone }: Props) {
   /** §15: both halves of the answer are required before anything may be done. */
   const canSubmit = selectedFaultType !== null && selectedLocationKey !== null;
   const reducedMotion = usePrefersReducedMotion();
+
+  // §30 replay: the pasted ticket, and the note we show about it.
+  const [replayText, setReplayText] = useState('');
+  const [replayNote, setReplayNote] = useState<string | null>(null);
+  const [seedCopied, copySeed] = useCopyToClipboard();
   const elapsedLabel = useElapsedLabel(status === 'active' || status === 'timed-out');
   const remainingLabel = useRemainingLabel(status === 'active');
 
@@ -314,6 +325,33 @@ export function DiagnosisPanel({ isPhone }: Props) {
     // Deliberately neutral: the canvas and the simulation report the outcome,
     // this line only confirms the action was taken.
     useUiStore.getState().addLog(`Diagnosis Lab: repair carried out on ${where}.`, 'info');
+  };
+
+  /**
+   * Replay a shared exercise (plan §30).
+   *
+   * The ticket carries the identity inputs only; the circuit is rebuilt by the
+   * same deterministic generator, so this is a genuine replay rather than a
+   * restored snapshot. A ticket from another generator version is still
+   * honoured — §6 asks us to *notice* the mismatch, not to refuse it — but we
+   * say so plainly instead of implying the circuit is guaranteed identical.
+   */
+  const replaySharedSeed = () => {
+    const parsed = parseShareText(replayText, {
+      difficulty: selectedTier ? 'advanced' : 'beginner',
+      mode: 'diagnosis',
+    });
+    if (!parsed) {
+      setReplayNote("That doesn't look like a seed or share code.");
+      return;
+    }
+    setReplayNote(
+      parsed.versionMismatch
+        ? `Replaying seed ${parsed.seed} on generator v${GENERATOR_VERSION}. It was created on v${parsed.generatorVersion}, so the circuit may differ.`
+        : null,
+    );
+    setReplayText('');
+    void start(parsed.difficulty, parsed.seed, parsed.rageTier ?? selectedTier ?? undefined);
   };
 
   /** Point the canvas at whatever the learner is inspecting (§14 "trace wires"). */
@@ -450,6 +488,61 @@ export function DiagnosisPanel({ isPhone }: Props) {
               <ChevronRight className="size-3.5 text-slate-400" />
             </button>
           ))}
+
+          {/*
+           * §30 replay. The generator is deterministic, so a seed is a
+           * complete description of an exercise: pasting one someone sent you
+           * — or one from your own bug report — rebuilds precisely their
+           * circuit and fault. Entirely local; no backend (§3, §30, §48).
+           */}
+          <div className="space-y-1.5 rounded-xl border border-slate-200 p-2 dark:border-slate-700">
+            <label
+              htmlFor="diagnosis-replay-seed"
+              className="block text-[10px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400"
+            >
+              Replay a seed
+            </label>
+            <div className="flex gap-1.5">
+              <input
+                id="diagnosis-replay-seed"
+                type="text"
+                inputMode="text"
+                value={replayText}
+                onChange={(event) => {
+                  setReplayText(event.target.value);
+                  if (replayNote) setReplayNote(null);
+                }}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter') {
+                    event.preventDefault();
+                    replaySharedSeed();
+                  }
+                }}
+                placeholder="482917 or ES1:482917:…"
+                aria-describedby="diagnosis-replay-help"
+                className="min-h-[32px] min-w-0 flex-1 rounded-lg border border-slate-200 px-2 py-1 text-[11px] text-slate-800 placeholder:text-slate-400 focus:border-amber-400 focus:outline-none focus:ring-1 focus:ring-amber-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+              />
+              <button
+                type="button"
+                onClick={replaySharedSeed}
+                disabled={replayText.trim().length === 0}
+                className="min-h-[32px] rounded-lg bg-amber-500 px-2.5 text-[11px] font-semibold text-white transition hover:bg-amber-600 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                Replay
+              </button>
+            </div>
+            <p
+              id="diagnosis-replay-help"
+              className="text-[9px] leading-relaxed text-slate-500 dark:text-slate-400"
+            >
+              Paste a seed or share code to rebuild the exact same exercise.
+            </p>
+            {replayNote && (
+              <output className="block text-[9px] font-medium leading-relaxed text-amber-700 dark:text-amber-300">
+                {replayNote}
+              </output>
+            )}
+          </div>
         </div>
       </section>
     );
@@ -632,11 +725,21 @@ export function DiagnosisPanel({ isPhone }: Props) {
 
   return (
     <section className={shell} aria-label="Diagnosis Lab" data-canvas-occluder>
-      <header className="flex items-center gap-2 border-b border-slate-200/80 px-3 py-2 dark:border-slate-700/80">
-        <span className="grid size-6 place-items-center rounded-lg bg-amber-500 text-white">
+      {/*
+       * The badges below (Rage Bait, timer, copy) are intrinsically sized and
+       * must never be compressed, but at tablet panel widths (~224px) their
+       * combined width leaves nothing for the title column. `flex-1 min-w-0`
+       * then resolves to a literal 0px box and the heading/challenge id spill
+       * out as a one-character-wide column — present in the DOM, but visually
+       * broken and reported as hidden by assistive tech and Playwright alike.
+       * Allowing the header to wrap and giving the title column a real basis
+       * keeps every element at its natural size on every viewport.
+       */}
+      <header className="flex flex-wrap items-center gap-2 border-b border-slate-200/80 px-3 py-2 dark:border-slate-700/80">
+        <span className="grid size-6 shrink-0 place-items-center rounded-lg bg-amber-500 text-white">
           <Stethoscope className="size-3.5" />
         </span>
-        <div className="min-w-0 flex-1">
+        <div className="min-w-[7rem] flex-1">
           <h2 className="truncate text-[12px] font-semibold text-slate-800 dark:text-slate-100">
             {scenario.rage ? 'Ohmageddon Challenge' : 'Diagnosis Challenge'}
           </h2>
@@ -644,6 +747,36 @@ export function DiagnosisPanel({ isPhone }: Props) {
             {scenario.difficulty} · {scenario.challengeId}
           </p>
         </div>
+        {/*
+         * §30 "Copy Seed". Copies the seed, difficulty and mode as text, so a
+         * learner can hand this exact exercise to a tutor, or attach it to a
+         * bug report. It gives nothing away: the seed identifies the circuit,
+         * not the answer, and reproducing it requires running the generator.
+         */}
+        <button
+          type="button"
+          onClick={() =>
+            copySeed(
+              formatShareText({
+                seed: scenario.seed,
+                difficulty: scenario.difficulty,
+                mode: scenario.rage ? 'rage' : 'diagnosis',
+                generatorVersion: scenario.generatorVersion,
+                rageTier: scenario.rage?.tier ?? null,
+              }),
+            )
+          }
+          aria-label={`Copy seed ${scenario.seed}`}
+          title={`Copy seed ${scenario.seed} — replay this exact exercise`}
+          className="rounded-lg p-1 text-slate-500 transition hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-200"
+        >
+          {seedCopied ? (
+            <Check className="size-3.5 text-emerald-600 dark:text-emerald-400" />
+          ) : (
+            <Copy className="size-3.5" />
+          )}
+          <output className="sr-only">{seedCopied ? 'Seed copied to clipboard' : ''}</output>
+        </button>
         {/* §24: the status indicator. Never hide that the mode is active. */}
         {scenario.rage && (
           <span

@@ -163,6 +163,16 @@ export interface UiState {
   /** Diagnosis Lab panel mounted (plan §32). Session state lives in diagnosisStore. */
   diagnosisOpen: boolean;
   /**
+   * A Diagnosis Lab exercise is currently being solved (plan §14).
+   *
+   * Mirrored here, rather than read from `diagnosisStore`, purely so the
+   * eagerly-loaded simulation hook can honour §14 ("never name the fault")
+   * without importing the diagnosis store — that import dragged the entire
+   * challenge generator into the first-paint bundle. `diagnosisStore` owns the
+   * truth and pushes changes here; nothing else may write it.
+   */
+  diagnosisActive: boolean;
+  /**
    * The active guide's checklist is temporarily hidden so the canvas it
    * overlays becomes reachable again. Distinct from `activeGuideId: null`
    * (which ENDS the guide): hidden guides keep tracking progress and offer a
@@ -291,6 +301,8 @@ export interface UiState {
   setTemplatesOpen: (open: boolean) => void;
   setChallengeOpen: (open: boolean) => void;
   setDiagnosisOpen: (open: boolean) => void;
+  /** Set by `diagnosisStore` only — see {@link UiState.diagnosisActive}. */
+  setDiagnosisActive: (active: boolean) => void;
   setActiveGuideId: (id: string | null) => void;
   setGuideHidden: (hidden: boolean) => void;
   setWelcomeOpen: (open: boolean) => void;

@@ -125,9 +125,16 @@ test.describe('Dual standard & pro features', () => {
     await faultLab.click();
     await expect(page.getByLabel('Fault Lab panel')).toBeVisible();
 
-    // Select a non-source component — the Inspector Properties tab shows the
-    // Manual Fault Simulation panel while armed.
-    await page.mouse.click(937, 347); // single-way switch in the seed circuit
+    /*
+     * Select a non-source component — the Inspector Properties tab shows the
+     * Manual Fault Simulation panel while armed. Target the switch by id
+     * rather than by viewport coordinates: the old hardcoded point sat beyond
+     * the right edge of narrower (tablet) viewports and clicked nothing.
+     */
+    await page
+      .locator('[data-component-id="single-10"]')
+      .locator(':scope > g[role="button"]')
+      .click();
     await page.waitForTimeout(300);
     await expect(page.getByText('Manual Fault Simulation').first()).toBeVisible();
   });
