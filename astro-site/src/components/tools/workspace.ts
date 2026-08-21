@@ -194,8 +194,7 @@ export function initToolWorkspace() {
     paletteCtl?.close();
     if (action === 'reset') document.dispatchEvent(new CustomEvent('tool:reset'));
     if (action === 'help' || action === 'settings') {
-      qs('[data-help]')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      (qs('[data-help]') as HTMLDetailsElement | null)?.setAttribute('open', '');
+      document.dispatchEvent(new CustomEvent('tool:open-modal', { detail: action }));
     }
   });
 
@@ -216,6 +215,106 @@ export function initToolWorkspace() {
       drawerCtl?.close();
       if (document.fullscreenElement) void document.exitFullscreen();
       else void document.documentElement.requestFullscreen?.().catch(() => {});
+    });
+  }
+
+  /* ── View toggles (reusable by any tool) ────────────────────────────── */
+  const root = qs('[data-tool-page]');
+  const VIEW_KEY = 'electrasim:tool-view';
+
+  const readViewPrefs = (): Record<string, boolean> => {
+    try {
+      return JSON.parse(localStorage.getItem(VIEW_KEY) || '{}');
+    } catch {
+      return {};
+    }
+  };
+  const writeViewPref = (id: string, on: boolean) => {
+    try {
+      localStorage.setItem(VIEW_KEY, JSON.stringify({ ...readViewPrefs(), [id]: on }));
+    } catch {
+      /* storage unavailable — the toggle still works for this page view */
+    }
+  };
+
+  const applyView = (id: string, on: boolean) => {
+    root?.setAttribute(`data-view-${id}`, String(on));
+    document.dispatchEvent(new CustomEvent('tool:view', { detail: { id, on } }));
+  };
+
+  const stored = readViewPrefs();
+  for (const btn of document.querySelectorAll<HTMLButtonElement>('[data-view-toggle]')) {
+    const id = btn.dataset.viewToggle as string;
+    const on = stored[id] ?? btn.dataset.default !== 'false';
+    btn.setAttribute('aria-pressed', String(on));
+    applyView(id, on);
+    btn.addEventListener('click', () => {
+      const next = btn.getAttribute('aria-pressed') !== 'true';
+      btn.setAttribute('aria-pressed', String(next));
+      applyView(id, next);
+      writeViewPref(id, next);
+    });
+  }
+
+  /* ── Modals (reusable) ──────────────────────────────────────────────── */
+  const modals = new Map<string, ReturnType<typeof createOverlay>>();
+  for (const el of document.querySelectorAll<HTMLElement>('[data-modal]')) {
+    const id = el.dataset.modal as string;
+    const ctl = createOverlay(el, null);
+    modals.set(id, ctl);
+    qs('[data-modal-close]', el)?.addEventListener('click', () => ctl.close());
+  }
+  document.addEventListener('tool:open-modal', ((e: CustomEvent) => {
+    modals.get(e.detail === 'settings' ? 'help' : e.detail)?.open();
+  }) as EventListener);
+  document.addEventListener('click', (e) => {
+    const opener = (e.target as HTMLElement).closest<HTMLElement>('[data-modal-open]');
+    if (!opener) return;
+    e.preventDefault();
+    drawerCtl?.close();
+    paletteCtl?.close();
+    modals.get(opener.dataset.modalOpen as string)?.open();
+  });
+
+  /* ── Rotating tips (reusable) ───────────────────────────────────────── */
+  const tips = qs('[data-tips]');
+  if (tips) {
+    const textEl = qs('[data-tips-text]', tips);
+    const strings = Array.from(tips.querySelectorAll('template')).map((t) => t.innerHTML.trim());
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    let idx = 0;
+    let timer = 0;
+
+    const show = (i: number) => {
+      idx = (i + strings.length) % strings.length;
+      if (textEl) textEl.textContent = strings[idx];
+    };
+    const stop = () => {
+      clearInterval(timer);
+      timer = 0;
+    };
+    const start = () => {
+      if (reduce || timer || strings.length < 2) return;
+      timer = window.setInterval(() => show(idx + 1), Number(tips.dataset.interval || 7) * 1000);
+    };
+
+    qs('[data-tips-next]', tips)?.addEventListener('click', () => {
+      show(idx + 1);
+      stop();
+      start();
+    });
+
+    const sw = qs<HTMLButtonElement>('[data-tips-toggle]', tips);
+    const setTips = (on: boolean) => {
+      sw?.setAttribute('aria-checked', String(on));
+      tips.dataset.on = String(on);
+      on ? start() : stop();
+    };
+    setTips((readViewPrefs().tips ?? true) as boolean);
+    sw?.addEventListener('click', () => {
+      const next = sw.getAttribute('aria-checked') !== 'true';
+      setTips(next);
+      writeViewPref('tips', next);
     });
   }
 

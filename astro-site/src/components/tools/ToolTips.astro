@@ -1,0 +1,39 @@
+---
+/**
+ * Rotating educational tips with an on/off switch. Reusable: a tool passes its
+ * own strings. Rotation stops under prefers-reduced-motion — the visitor gets
+ * a Next control instead, so no information is motion-dependent (§20, §26).
+ */
+interface Props {
+  tips: string[];
+  /** Seconds between tips. */
+  interval?: number;
+}
+const { tips, interval = 7 } = Astro.props;
+---
+
+<div class="tool-tips" data-tips data-interval={interval} data-count={tips.length}>
+  <button class="tool-tips-switch" type="button" data-tips-toggle role="switch" aria-checked="true" aria-controls="tips-bar">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M9 18h6M10 22h4" /><path d="M12 2a7 7 0 0 0-4 12.7c.6.5 1 1.4 1 2.3h6c0-.9.4-1.8 1-2.3A7 7 0 0 0 12 2z" />
+    </svg>
+    <span>Tips</span>
+    <span class="tool-tips-track" aria-hidden="true"><span class="tool-tips-thumb"></span></span>
+  </button>
+
+  <div class="tool-tips-bar" id="tips-bar" data-tips-bar aria-live="polite">
+    <span class="tool-tips-icon" aria-hidden="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true">
+        <circle cx="12" cy="12" r="10" /><path d="M12 16v-4M12 8h.01" />
+      </svg>
+    </span>
+    <p data-tips-text>{tips[0]}</p>
+    <button class="tool-tips-next" type="button" data-tips-next aria-label="Next tip">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M9 6l6 6-6 6" />
+      </svg>
+    </button>
+  </div>
+
+  {tips.map((t, i) => <template data-tip-index={i}>{t}</template>)}
+</div>

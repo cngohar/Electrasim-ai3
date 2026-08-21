@@ -3443,3 +3443,24 @@ runtime on the marketing site.
 
 **Next step** — plan phase 14: desktop + mobile E2E specs, then phase 15
 performance/accessibility audit. Do NOT start Cable Size Calculator (plan §45).
+
+### Follow-up — reusable UI primitives + scenery
+
+Added `ToolToolbar`, `ToolModal` and `ToolTips` as tool-agnostic workspace
+components so the second tool inherits the chrome instead of duplicating it.
+View state is stored as `data-view-*` on the workspace root plus localStorage,
+which keeps the toggles declarative and free of tool-specific JS.
+
+Gotcha worth recording: rules that key off `data-view-*` or `data-theme` must
+live in the global `workspace.css`, not inside a component `<style>`. Astro
+scopes component styles, so an ancestor selector pointing at `.tool-page`
+silently never matches — the Animate toggle appeared to do nothing until the
+rules were moved.
+
+Verified: toolbar toggles (legend hides, values fade to opacity 0, animate
+pauses the flow), help modal opens and closes on Escape, tips rotate and the
+switch hides the bar, and view preferences survive a reload.
+
+Tool route grew 17.4 -> 21.1 KB gzip for the three primitives and the richer
+scene. Still no framework runtime, 0 inline styles, 0 inline scripts.
+

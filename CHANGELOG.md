@@ -50,6 +50,24 @@ build unchanged.
 - **Mobile** — intentional one-column layout below 1080px: 16:9 scene first,
   then stacked panels. Below 720px the header reduces to brand + menu and
   help/fullscreen move into the drawer.
+- **Reusable workspace primitives** (added after the first pass, so every future
+  tool inherits them rather than reimplementing):
+  - `ToolToolbar` — declarative view-toggle bar. Each toggle flips
+    `data-view-<id>` on the workspace root and persists to localStorage, so CSS
+    and tool scripts react with a plain attribute selector. Voltage Drop
+    declares Animate / Values / Legend.
+  - `ToolModal` — generic focus-trapped dialog opened by any
+    `[data-modal-open="<id>"]`, closed by Escape, scrim or its own button.
+    Voltage Drop supplies the "How voltage drop works" content with the
+    formula card, resistivity cards and status bands.
+  - `ToolTips` — rotating educational tips with an on/off switch. Rotation is
+    suppressed under `prefers-reduced-motion` and a Next control is offered
+    instead, so no information depends on motion.
+- **Richer scene** — three hill bands with aerial perspective, layered clouds
+  at two depths, a bird flock, a distant transmission line, varied trees,
+  shrubs, wildflowers, contact shadows, sun halo, cabinet vents and hinges,
+  house gutter/ridge/porch, and stars that fade in under the dark theme.
+
 - **SEO** — unique title and description, canonical, Open Graph, Twitter,
   SoftwareApplication + FAQPage + BreadcrumbList JSON-LD, sitemap entry, and
   an educational article linking to the existing voltage-drop guide.

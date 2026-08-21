@@ -58,12 +58,12 @@ const available = TOOLS.filter((t) => t.status === 'available');
       <span class="hide-sm" data-theme-label>Dark Mode</span>
     </button>
 
-    <a class="tool-icon-btn" href="#tool-help" data-help-link aria-label="Help and how this works">
+    <button class="tool-icon-btn" type="button" data-modal-open="help" data-help-link aria-label="Help and how this works">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
         <circle cx="12" cy="12" r="9" /><path d="M9.5 9a2.5 2.5 0 1 1 3.4 2.3c-.6.3-.9.8-.9 1.4v.3M12 17h.01" />
       </svg>
       <span class="hide-sm">Help</span>
-    </a>
+    </button>
 
     <button class="tool-icon-btn" type="button" data-fullscreen aria-label="Toggle fullscreen">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">

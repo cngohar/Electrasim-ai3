@@ -1,10 +1,31 @@
 ---
 import SceneVoltageDrop from './SceneVoltageDrop.astro';
+import ToolToolbar from './ToolToolbar.astro';
+import ToolTips from './ToolTips.astro';
+import ToolModal from './ToolModal.astro';
 import { DEFAULT_INPUT } from '../../lib/tools/voltage-drop';
 const d = DEFAULT_INPUT;
+
+const TIPS = [
+  'Green particles show the flow of electricity. Some voltage is lost along the cable due to its resistance.',
+  'Larger cables (higher mm²) have lower resistance, which reduces the voltage drop.',
+  'Doubling the cable length doubles the voltage drop — keep runs short where possible.',
+  'A 3% drop is a common teaching reference for lighting circuits; other circuits are often allowed more.',
+  'Aluminium conductors have roughly 64% more resistance than copper of the same cross-section.',
+];
 ---
 
 <SceneVoltageDrop />
+
+<ToolToolbar
+  toggles={[
+    { id: 'animate', label: 'Animate', icon: 'play', on: true, pip: true },
+    { id: 'values', label: 'Values', icon: 'eye', on: true },
+    { id: 'legend', label: 'Legend', icon: 'list', on: true },
+  ]}
+/>
+
+<ToolTips tips={TIPS} />
 
 <!-- ── INPUTS ─────────────────────────────────────────────────────────── -->
 <section class="tool-panel tool-panel-inputs" data-collapsed="false" aria-label="Calculator inputs">
@@ -128,6 +149,49 @@ const d = DEFAULT_INPUT;
   <span class="tool-legend-item"><span class="dot dot-warn"></span>High drop</span>
   <span class="tool-legend-item"><span class="dot dot-bad"></span>Excessive drop</span>
 </div>
+
+<ToolModal id="help" title="How voltage drop works">
+  <div class="formula-card">
+    <div>R = ρ × L ÷ A</div>
+    <div>L = one-way length × 2 &nbsp;(out and return)</div>
+    <div>V<sub>drop</sub> = I × R</div>
+    <div>drop% = V<sub>drop</sub> ÷ V<sub>source</sub> × 100</div>
+    <div>V<sub>load</sub> = V<sub>source</sub> − V<sub>drop</sub></div>
+    <div>P<sub>loss</sub> = I² × R</div>
+  </div>
+
+  <div class="rho-grid">
+    <div class="rho-card rho-cu">
+      <div class="rho-name">COPPER</div>
+      <div class="rho-val">0.017241 Ω·mm²/m</div>
+      <div class="rho-note">at 20 °C</div>
+    </div>
+    <div class="rho-card rho-al">
+      <div class="rho-name">ALUMINIUM</div>
+      <div class="rho-val">0.028264 Ω·mm²/m</div>
+      <div class="rho-note">at 20 °C</div>
+    </div>
+  </div>
+
+  <h3>Reading the status</h3>
+  <ul>
+    <li><span class="band-good">Good</span> — comfortably inside the 3% educational reference.</li>
+    <li><span class="band-warn">At / near limit</span> — within 10% of the reference; a longer run or higher current tips it over.</li>
+    <li><span class="band-bad">Excessive</span> — above the reference. Try a larger conductor, a shorter run or less current.</li>
+  </ul>
+
+  <h3>What this model does not include</h3>
+  <ul>
+    <li>Cable reactance and power factor</li>
+    <li>Conductor temperature correction</li>
+    <li>Grouping, installation method and thermal derating</li>
+    <li>Harmonics, and three-phase systems</li>
+  </ul>
+  <p>
+    The 3% figure is an educational reference, not a compliance verdict. Real design limits depend on
+    the applicable wiring rules, the circuit type and the installation.
+  </p>
+</ToolModal>
 
 <script>
   import { initVoltageDropTool } from './voltage-drop-tool.ts';
