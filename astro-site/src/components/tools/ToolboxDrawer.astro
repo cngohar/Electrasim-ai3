@@ -1,0 +1,61 @@
+---
+import { TOOLS, TOOL_COMMANDS } from '../../lib/tools/registry';
+
+interface Props {
+  toolId: string;
+}
+const { toolId } = Astro.props;
+---
+
+<aside class="tool-drawer" id="toolbox-drawer" data-drawer hidden aria-label="Electrical Toolbox navigation">
+  <div class="tool-drawer-head">
+    <h2>Electrical Toolbox</h2>
+    <button class="tool-icon-btn" type="button" data-drawer-close aria-label="Close menu">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+        <path d="M6 6l12 12M18 6L6 18" />
+      </svg>
+    </button>
+  </div>
+
+  <div class="tool-drawer-body">
+    <p class="tool-group-label">Calculators</p>
+    {TOOLS.map((t) => {
+      const current = t.id === toolId;
+      const soon = t.status === 'coming-soon';
+      return soon ? (
+        <span class="tool-nav-item" data-disabled="true" aria-disabled="true">
+          <span class="tool-nav-check" aria-hidden="true"></span>
+          {t.name}
+          <span class="tool-nav-soon">Soon</span>
+        </span>
+      ) : (
+        <a class="tool-nav-item" href={t.route} aria-current={current ? 'page' : undefined}>
+          <span class="tool-nav-check" aria-hidden="true">
+            {current && (
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                <path d="m4 12 5 5L20 6" />
+              </svg>
+            )}
+          </span>
+          {t.name}
+        </a>
+      );
+    })}
+
+    <p class="tool-group-label">Commands</p>
+    <button class="tool-nav-item" type="button" data-fullscreen>
+      <span class="tool-nav-check" aria-hidden="true"></span>Toggle fullscreen
+    </button>
+    {TOOL_COMMANDS.map((c) =>
+      c.action === 'navigate' ? (
+        <a class="tool-nav-item" href={c.route}>
+          <span class="tool-nav-check" aria-hidden="true"></span>{c.label}
+        </a>
+      ) : (
+        <button class="tool-nav-item" type="button" data-command={c.action}>
+          <span class="tool-nav-check" aria-hidden="true"></span>{c.label}
+        </button>
+      ),
+    )}
+  </div>
+</aside>

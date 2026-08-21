@@ -1,0 +1,134 @@
+---
+import SceneVoltageDrop from './SceneVoltageDrop.astro';
+import { DEFAULT_INPUT } from '../../lib/tools/voltage-drop';
+const d = DEFAULT_INPUT;
+---
+
+<SceneVoltageDrop />
+
+<!-- ── INPUTS ─────────────────────────────────────────────────────────── -->
+<section class="tool-panel tool-panel-inputs" data-collapsed="false" aria-label="Calculator inputs">
+  <button class="tool-panel-head" type="button" data-panel-toggle aria-expanded="true">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+      <path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0" /><circle cx="16" cy="6" r="2" /><circle cx="10" cy="12" r="2" /><circle cx="18" cy="18" r="2" />
+    </svg>
+    Inputs
+    <svg class="tool-panel-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="m6 15 6-6 6 6" /></svg>
+  </button>
+
+  <div class="tool-panel-body">
+    <form data-vd-form novalidate>
+      <div class="tool-field">
+        <span class="tool-label" id="lbl-system">System type</span>
+        <div class="tool-segment" role="group" aria-labelledby="lbl-system">
+          <button type="button" data-system="dc" aria-pressed={String(d.systemType === 'dc')}>DC</button>
+          <button type="button" data-system="ac-single" aria-pressed={String(d.systemType === 'ac-single')}>1-Φ AC</button>
+        </div>
+        <p class="tool-hint">Three-phase is not part of v1.</p>
+      </div>
+
+      <div class="tool-field">
+        <label class="tool-label" for="vd-voltage">System voltage</label>
+        <div class="tool-input-row">
+          <input id="vd-voltage" name="voltage" type="number" inputmode="decimal" step="any" min="0" value={d.voltage} aria-describedby="vd-voltage-hint" />
+          <span class="tool-unit">V</span>
+        </div>
+        <p class="tool-hint" id="vd-voltage-hint">Nominal supply voltage.</p>
+        <p class="tool-error" data-error-for="voltage" hidden></p>
+      </div>
+
+      <div class="tool-field">
+        <label class="tool-label" for="vd-current">Load current</label>
+        <div class="tool-input-row">
+          <input id="vd-current" name="current" type="number" inputmode="decimal" step="any" min="0" value={d.current} aria-describedby="vd-current-hint" />
+          <span class="tool-unit">A</span>
+        </div>
+        <p class="tool-hint" id="vd-current-hint">Current flowing through the cable.</p>
+        <p class="tool-error" data-error-for="current" hidden></p>
+      </div>
+
+      <div class="tool-field">
+        <label class="tool-label" for="vd-length">Cable length (one-way)</label>
+        <div class="tool-input-row">
+          <input id="vd-length" name="lengthOneWay" type="number" inputmode="decimal" step="any" min="0" value={d.lengthOneWay} aria-describedby="vd-length-hint" />
+          <span class="tool-unit">m</span>
+        </div>
+        <p class="tool-hint" id="vd-length-hint">Source to load. The engine doubles it for the return path.</p>
+        <p class="tool-error" data-error-for="lengthOneWay" hidden></p>
+      </div>
+
+      <div class="tool-field">
+        <label class="tool-label" for="vd-size">Cable size</label>
+        <div class="tool-input-row">
+          <input id="vd-size" name="cableSize" type="number" inputmode="decimal" step="any" min="0" value={d.cableSize} aria-describedby="vd-size-hint" />
+          <span class="tool-unit">mm²</span>
+        </div>
+        <p class="tool-hint" id="vd-size-hint">Conductor cross-sectional area.</p>
+        <p class="tool-error" data-error-for="cableSize" hidden></p>
+      </div>
+
+      <div class="tool-field">
+        <label class="tool-label" for="vd-material">Conductor material</label>
+        <select class="tool-select" id="vd-material" name="material">
+          <option value="copper" selected>Copper</option>
+          <option value="aluminium">Aluminium</option>
+        </select>
+        <p class="tool-error" data-error-for="material" hidden></p>
+      </div>
+
+      <button class="tool-btn" type="button" data-vd-reset>Reset to defaults</button>
+    </form>
+  </div>
+</section>
+
+<!-- ── RESULTS ────────────────────────────────────────────────────────── -->
+<section class="tool-panel tool-panel-results" data-collapsed="false" data-status="near-limit" data-results aria-label="Result summary" aria-live="polite">
+  <button class="tool-panel-head" type="button" data-panel-toggle aria-expanded="true">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 19V5M4 19h16M8 15l4-5 3 3 5-7" /></svg>
+    Result summary
+    <svg class="tool-panel-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="m6 15 6-6 6 6" /></svg>
+  </button>
+
+  <div class="tool-panel-body">
+    <dl>
+      <div class="tool-result-row"><dt>Source voltage</dt><dd class="v-source" data-out="sourceVoltage">230.00 V</dd></div>
+      <div class="tool-result-row"><dt>Voltage at load</dt><dd class="v-load" data-out="voltageAtLoad">223.10 V</dd></div>
+      <div class="tool-result-row"><dt>Voltage drop</dt><dd class="v-drop" data-out="voltageDrop">6.90 V</dd></div>
+      <div class="tool-result-row"><dt>Voltage drop (%)</dt><dd data-out="voltageDropPercent">3.00%</dd></div>
+      <div class="tool-result-row"><dt>Cable resistance</dt><dd data-out="resistance">0.17241 Ω</dd></div>
+      <div class="tool-result-row"><dt>Power loss</dt><dd data-out="powerLoss">275.86 W</dd></div>
+    </dl>
+
+    <div class="tool-status">
+      <svg data-status-icon viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M12 8v5M12 16h.01" /></svg>
+      <div>
+        <p class="tool-status-title" data-status-label>At / near limit</p>
+        <p class="tool-status-note" data-status-note></p>
+      </div>
+    </div>
+
+    <details class="tool-explain" data-help>
+      <summary>What happened?</summary>
+      <ol data-explain></ol>
+      <p class="tool-hint tool-hint-spaced">
+        The 3% figure is an educational reference value, not a compliance verdict.
+        Real designs depend on the applicable wiring rules and the installation.
+      </p>
+    </details>
+
+    <a class="tool-btn tool-btn-primary" href="/app/">Build it in ElectraSim →</a>
+  </div>
+</section>
+
+<!-- ── LEGEND ─────────────────────────────────────────────────────────── -->
+<div class="tool-legend" data-legend>
+  <span class="tool-legend-title">Legend</span>
+  <span class="tool-legend-item"><span class="dot dot-good"></span>Within limit</span>
+  <span class="tool-legend-item"><span class="dot dot-warn"></span>At / near limit</span>
+  <span class="tool-legend-item"><span class="dot dot-bad"></span>Excessive</span>
+</div>
+
+<script>
+  import { initVoltageDropTool } from './voltage-drop-tool.ts';
+  initVoltageDropTool();
+</script>

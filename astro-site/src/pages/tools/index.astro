@@ -1,0 +1,72 @@
+---
+import Base from '../../layouts/Base.astro';
+import { TOOLS } from '../../lib/tools/registry';
+import '../../styles/tools/workspace.css';
+
+const canonical = 'https://electrasim.com/tools/';
+const title = 'Electrical Toolbox — Free Online Electrical Calculators | ElectraSim';
+const description =
+  'Free interactive electrical calculators from ElectraSim. Start with the Voltage Drop Calculator and see how cable length, current and conductor size change the voltage at the load.';
+
+const schema = {
+  '@context': 'https://schema.org',
+  '@type': 'CollectionPage',
+  name: 'Electrical Toolbox',
+  url: canonical,
+  description,
+  hasPart: TOOLS.filter((t) => t.status === 'available').map((t) => ({
+    '@type': 'SoftwareApplication',
+    name: t.name,
+    url: `https://electrasim.com${t.route}`,
+    applicationCategory: 'UtilitiesApplication',
+    operatingSystem: 'Web',
+    offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
+  })),
+};
+---
+
+<Base title={title} description={description} canonical={canonical}>
+  <Fragment slot="head">
+    <script type="application/ld+json" set:html={JSON.stringify(schema)} />
+  </Fragment>
+
+  <div class="page-head" data-live>
+    <div class="wrap">
+      <span class="label">Electrical Toolbox</span>
+      <h1>Free electrical calculators that show their working</h1>
+      <p>
+        Interactive, browser-based tools for everyday electrical work. Everything runs on your
+        device — no account, no upload, no backend.
+      </p>
+    </div>
+  </div>
+
+  <section class="sec">
+    <div class="wrap">
+      <div class="hub-grid">
+        {TOOLS.map((t) => {
+          const available = t.status === 'available';
+          const Tag = available ? 'a' : 'div';
+          return (
+            <Tag class="hub-card" data-soon={String(!available)} {...(available ? { href: t.route } : {})}>
+              <span class="hub-badge" data-available={String(available)}>
+                {available ? 'Available' : 'Coming soon'}
+              </span>
+              <h3>{t.name}</h3>
+              <p>{t.summary}</p>
+              {available && <span class="hub-open">Open calculator →</span>}
+            </Tag>
+          );
+        })}
+      </div>
+
+      <div class="tool-article-note hub-note">
+        <p class="m0">
+          These calculators are educational. They use simplified models and reference thresholds —
+          always verify a real design against the applicable wiring rules.
+          Want to wire the circuit instead? <a href="/app/">Open the ElectraSim simulator</a>.
+        </p>
+      </div>
+    </div>
+  </section>
+</Base>

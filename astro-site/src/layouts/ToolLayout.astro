@@ -1,0 +1,84 @@
+---
+/**
+ * Full-screen Electrical Toolbox workspace shell (master plan §7).
+ *
+ * Owns: header, toolbox drawer, command palette, fullscreen, theme, footer.
+ * The tool owns: inputs, calculation, visualization, results.
+ *
+ * This deliberately does NOT use Base.astro — a tool is an application view,
+ * not a marketing page: no site nav, no marketing footer, no page scroll on
+ * desktop. SEO metadata still renders server-side (§5).
+ */
+import ToolHeader from '../components/tools/ToolHeader.astro';
+import ToolboxDrawer from '../components/tools/ToolboxDrawer.astro';
+import CommandPalette from '../components/tools/CommandPalette.astro';
+import '../styles/tools/workspace.css';
+import packageMetadata from '../../../package.json';
+
+export interface Props {
+  toolId: string;
+  title: string;
+  description: string;
+  canonical: string;
+  /** JSON-LD graph rendered into <head>. */
+  schema?: unknown;
+}
+
+const { toolId, title, description, canonical, schema } = Astro.props;
+const v = packageMetadata.version;
+---
+
+<!doctype html>
+<html lang="en" class="tool-html">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#ffffff" />
+  <script is:inline src={`/js/theme.js?v=${v}`}></script>
+  <title>{title}</title>
+  <meta name="description" content={description} />
+  <link rel="canonical" href={canonical} />
+  <meta name="robots" content="index, follow" />
+
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="ElectraSim" />
+  <meta property="og:title" content={title} />
+  <meta property="og:description" content={description} />
+  <meta property="og:url" content={canonical} />
+  <meta property="og:image" content="https://electrasim.com/og-image.png" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content={title} />
+  <meta name="twitter:description" content={description} />
+  <meta name="twitter:image" content="https://electrasim.com/og-image.png" />
+
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <link rel="preload" as="font" type="font/woff2" href="/fonts/plus-jakarta-sans-latin.woff2" crossorigin />
+  <link rel="preload" as="font" type="font/woff2" href="/fonts/space-grotesk-latin.woff2" crossorigin />
+  {schema && <script type="application/ld+json" set:html={JSON.stringify(schema)} />}
+  <slot name="head" />
+</head>
+<body>
+  <div class="tool-page tool-shell" data-tool-page data-tool-id={toolId}>
+    <ToolHeader toolId={toolId} />
+
+    <main class="tool-workspace" id="tool-workspace">
+      <slot />
+    </main>
+
+    <footer class="tool-footer">
+      © {new Date().getFullYear()} ElectraSim · Results are educational estimates —
+      verify against the applicable wiring rules. ·
+      <a href="/tools/">Electrical Toolbox</a>
+    </footer>
+  </div>
+
+  <div class="tool-scrim" data-overlay-scrim hidden></div>
+  <ToolboxDrawer toolId={toolId} />
+  <CommandPalette toolId={toolId} />
+
+  <script>
+    import { initToolWorkspace } from '../components/tools/workspace.ts';
+    initToolWorkspace();
+  </script>
+</body>
+</html>

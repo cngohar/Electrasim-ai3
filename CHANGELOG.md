@@ -11,6 +11,65 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — Session 2026-08-21: Electrical Toolbox + Voltage Drop Calculator v1
+
+First tool of the Electrical Toolbox, and the reusable workspace every future
+calculator will sit in. Built in Astro with **no React on the marketing site** —
+React stays in `/app`. Upgraded Astro 6.4.8 -> 7.2.4 first; all existing pages
+build unchanged.
+
+- **`/tools/`** — SEO-friendly Toolbox hub driven by a central tool registry
+  (`astro-site/src/lib/tools/registry.ts`). Voltage Drop is available; Cable
+  Size, Power, Load and Energy Cost are registered as coming-soon. Adding a
+  future tool is one registry entry — navigation, palette and hub all follow.
+- **`/tools/voltage-drop-calculator/`** — full-screen workspace: header with
+  hamburger, tool title, appearance toggle, help and fullscreen; a floating
+  Inputs panel and Result Summary panel that each collapse; an SVG scene that
+  owns the majority of the screen; and a crawlable educational article below
+  the fold.
+- **Command palette** — `Shift + Space` or the header search button. Searches
+  tools and commands from the registry, arrow-key navigation, Enter opens,
+  Escape closes, current tool checked. Focus is trapped and restored.
+- **Calculation engine** (`src/lib/tools/voltage-drop/`) — deterministic pure
+  functions with zero framework imports, so the future Cable Size tool can
+  sweep candidate sizes through the same entry point. Documented model:
+  rho_Cu = 0.017241 ohm.mm2/m at 20 C, round-trip path L = one-way x 2,
+  R = rho x L / A, Vdrop = I x R, powerLoss = I^2 x R. Every displayed figure
+  derives from the same resistance.
+- **Educational validation** — names the field and the rule ("Cable length
+  must be greater than 0 m") rather than "invalid input", and reports every
+  problem at once.
+- **Three visual states** with a near-limit band, so the default input set
+  (2.9984%) reads "At / near limit" rather than an unqualified "Good". The 3%
+  figure is presented as an educational reference, not a compliance verdict.
+- **Visualization** — source -> cable -> load as inline SVG with CSS keyframes.
+  No 3D library and no canvas: the mockup only looks dimensional. Current is
+  an animated dash pattern whose colour, speed and thickness follow the
+  result. Scene labels are real `<text>`, so they are crawlable and
+  selectable. The scene pauses when scrolled out of view.
+- **Mobile** — intentional one-column layout below 1080px: 16:9 scene first,
+  then stacked panels. Below 720px the header reduces to brand + menu and
+  help/fullscreen move into the drawer.
+- **SEO** — unique title and description, canonical, Open Graph, Twitter,
+  SoftwareApplication + FAQPage + BreadcrumbList JSON-LD, sitemap entry, and
+  an educational article linking to the existing voltage-drop guide.
+
+**Scope decisions (plan v2 final ruling):** no 3-phase AC, no Advanced Options
+panel and no 3D View toggle in v1. The old mockup's 6.33 V / 275.2 W pairing is
+internally inconsistent and a regression test asserts it can never reappear.
+
+**Verification:** Vitest **871/871 across 60 files** (38 new), `tsc --noEmit`
+clean, `biome lint` clean, `astro build` 138 pages green. Tool page ships
+**17.3 KB gzip** total (HTML + CSS + JS) against the 305 KB React reference
+bundle; 0 inline styles and 0 inline scripts, so the strict self-only CSP is
+unchanged. Reduced-motion verified: 0/15 animations run and every value still
+renders. No horizontal overflow at 390px.
+
+**Known limitations:** simplified resistive model only — no reactance, power
+factor, temperature correction, grouping or harmonics. `npm run check:perf`
+and `check:links` need the full root build (`npm run build`) and were not run
+in this environment. E2E specs for the tool are not written yet.
+
 ### Added — Session 2026-08-20: Declarative Challenge Mode (plan §5–§26)
 
 Replaced the generator-based "build a random circuit against the clock" mode with the declarative system the plan specifies: hand-authored challenges, a rule checklist validator, a safe practice workspace, and a Learn hub. Per plan §26 this ships exactly three challenges — user testing must happen before more content.

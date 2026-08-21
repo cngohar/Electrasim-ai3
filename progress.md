@@ -3405,3 +3405,41 @@ files / **878** unit tests ✓ (was 863), all four stress harnesses ✓,
 
 **Next:** F4 `misleadingSymptom`; F5 retire the rage-2 `remoteFault`
 substitution; F6 optional `timeLimit`.
+
+---
+
+## Session 2026-08-21 — Electrical Toolbox foundation + Voltage Drop Calculator v1
+
+**Implemented**
+- Astro 6.4.8 -> 7.2.4 (Node >=22.12). 136 existing pages build unchanged.
+- `astro-site/src/lib/tools/registry.ts` — central tool registry.
+- `astro-site/src/lib/tools/voltage-drop/` — types, constants, validation,
+  calculate, format. Pure, framework-free, reusable by Cable Size later.
+- `astro-site/src/layouts/ToolLayout.astro` — full-screen workspace shell.
+- `astro-site/src/components/tools/` — ToolHeader, ToolboxDrawer,
+  CommandPalette, SceneVoltageDrop, VoltageDropTool, plus workspace.ts and
+  voltage-drop-tool.ts client controllers (bundled by Astro, never inline).
+- `astro-site/src/pages/tools/index.astro` and
+  `astro-site/src/pages/tools/voltage-drop-calculator.astro`.
+- CSP entry for `/tools/*` in `public/_headers`.
+
+**Tests**
+- 38 new unit tests (33 engine + 5 registry). Full suite 871/871 / 60 files.
+- Manual browser verification: palette opens on Shift+Space with 9 rows and
+  filters to 2 on "cable"; Escape closes; drawer highlights the current tool;
+  panels collapse and reopen; reset restores 6.90 V; invalid cable size shows
+  "Cable size must be greater than 0 mm."; mobile horizontal overflow 0.
+
+**Build status** — typecheck clean, lint clean, astro build 138 pages green.
+
+**Performance** — tool route 17.3 KB gzip total (7.0 HTML + 4.3 CSS + 5.1 JS
++ 0.8 theme.js). The supplied React reference bundle was 305 KB. No framework
+runtime on the marketing site.
+
+**Known limitations**
+- Simplified resistive model (no reactance / power factor / temperature).
+- `check:perf` and `check:links` require the full root build; not run here.
+- No Playwright specs for the tool yet (plan phase 14).
+
+**Next step** — plan phase 14: desktop + mobile E2E specs, then phase 15
+performance/accessibility audit. Do NOT start Cable Size Calculator (plan §45).
