@@ -15,7 +15,7 @@
   --tp-good: #16a34a;
   --tp-warn: #f59e0b;
   --tp-bad: #dc2626;
-  --tp-header-h: 64px;
+  --tp-header-h: 72px;
   --tp-shadow: 0 10px 30px rgba(15, 23, 42, 0.10);
   --tp-radius: 14px;
   height: 100%;
@@ -964,6 +964,8 @@ a.hub-card:hover {
 
 /* Utility classes replacing inline style attributes (strict CSP: no
    `style-src 'unsafe-inline'`, so style="" attributes are blocked). */
+.dot-full { background: #16a34a; }
+.dot-flow { background: #a3e635; }
 .dot-good { background: #16a34a; }
 .dot-warn { background: #f59e0b; }
 .dot-bad  { background: #dc2626; }

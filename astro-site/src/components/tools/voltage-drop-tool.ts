@@ -21,9 +21,9 @@ import {
 import type { DropStatus, VoltageDropResult } from '../../lib/tools/voltage-drop';
 
 const STATUS_COLOUR: Record<DropStatus, string> = {
-  good: '#16a34a',
+  good: '#22c55e',
   'near-limit': '#f59e0b',
-  excessive: '#dc2626',
+  excessive: '#ef4444',
 };
 
 const STATUS_ICON: Record<DropStatus, string> = {

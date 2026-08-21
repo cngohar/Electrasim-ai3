@@ -16,10 +16,11 @@
     </p>
     <p class="drop-callout-sub">voltage drop</p>
   </div>
+
   <svg
     class="scene-svg"
     data-scene
-    viewBox="0 0 1330 620"
+    viewBox="0 0 1440 810"
     preserveAspectRatio="xMidYMid meet"
     role="img"
     aria-labelledby="scene-title scene-desc"
@@ -35,105 +36,93 @@
         <stop offset="100%" stop-color="#eef8ff" />
       </linearGradient>
       <linearGradient id="vdHillFar" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0%" stop-color="#9fd39a" /><stop offset="100%" stop-color="#7cbf7d" />
+        <stop offset="0%" stop-color="#b4d5b0" /><stop offset="100%" stop-color="#86c184" />
       </linearGradient>
       <linearGradient id="vdHillNear" x1="0" y1="0" x2="0" y2="1">
         <stop offset="0%" stop-color="#8ccb84" /><stop offset="100%" stop-color="#5faa61" />
       </linearGradient>
       <linearGradient id="vdGround" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0%" stop-color="#79bd72" /><stop offset="100%" stop-color="#4e9a55" />
+        <stop offset="0%" stop-color="#79bd72" /><stop offset="100%" stop-color="#4b9752" />
       </linearGradient>
       <linearGradient id="vdBox" x1="0" y1="0" x2="1" y2="1">
-        <stop offset="0%" stop-color="#e8ecf1" /><stop offset="55%" stop-color="#c3ccd6" />
-        <stop offset="100%" stop-color="#a7b2bf" />
+        <stop offset="0%" stop-color="#eef1f5" /><stop offset="55%" stop-color="#c6cfd9" />
+        <stop offset="100%" stop-color="#a3aebc" />
       </linearGradient>
       <linearGradient id="vdRoof" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0%" stop-color="#4a5568" /><stop offset="100%" stop-color="#2d3748" />
+        <stop offset="0%" stop-color="#4a5568" /><stop offset="100%" stop-color="#2c3441" />
       </linearGradient>
     </defs>
 
-    <!-- sky + weather -->
-    <rect width="1330" height="620" fill="url(#vdSky)" />
-    <circle class="vd-sun" cx="1040" cy="96" r="42" fill="#fff3bf" opacity=".85" />
+    <rect width="1440" height="810" fill="url(#vdSky)" />
+    <circle class="vd-sun" cx="1210" cy="120" r="46" fill="#fff3bf" opacity=".85" />
     <g class="vd-stars" aria-hidden="true">
-      <circle class="star d1" cx="180" cy="70" r="1.8" fill="#fff" />
-      <circle class="star d2" cx="420" cy="46" r="1.5" fill="#fff" />
-      <circle class="star d3" cx="760" cy="82" r="1.6" fill="#fff" />
+      <circle class="star d1" cx="200" cy="80" r="1.9" fill="#fff" />
+      <circle class="star d2" cx="520" cy="52" r="1.6" fill="#fff" />
+      <circle class="star d3" cx="900" cy="94" r="1.7" fill="#fff" />
     </g>
-    <g fill="#ffffff" opacity=".9" aria-hidden="true">
+    <g fill="#ffffff" opacity=".92" aria-hidden="true">
       <g class="cloud">
-        <ellipse cx="180" cy="110" rx="54" ry="24" /><ellipse cx="220" cy="100" rx="40" ry="28" />
-        <ellipse cx="140" cy="104" rx="34" ry="20" />
+        <ellipse cx="210" cy="132" rx="58" ry="25" /><ellipse cx="254" cy="121" rx="42" ry="30" />
+        <ellipse cx="166" cy="126" rx="36" ry="21" />
       </g>
       <g class="cloud d4">
-        <ellipse cx="620" cy="80" rx="44" ry="19" /><ellipse cx="652" cy="72" rx="32" ry="22" />
+        <ellipse cx="720" cy="96" rx="48" ry="20" /><ellipse cx="756" cy="88" rx="34" ry="24" />
       </g>
     </g>
-    <g class="bird" stroke="#64748b" stroke-width="2" fill="none" stroke-linecap="round" aria-hidden="true">
-      <path d="M300 150c6-6 12-6 18 0M318 150c6-6 12-6 18 0" />
+    <g class="bird" stroke="#64748b" stroke-width="2.2" fill="none" stroke-linecap="round" aria-hidden="true">
+      <path d="M360 178c7-7 14-7 21 0M381 178c7-7 14-7 21 0" />
     </g>
 
-    <!-- hills -->
-    <path d="M0 360c150-46 260 12 400-14s250-58 420-26 260 16 510-6v306H0z" fill="url(#vdHillFar)" />
-    <path d="M0 420c180-40 300 22 460-6s280-46 460-12 220 18 410 6v212H0z" fill="url(#vdHillNear)" />
-    <rect y="470" width="1330" height="150" fill="url(#vdGround)" />
-    <path d="M470 620c60-92 150-118 190-150l60 4c-40 44-120 74-160 146z" fill="#d9cdb0" opacity=".85" />
+    <!-- landscape -->
+    <path d="M0 452c170-52 300 14 460-16s280-66 480-30 290 18 500-8v412H0z" fill="url(#vdHillFar)" />
+    <path d="M0 520c200-44 340 26 520-8s320-52 520-14 260 22 400 8v304H0z" fill="url(#vdHillNear)" />
+    <rect y="596" width="1440" height="214" fill="url(#vdGround)" />
+    <path d="M600 810c70-108 176-140 224-176l70 5c-48 52-142 88-190 171z" fill="#dccfb2" opacity=".85" />
 
-    <!-- distant trees -->
     <g aria-hidden="true">
-      <g class="tree"><ellipse cx="90" cy="404" rx="22" ry="26" fill="#4d9a52" /><rect x="86" y="424" width="7" height="22" fill="#7c5c3a" /></g>
-      <g class="tree d1"><ellipse cx="250" cy="392" rx="18" ry="21" fill="#3f8c48" /><rect x="247" y="408" width="6" height="18" fill="#7c5c3a" /></g>
-      <g class="tree d2"><ellipse cx="980" cy="398" rx="20" ry="23" fill="#458f4c" /><rect x="977" y="416" width="6" height="20" fill="#7c5c3a" /></g>
-      <g class="tree d3"><ellipse cx="1120" cy="386" rx="17" ry="20" fill="#3f8c48" /><rect x="1117" y="402" width="6" height="18" fill="#7c5c3a" /></g>
+      <g class="tree"><ellipse cx="96" cy="500" rx="24" ry="29" fill="#4d9a52" /><rect x="91" y="522" width="8" height="26" fill="#7c5c3a" /></g>
+      <g class="tree d1"><ellipse cx="250" cy="486" rx="19" ry="23" fill="#3f8c48" /><rect x="246" y="504" width="7" height="20" fill="#7c5c3a" /></g>
+      <g class="tree d2"><ellipse cx="1330" cy="492" rx="22" ry="26" fill="#458f4c" /><rect x="1326" y="512" width="7" height="22" fill="#7c5c3a" /></g>
+      <g class="tree d3"><ellipse cx="1408" cy="476" rx="18" ry="21" fill="#3f8c48" /><rect x="1405" y="493" width="6" height="19" fill="#7c5c3a" /></g>
     </g>
 
-    <!-- ── SOURCE: supply cabinet ─────────────────────────────────────── -->
+    <!-- ── SOURCE: supply cabinet. Cable leaves the gland at (466,400). ── -->
     <g data-source>
-      <rect x="392" y="530" width="54" height="56" rx="4" fill="#9aa5b1" />
-      <rect x="380" y="574" width="80" height="16" rx="4" fill="#8b96a3" />
-      <rect x="360" y="330" width="128" height="150" rx="10" fill="url(#vdBox)" stroke="#8f9aa8" stroke-width="2" />
-      <rect x="374" y="344" width="100" height="122" rx="6" fill="none" stroke="#b9c3cf" stroke-width="2" />
-      <rect x="378" y="470" width="92" height="70" fill="#aab4c0" />
-      <circle class="led-blink" data-source-led cx="392" cy="360" r="6" fill="#22c55e" />
-      <path d="M424 372l-16 24h14l-3 20 18-26h-14z" fill="#f5c518" stroke="#8a6d00" stroke-width="1.6" stroke-linejoin="round" />
-      <rect x="404" y="424" width="26" height="30" rx="4" fill="#3f4652" />
-      <circle cx="417" cy="434" r="5" fill="#ef4444" />
-      <text x="424" y="300" text-anchor="middle" class="vd-cap">SOURCE</text>
-      <text x="424" y="322" text-anchor="middle" class="vd-val vd-val-source" data-source-voltage>230 V</text>
-      <rect x="484" y="392" width="22" height="26" rx="5" fill="#8f9aa8" />
+      <rect x="374" y="596" width="56" height="74" rx="4" fill="#98a3af" />
+      <rect x="356" y="656" width="92" height="18" rx="4" fill="#8b96a3" />
+      <rect x="330" y="252" width="140" height="216" rx="11" fill="url(#vdBox)" stroke="#8f9aa8" stroke-width="2" />
+      <rect x="345" y="267" width="110" height="186" rx="7" fill="none" stroke="#bcc6d2" stroke-width="2" />
+      <rect x="352" y="462" width="96" height="140" fill="#aab4c0" />
+      <circle class="led-blink" data-source-led cx="364" cy="284" r="6.5" fill="#22c55e" />
+      <path d="M404 300l-19 30h17l-4 25 22-33h-17z" fill="#f5c518" stroke="#8a6d00" stroke-width="1.8" stroke-linejoin="round" />
+      <rect x="386" y="372" width="30" height="36" rx="5" fill="#3f4652" />
+      <circle cx="401" cy="384" r="5.5" fill="#ef4444" />
+      <rect x="452" y="384" width="26" height="30" rx="6" fill="#8f9aa8" />
+      <text x="400" y="212" text-anchor="middle" class="vd-cap">SOURCE</text>
+      <text x="400" y="246" text-anchor="middle" class="vd-val vd-val-source" data-source-voltage>230.00 V</text>
     </g>
 
-    <!-- ── CABLE ──────────────────────────────────────────────────────── -->
+    <!-- ── CABLE: the reference path, verbatim ────────────────────────── -->
     <g data-cable-group>
-      <path
-        d="M504 405 C 596 462, 682 462, 762 430"
-        fill="none" stroke="#2f3742" stroke-width="17" stroke-linecap="round"
-      />
-      <path
-        d="M504 405 C 596 462, 682 462, 762 430"
-        fill="none" stroke="#4a5560" stroke-width="11" stroke-linecap="round"
-      />
-      <path
-        class="vd-flow" data-cable-flow
-        d="M504 405 C 596 462, 682 462, 762 430"
-        fill="none" stroke="#22c55e" stroke-width="7" stroke-linecap="round"
-      />
+      <path d="M466 400 C 645 478, 850 490, 1000 434" fill="none" stroke="#2c333d" stroke-width="20" stroke-linecap="round" />
+      <path d="M466 400 C 645 478, 850 490, 1000 434" fill="none" stroke="#48525e" stroke-width="13" stroke-linecap="round" />
+      <path class="vd-flow" data-cable-flow d="M466 400 C 645 478, 850 490, 1000 434" fill="none" stroke="#22c55e" stroke-width="8" stroke-linecap="round" />
     </g>
 
-    <!-- ── LOAD: house ────────────────────────────────────────────────── -->
-    <g data-load transform="translate(-96,0)">
-      <rect x="852" y="410" width="26" height="20" rx="5" fill="#8f9aa8" />
-      <g class="smoke" aria-hidden="true"><circle cx="1006" cy="300" r="9" fill="#ffffff" opacity=".5" /></g>
-      <rect x="994" y="300" width="26" height="46" fill="#5b6472" />
-      <path d="M864 372l130-84 130 84z" fill="url(#vdRoof)" />
-      <rect x="889" y="368" width="210" height="150" rx="6" fill="#f4f1ea" stroke="#ddd6ca" stroke-width="2" />
-      <rect x="974" y="440" width="42" height="78" rx="4" fill="#3b3730" />
-      <circle cx="1010" cy="482" r="3.5" fill="#e9c46a" />
-      <rect class="win-flicker" data-window x="909" y="404" width="50" height="46" rx="4" fill="#ffd88a" stroke="#c9a24a" stroke-width="2" />
-      <rect class="win-flicker" data-window x="1032" y="404" width="50" height="46" rx="4" fill="#ffd88a" stroke="#c9a24a" stroke-width="2"  />
-      <path d="M934 404v46M909 427h50M1057 404v46M1032 427h50" stroke="#c9a24a" stroke-width="2" />
-      <text x="994" y="238" text-anchor="middle" class="vd-cap">LOAD</text>
-      <text x="994" y="260" text-anchor="middle" class="vd-val vd-val-load" data-load-voltage>223.10 V</text>
+    <!-- ── LOAD: house, fed at (1000,434) ─────────────────────────────── -->
+    <g data-load>
+      <rect x="996" y="418" width="28" height="24" rx="6" fill="#8f9aa8" />
+      <g class="smoke" aria-hidden="true"><circle cx="1214" cy="290" r="10" fill="#ffffff" opacity=".5" /></g>
+      <rect x="1200" y="290" width="28" height="52" fill="#5b6472" />
+      <path d="M1010 372l148-96 148 96z" fill="url(#vdRoof)" />
+      <rect x="1032" y="368" width="252" height="180" rx="6" fill="#f6f3ec" stroke="#ddd6ca" stroke-width="2" />
+      <rect x="1136" y="452" width="48" height="96" rx="4" fill="#3b3730" />
+      <circle cx="1174" cy="502" r="4" fill="#e9c46a" />
+      <rect class="win-flicker" data-window x="1062" y="404" width="56" height="48" rx="4" fill="#ffd88a" stroke="#c9a24a" stroke-width="2" />
+      <rect class="win-flicker" data-window x="1200" y="404" width="56" height="48" rx="4" fill="#ffd88a" stroke="#c9a24a" stroke-width="2" />
+      <path d="M1090 404v48M1062 428h56M1228 404v48M1200 428h56" stroke="#c9a24a" stroke-width="2" />
+      <text x="1040" y="212" text-anchor="middle" class="vd-cap">LOAD</text>
+      <text x="1040" y="246" text-anchor="middle" class="vd-val vd-val-load" data-load-voltage>223.10 V</text>
     </g>
   </svg>
 </div>
@@ -141,14 +130,14 @@
 <style>
   .vd-cap {
     font-family: var(--font-display);
-    font-size: 19px;
+    font-size: 24px;
     font-weight: 700;
     letter-spacing: 0.06em;
     fill: #0f172a;
   }
   .vd-val {
     font-family: var(--font-mono);
-    font-size: 22px;
+    font-size: 28px;
     font-weight: 700;
   }
   .vd-val-source { fill: #2563eb; }
