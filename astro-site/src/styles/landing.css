@@ -82,31 +82,42 @@
   white-space: nowrap;
 }
 
-/* Lamp placement.
-   Measured free space per breakpoint (copy block vs hero box):
-     >=1100px  copy occupies the left ~50%   -> props live in the right half
-     721-1099  copy occupies y 23-75%        -> props scatter into the top and
-                                                bottom bands and the right edge
-     <=720     copy occupies y 11-85%        -> props take the corners only
+/* Lamp + breaker placement.
+   The hero copy is centred, so the props live in the side gutters on wide
+   screens and drop to the top/bottom bands as those gutters close up.
+   Measured free space (copy block vs hero box):
+     >=1100px  gutters 20-27% each side, bands 22-25%  -> 2 lamps per gutter
+      900-1099 gutters 16-20%                          -> 2 lamps per gutter, tighter
+      721-899  gutters 10-16%, bands 25-28%            -> corners in the bands
+      <=720    gutters 3-5%, bands 11-18%              -> corners only
    /js/landing-hero.js re-binds each lamp to its nearest circuit junction on
-   load and resize, so the glow still lands on a real node at every size. */
-.lamp-0 { left: 84%; top: 15%; }   /* A19       */
-.lamp-1 { left: 93%; top: 40%; }   /* halogen   */
-.lamp-2 { left: 68%; top: 54%; }   /* CFL       */
-.lamp-3 { left: 84%; top: 76%; }   /* LED       */
+   load and resize, so the glow lands on a real node at every size. */
+.lamp-3 { left: 11%; top: 26%; }   /* LED     — upper left  */
+.lamp-1 { left: 9%;  top: 68%; }   /* halogen — lower left  */
+.lamp-0 { left: 89%; top: 24%; }   /* A19     — upper right */
+.lamp-2 { left: 91%; top: 66%; }   /* CFL     — lower right */
 
-/* Tablet / small laptop — scatter, don't stack down the right edge. */
-@media (min-width: 721px) and (max-width: 1099px) {
+@media (min-width: 900px) and (max-width: 1099px) {
   .lamp-img {
-    height: 62px;
+    height: 74px;
   }
-  .lamp-3 { left: 13%; top: 10%; }   /* top-left     */
-  .lamp-0 { left: 83%; top: 14%; }   /* top-right    */
-  .lamp-1 { left: 90%; top: 47%; }   /* right edge   */
-  .lamp-2 { left: 17%; top: 87%; }   /* bottom-left  */
+  .lamp-3 { left: 8%;  top: 26%; }
+  .lamp-1 { left: 9%;  top: 70%; }
+  .lamp-0 { left: 92%; top: 24%; }
+  .lamp-2 { left: 93%; top: 68%; }
 }
 
-/* Phones — the copy fills the middle, so the props take the corners. */
+/* Gutters are too narrow to hold a lamp — use the top and bottom bands. */
+@media (min-width: 721px) and (max-width: 899px) {
+  .lamp-img {
+    height: 66px;
+  }
+  .lamp-3 { left: 12%; top: 9%; }    /* top-left     */
+  .lamp-0 { left: 88%; top: 9%; }    /* top-right    */
+  .lamp-2 { left: 12%; top: 90%; }   /* bottom-left  */
+  .lamp-1 { display: none; }         /* too slim to read at this size */
+}
+
 @media (max-width: 720px) {
   .lamp-img {
     height: 54px;
@@ -114,24 +125,30 @@
   .lamp-tag {
     display: none;
   }
-  .lamp-3 { left: 13%; top: 5.5%; }   /* top-left     */
-  .lamp-0 { left: 87%; top: 5.5%; }   /* top-right    */
-  .lamp-2 { left: 14%; top: 93%; }    /* bottom-left  */
-  .lamp-1 { display: none; }          /* too slim to read at 54px */
+  .lamp-3 { left: 13%; top: 5.5%; }  /* top-left     */
+  .lamp-0 { left: 87%; top: 5.5%; }  /* top-right    */
+  .lamp-2 { left: 14%; top: 93%; }   /* bottom-left  */
+  .lamp-1 { display: none; }
 }
 
 /* ── Main breaker ───────────────────────────────────────────────────────── */
 .mcb {
   position: absolute;
-  left: 68%;
-  top: 15%;
+  left: 78%;
+  top: 89%;
   transform: translate(-50%, -50%);
   z-index: 4;
 }
-@media (max-width: 1099px) {
+@media (min-width: 900px) and (max-width: 1099px) {
   .mcb {
-    left: 78%;
-    top: 86%;
+    left: 85%;
+    top: 90%;
+  }
+}
+@media (min-width: 721px) and (max-width: 899px) {
+  .mcb {
+    left: 86%;
+    top: 89%;
   }
 }
 @media (max-width: 720px) {
@@ -143,6 +160,8 @@
     transform: translateX(-50%);
   }
 }
+
+/* Breaker internals */
 .mcb-btn {
   display: flex;
   flex-direction: column;
@@ -165,6 +184,7 @@
   font-size: 9px;
   text-transform: uppercase;
   letter-spacing: 0.14em;
+  line-height: 1;
 }
 .mcb-cap {
   color: var(--text-dim);
@@ -194,6 +214,7 @@
   font-family: var(--font-mono);
   font-size: 8px;
   font-weight: 700;
+  line-height: 1;
   color: var(--live);
 }
 .mcb-pole-off {
@@ -233,20 +254,25 @@
   width: 100%;
   align-self: center;
 }
+.hero-in {
+  text-align: center;
+}
 .hero-in > * {
-  max-width: 600px;
+  max-width: 620px;
+  margin-left: auto;
+  margin-right: auto;
 }
 @media (min-width: 1100px) {
   .hero-in > * {
-    max-width: 640px;
+    max-width: 680px;
   }
 }
 .hero-in::before {
   content: "";
   position: absolute;
-  left: 34%;
+  left: 50%;
   top: 50%;
-  width: min(1100px, 165%);
+  width: min(980px, 128%);
   height: 155%;
   transform: translate(-50%, -50%);
   background: radial-gradient(
@@ -335,12 +361,14 @@
 .hero-actions {
   display: flex;
   flex-wrap: wrap;
+  justify-content: center;
   gap: 0.85rem;
   margin-bottom: 2.2rem;
 }
 .hero-trust {
   display: flex;
   flex-wrap: wrap;
+  justify-content: center;
   gap: 0.55rem 1.4rem;
   list-style: none;
   font-family: var(--font-mono);
