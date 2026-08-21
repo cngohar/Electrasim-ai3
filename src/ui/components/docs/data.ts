@@ -53,7 +53,7 @@ export const LEARNING_MODES: Array<{
   {
     name: 'Challenge Mode',
     tagline: 'Build this',
-    body: 'You are given an objective and the supply terminals; you wire the installation yourself. Your circuit is compared against a generated target using the same electrical rules as the rest of the simulator, so any wiring that is genuinely equivalent is accepted — you are not required to match it component for component.',
+    body: 'Structured challenges walk you through real wiring skills — build a protected lamp, wire a momentary doorbell, protect a socket with an RCBO. Each challenge has a clear objective, ordered steps, a rule checklist and three progressive hints. Checking your circuit gives plain-English feedback on what to fix next; extra components are warned about, never deleted. Your normal circuit is snapshotted the moment a challenge starts and restored exactly when you leave — challenges can never destroy it.',
   },
   {
     name: 'Diagnosis Lab',

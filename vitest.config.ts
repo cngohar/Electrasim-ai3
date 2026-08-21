@@ -3,6 +3,11 @@ import path from 'node:path';
 import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vite';
 
+// React's production build drops `React.act`, which @testing-library needs.
+// Force the environment before Vite starts resolving modules so an ambient
+// `NODE_ENV=production` shell cannot silently break every component test.
+process.env.NODE_ENV = 'test';
+
 /**
  * Vitest config (separate from vite.config.ts to keep dev/build lean).
  *

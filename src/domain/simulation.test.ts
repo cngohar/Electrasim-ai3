@@ -659,6 +659,33 @@ describe('simulate — faults operate upstream protection', () => {
     expect(usTrip?.currentAmps).toBe(240);
     expect(ukTrip!.currentAmps).toBeGreaterThan(usTrip!.currentAmps);
   });
+
+  it('tags every fault-naming trip message so Diagnosis mode can withhold it (regression §14)', () => {
+    // Regression: the fault-driven protection-trip messages ("TRIPPED: bolted
+    // short circuit…") were pushed as plain errors, so the Diagnosis Lab could
+    // not withhold them and the answer leaked into the console.
+    const l = C('live-terminal');
+    const n = C('neutral-terminal');
+    const mcb = C('mcb');
+    const bulb = C('bulb', { fault: 'short-circuit' });
+    const wires = [
+      W({ c: l, p: 0 }, { c: mcb, p: 0 }),
+      W({ c: mcb, p: 1 }, { c: bulb, p: 0 }),
+      W({ c: n, p: 0 }, { c: bulb, p: 1 }),
+    ];
+    const result = simulate(circuit([l, n, mcb, bulb], wires));
+
+    const tagged = new Set(result.faultNarrationErrors ?? []);
+    const namingErrors = result.errors
+      .map((message, index) => ({ message, index }))
+      .filter(({ message }) =>
+        /bolted short circuit|residual leakage|arc-fault signature/i.test(message),
+      );
+    expect(namingErrors.length).toBeGreaterThan(0);
+    for (const { index } of namingErrors) {
+      expect(tagged.has(index), `error index ${index} must be tagged`).toBe(true);
+    }
+  });
 });
 
 describe('simulate — smooth DC residual blinding (RCD type selection)', () => {

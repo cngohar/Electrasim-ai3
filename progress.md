@@ -7,6 +7,26 @@ A running, append-only log of work on the ElectraSim rewrite. Every coding sessi
 
 ---
 
+## Session 2026-08-20 — Foundation Lock + declarative Challenge Mode (§5–§26)
+
+**Done:** executed the Circuit Generator Foundation test plan end to end, then replaced the generator-based Challenge Mode with the declarative system from `ElectraSim-Challenge-Mode-Plan.md`.
+
+**Foundation Lock (Circuit Generator).** Ran the full test plan: typecheck/lint/build green; 3000-seed stress sweep (1000 × 3 difficulties) plus pinned-recipe, adversarial-seed and identity-collision sweeps — 4,476 generations, 0 failures, 0 retries, 269,808 fault injections all observable, 500,108 repairs verified. Two real defects found and fixed: (1) `vitest.config.ts` now pins `NODE_ENV=test` — the ambient production env made React drop `React.act` and broke every component test; (2) the simulator's fault-trip messages ("TRIPPED: bolted short circuit…") were untagged, so Diagnosis mode leaked the answer into the console — a 4,500-scenario sweep found 469 leaks, fixed by routing them through `pushFaultNarrationError`, with a regression test. **Verdict: FOUNDATION LOCKED.**
+
+**Declarative Challenge Mode.** The existing mode was "generate a random recipe against the clock" — exactly what plan §44 forbids. Replaced it entirely per the new plan:
+
+- **Domain** (`src/domain/challenges/declarative/`): challenges as pure data — starter, allowed components, ordered rule checklist (component/connection/state/functional/fault), three hints, completion message. Rules judge topology, never coordinates/ids (§7); functional rules run the real simulator with evidence states (§8).
+- **Three challenges** (§23–§25): Protected Lamp, Push-Button Doorbell (momentary proven by interaction evidence), RCBO-Protected Socket (bypasses rejected via exclusive-path rules).
+- **Safe workspace**: snapshot-on-start, per-attempt autosave routing, exact restore on exit, reload Continue/Return prompt, starter-only reset, progress in its own IDB map (§11–§15, §33–§34).
+- **UI**: Learn hub with cards + Continue Challenge; active panel with steps, checklist, progress, verdicts; phone bottom sheet with hide-to-pill; palette restricted to allowed components during a challenge (§16–§20).
+- **Removed** the old generator-based mode (domain modules, store, persistence, stress script) — the generator foundation stays, powering the Diagnosis Lab.
+
+**Verification:** typecheck + lint clean (356 files); **833/833 Vitest across 58 files** (12 new declarative-domain tests, 7 new workspace tests, 1 simulation regression); Playwright challenge-mode **18/18 across chromium + mobile-chrome + tablet-safari**; production build green; full chromium e2e sweep 58 passed with one diagnosis-lab framing flake that passes in isolation and 2× on repeat (DOM-measure race under parallel workers, not a regression).
+
+**Next step:** real user testing of the three challenges per plan §26 — **STOP adding challenge content until then.**
+
+---
+
 ## Session 2026-08-19 (later) — gate closure, first WebKit run, iPad Safari layout fix
 
 **Done:** finished the verification work the previous entry left open, and fixed everything it turned up. Every §55 gate now runs; all pass except `check:perf`, which is a budget decision (below).

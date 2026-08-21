@@ -8,9 +8,15 @@ import {
   stripShareURLPayload,
 } from './lib/exportImport';
 import { useCircuitStore } from './store/circuitStore';
+import {
+  loadActiveDeclarativeChallenge,
+  loadChallengeProgress,
+} from './store/declarativeChallengePersistence';
+import { useDeclarativeChallengeStore } from './store/declarativeChallengeStore';
 import { startEventHistoryPersistence } from './store/eventHistoryPersistence';
 import { hydrateCircuit, persistCircuit, startAutosave } from './store/persistence';
 import { startSettingsPersistence, useSettingsStore } from './store/settingsStore';
+import { useUiStore } from './store/uiStore';
 import { applyDocumentTheme, readThemeHint, resolveThemePreference } from './ui/themePreference';
 import './index.css';
 
@@ -55,6 +61,22 @@ void (async () => {
   }
 
   startAutosave();
+
+  // Plan §14: if a challenge was active when the page closed, offer the
+  // learner the choice instead of silently choosing for them. The prompt
+  // renders through the (lazily loaded) Challenge panel, which is opened
+  // only when a resumable record exists.
+  void (async () => {
+    const active = await loadActiveDeclarativeChallenge();
+    const progress = await loadChallengeProgress();
+    useDeclarativeChallengeStore.setState({ progress });
+    if (active) {
+      useDeclarativeChallengeStore.setState({
+        resumePrompt: { active: true, record: { challengeId: active.challengeId } },
+      });
+      useUiStore.getState().setChallengeOpen(true);
+    }
+  })();
 
   createRoot(document.getElementById('root')!).render(
     <StrictMode>

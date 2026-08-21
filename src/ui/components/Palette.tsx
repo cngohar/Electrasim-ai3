@@ -5,7 +5,7 @@
  */
 
 import { ChevronLeft, ChevronRight, Layers, Search, X } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { COMPONENT_DEFS } from '../../domain';
 import {
   PLUG_SYSTEMS,
@@ -14,6 +14,7 @@ import {
   primarySocketForPlug,
 } from '../../domain/standards';
 import { useUiStore } from '../../store';
+import { useDeclarativeChallengeStore } from '../../store/declarativeChallengeStore';
 import { useSettingsStore } from '../../store/settingsStore';
 import { getDefaultArt } from '../canvas/componentArt';
 import { getComponentImage } from './componentImages';
@@ -277,27 +278,51 @@ export function Palette({ open, isPhone }: Props) {
   const regulationStandard = useSettingsStore((s) => s.regulationStandard);
   const plugSystem = useSettingsStore((s) => s.plugSystem);
   const recentComponents = useSettingsStore((s) => s.recentComponents);
+  // Plan §20: during an active challenge the palette exposes only the
+  // allowed component types; everything else is dimmed (not deleted).
+  const challengeDefinition = useDeclarativeChallengeStore((s) =>
+    s.status === 'active' ? s.definition : null,
+  );
   const setPaletteOpen = useUiStore((s) => s.setPaletteOpen);
   const [query, setQuery] = useState('');
 
   // Regional socket set — only show the selected plug type's sockets (plus
   // universal components). Keeps the palette relevant, not bloated.
   const regionalSockets = useMemo(() => new Set(PLUG_SYSTEMS[plugSystem].sockets), [plugSystem]);
-  const isAvailable = (entry: PaletteEntry) => {
-    if (appMode === 'basic' && entry.tier === 'pro') return false;
-    return !REGIONAL_SOCKET_TYPES.has(entry.type) || regionalSockets.has(entry.type);
-  };
+  const isAvailable = useCallback(
+    (entry: PaletteEntry) => {
+      if (appMode === 'basic' && entry.tier === 'pro') return false;
+      return !REGIONAL_SOCKET_TYPES.has(entry.type) || regionalSockets.has(entry.type);
+    },
+    [appMode, regionalSockets],
+  );
   const allEntries = useMemo(() => groups.flatMap((group) => group.items), [groups]);
   const recommendedTypeOrder = useMemo(
     () => recommendedPaletteTypes(regulationStandard, plugSystem),
     [regulationStandard, plugSystem],
   );
-  const recommended = recommendedTypeOrder
-    .map((type) => allEntries.find((entry) => entry.type === type))
-    .filter((entry): entry is PaletteEntry => Boolean(entry && isAvailable(entry)));
+  // Plan §20: during a challenge only the allowed parts are offered; the
+  // learner can still search for nothing else. Extra components already on
+  // the canvas are never deleted — the validator warns instead.
+  const challengeAllows = useMemo(() => {
+    if (!challengeDefinition?.allowedComponents) return null;
+    const allowed = new Set(challengeDefinition.allowedComponents);
+    return (type: string): boolean => allowed.has(type);
+  }, [challengeDefinition]);
+  const recommended = useMemo(
+    () =>
+      recommendedTypeOrder
+        .map((type) => allEntries.find((entry) => entry.type === type))
+        .filter((entry): entry is PaletteEntry =>
+          Boolean(
+            entry && isAvailable(entry) && (challengeAllows ? challengeAllows(entry.type) : true),
+          ),
+        ),
+    [recommendedTypeOrder, allEntries, isAvailable, challengeAllows],
+  );
   const visibleRecentComponents = recentComponents.filter((type) => {
     const entry = allEntries.find((item) => item.type === type);
-    return Boolean(entry && isAvailable(entry));
+    return Boolean(entry && isAvailable(entry) && (challengeAllows ? challengeAllows(type) : true));
   });
 
   const filtered = useMemo(() => {
@@ -309,6 +334,7 @@ export function Palette({ open, isPhone }: Props) {
         items: g.items
           .filter((it) => {
             if (appMode === 'basic' && it.tier === 'pro') return false;
+            if (challengeAllows && !challengeAllows(it.type)) return false;
             // Region-filter regional sockets only. Universal socket types
             // (switched-socket, USB, GFCI, industrial) stay visible everywhere.
             if (REGIONAL_SOCKET_TYPES.has(it.type) && !regionalSockets.has(it.type)) return false;
@@ -322,7 +348,7 @@ export function Palette({ open, isPhone }: Props) {
           ),
       }))
       .filter((g) => g.items.length > 0);
-  }, [groups, query, appMode, regionalSockets, recommendedTypeOrder]);
+  }, [groups, query, appMode, regionalSockets, recommendedTypeOrder, challengeAllows]);
 
   // The phone branch returns before the desktop `if (!open)` guard below, so
   // it must honour `open` itself — otherwise the bottom sheet is permanently
@@ -334,10 +360,15 @@ export function Palette({ open, isPhone }: Props) {
       <>
         {/* Backdrop — tap outside to close */}
         <div
-          className="absolute inset-0 z-20 bg-black/30 backdrop-blur-sm"
+          className="absolute inset-0 z-40 bg-black/30 backdrop-blur-sm"
           onClick={() => useUiStore.getState().togglePalette()}
         />
-        <aside className="absolute bottom-0 left-0 right-0 z-30 flex max-h-[62vh] flex-col overflow-hidden rounded-t-2xl border-t border-white/80 bg-white/95 shadow-2xl shadow-slate-900/20 dark:border-slate-700/80 dark:bg-slate-900/95">
+        {/*
+         * z-50 above every other bottom-docked surface (challenge/diagnosis
+         * panels sit at z-30): only one bottom surface should be usable at a
+         * time (plan §19), and the palette must be the top one while open.
+         */}
+        <aside className="absolute bottom-0 left-0 right-0 z-50 flex max-h-[62vh] flex-col overflow-hidden rounded-t-2xl border-t border-white/80 bg-white/95 shadow-2xl shadow-slate-900/20 dark:border-slate-700/80 dark:bg-slate-900/95">
           {/* Drag handle */}
           <div className="flex justify-center pt-2.5 pb-1">
             <div className="h-1 w-10 rounded-full bg-slate-300 dark:bg-slate-600" />

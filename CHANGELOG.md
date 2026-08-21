@@ -11,6 +11,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — Session 2026-08-20: Declarative Challenge Mode (plan §5–§26)
+
+Replaced the generator-based "build a random circuit against the clock" mode with the declarative system the plan specifies: hand-authored challenges, a rule checklist validator, a safe practice workspace, and a Learn hub. Per plan §26 this ships exactly three challenges — user testing must happen before more content.
+
+- **Declarative challenge domain** (`src/domain/challenges/declarative/`). Challenges are pure data: starter circuit, allowed components, an ordered rule checklist (component / connection / state / functional / fault rules), three progressive hints and a completion message. Rules are judged against the real circuit model and simulation engine — topology, never coordinates or ids (plan §7), so any electrically equivalent wiring passes. Functional rules run the real simulator with evidence states (plan §8 "Interaction Evidence": the doorbell must be OFF when released and ON while pressed).
+- **Three Wave-2 challenges** (§23–§25): *Build a Protected Lamp* (blank canvas, Live → MCB → Switch → Bulb → Neutral), *Wire a Push-Button Doorbell* (momentary topology proven by interaction evidence), and *Protect a Socket with an RCBO* (both conductors through the RCBO — bypasses rejected — plus the Earth path).
+- **Safe practice workspace** (`declarativeChallengeStore`, `declarativeChallengePersistence`). Starting snapshots the normal circuit; challenge edits autosave to a per-attempt key, never the normal circuit (plan §11/§12). Exiting restores the snapshot exactly, with "Return to My Circuit" / "Keep a Copy" / "Cancel" (§13). A reload offers Continue vs Return instead of silently choosing (§14). Reset restores this challenge's starter, never the global default (§15). Completion is recorded in its own IndexedDB progress map — Circuit JSON ≠ Challenge Progress (§34).
+- **Learn hub + panel** (plan §16–§19). The menu entry opens the Learn hub: Continue Challenge (when resumable) plus challenge cards with difficulty, time estimate and completion checkmarks. The active view shows objective, steps, a progress meter, the rule checklist and plain-English verdicts (plan §9: no raw ids). Phones get a bottom sheet with a hide-to-pill affordance so the canvas stays reachable (§19). The palette restricts to the challenge's allowed components during an active challenge; extra components already placed are warned about, never deleted (§20).
+- **Foundation Lock defects fixed** (from the generator test plan): the vitest config now pins `NODE_ENV=test` so an ambient production env cannot break every React test, and fault-naming trip messages in the simulator are tagged so Diagnosis mode can withhold them (469 leaks across 4,500 scenarios → 0, with a regression test).
+
+**Removed:** the old generator-based Challenge Mode (`challenge/{scenario,comparison,evaluator,scoring}.ts`, `challengeStore`, `challengePersistence`, `stress-challenge-mode`) per plan §44: "Do not turn Challenge Mode into a second random generator." The generator foundation remains, powering the Diagnosis Lab.
+
+**Verification:** typecheck + lint clean (356 files); **833/833 Vitest tests across 58 files**; Playwright **chromium 58 passed**, **mobile-chrome + tablet-safari 18/18 passed** for the new challenge-mode spec; production build green. Diagnosis-lab spec passes 2× consecutively after one parallel-worker framing flake (DOM-measure race, passes in isolation and on repeat).
+
 ### Fixed — Session 2026-08-19 (later): iPad Safari header collapse, gate closure, e2e stabilisation
 
 Closed out the two §55 gates that had never been executed, and fixed the first real cross-browser defect they exposed.

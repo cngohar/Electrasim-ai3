@@ -1,27 +1,25 @@
 /**
- * ChallengePanel — Challenge Mode UI (plan §14 layout conventions, §17 hints,
- * §18 attempts, §19 celebration, §22 abandon confirmation, §46 a11y).
+ * ChallengePanel — declarative Challenge Mode UI (plan §16–§19).
  *
- * The panel owns no electrical logic whatsoever. It renders
- * `challengeStore` state and calls its actions; every verdict comes from
- * `domain/challenges` (scenario → evaluate → score).
+ * Three views in one lazy component:
+ *   1. Learn hub    — Continue Challenge (when one exists) + challenge cards.
+ *   2. Active       — objective, steps, rule checklist, Check / Hint / Reset.
+ *   3. Complete     — the educational celebration (time + hints, never coins).
  *
- * Accessibility (plan §46):
- *   - the objective/result region is a polite live region, so verdicts are
- *     announced without stealing focus;
- *   - the celebration respects `prefers-reduced-motion` (§19) — the confetti
- *     burst is replaced by a static success state;
- *   - every control is a real button with an accessible name.
+ * The panel owns no electrical logic: it renders `declarativeChallengeStore`
+ * state and delegates every verdict to `domain/challenges/declarative`.
+ *
+ * Accessibility (plan §35): verdict region is a polite live region; every
+ * control is a real button with an accessible name; Escape closes dialogs.
  */
 
 import {
   Check,
   ChevronRight,
   CircleAlert,
-  Copy,
+  Download,
   Lightbulb,
   ListChecks,
-  Play,
   RotateCcw,
   Target,
   Timer,
@@ -29,26 +27,19 @@ import {
   X,
 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
-import type { ChallengeDifficulty } from '../../domain/challenges';
 import {
-  GENERATOR_VERSION,
-  formatElapsed,
-  formatShareText,
-  parseShareText,
-} from '../../domain/challenges';
-import { useCircuitStore, useUiStore } from '../../store';
-import { useChallengeStore } from '../../store/challengeStore';
-import { useCopyToClipboard } from '../hooks/useCopyToClipboard';
+  CHALLENGE_DEFINITIONS,
+  type ChallengeDefinition,
+  describeExtraComponents,
+  formatElapsedDeclarative,
+} from '../../domain/challenges/declarative';
+import { useUiStore } from '../../store';
+import { useDeclarativeChallengeStore } from '../../store/declarativeChallengeStore';
+import { Modal } from './Modal';
 
 interface Props {
   isPhone: boolean;
 }
-
-const DIFFICULTIES: { id: ChallengeDifficulty; label: string; blurb: string }[] = [
-  { id: 'beginner', label: 'Beginner', blurb: 'One load, short path' },
-  { id: 'intermediate', label: 'Intermediate', blurb: 'Branches and switching' },
-  { id: 'advanced', label: 'Advanced', blurb: 'Multi-branch installation' },
-];
 
 function usePrefersReducedMotion(): boolean {
   const [reduced, setReduced] = useState(false);
@@ -65,72 +56,90 @@ function usePrefersReducedMotion(): boolean {
 
 /** Live mm:ss ticker driven off the store's monotonic accounting. */
 function useElapsedLabel(active: boolean): string {
-  const totalElapsedMs = useChallengeStore((s) => s.totalElapsedMs);
+  const totalElapsedMs = useDeclarativeChallengeStore((s) => s.totalElapsedMs);
   const [, force] = useState(0);
   useEffect(() => {
     if (!active) return;
     const id = setInterval(() => force((n) => n + 1), 1000);
     return () => clearInterval(id);
   }, [active]);
-  return formatElapsed(totalElapsedMs());
+  return formatElapsedDeclarative(totalElapsedMs());
+}
+
+function difficultyBadge(difficulty: ChallengeDefinition['difficulty']): string {
+  switch (difficulty) {
+    case 'beginner':
+      return 'Beginner';
+    case 'intermediate':
+      return 'Intermediate';
+    case 'advanced':
+      return 'Advanced';
+  }
 }
 
 export function ChallengePanel({ isPhone }: Props) {
-  const status = useChallengeStore((s) => s.status);
-  const scenario = useChallengeStore((s) => s.scenario);
-  const evaluation = useChallengeStore((s) => s.evaluation);
-  const score = useChallengeStore((s) => s.score);
-  const attempts = useChallengeStore((s) => s.attempts);
-  const hintsUsed = useChallengeStore((s) => s.hintsUsed);
-  const error = useChallengeStore((s) => s.error);
-  const confirmingNew = useChallengeStore((s) => s.confirmingNew);
-  const start = useChallengeStore((s) => s.start);
-  const submit = useChallengeStore((s) => s.submit);
-  const revealHint = useChallengeStore((s) => s.revealHint);
-  const abandon = useChallengeStore((s) => s.abandon);
-  const requestNew = useChallengeStore((s) => s.requestNew);
-  const cancelNew = useChallengeStore((s) => s.cancelNew);
-  const exitChallenge = useChallengeStore((s) => s.exit);
-  const setChallengeOpen = useUiStore((s) => s.setChallengeOpen);
-  const exit = () => {
-    exitChallenge();
-    setChallengeOpen(false);
-  };
+  const status = useDeclarativeChallengeStore((s) => s.status);
+  const definition = useDeclarativeChallengeStore((s) => s.definition);
+  const verdict = useDeclarativeChallengeStore((s) => s.verdict);
+  const attempts = useDeclarativeChallengeStore((s) => s.attempts);
+  const hintsUsed = useDeclarativeChallengeStore((s) => s.hintsUsed);
+  const progress = useDeclarativeChallengeStore((s) => s.progress);
+  const confirmingExit = useDeclarativeChallengeStore((s) => s.confirmingExit);
+  const resumePrompt = useDeclarativeChallengeStore((s) => s.resumePrompt);
 
-  const componentCount = useCircuitStore((s) => s.components.length);
+  const start = useDeclarativeChallengeStore((s) => s.start);
+  const check = useDeclarativeChallengeStore((s) => s.check);
+  const revealHint = useDeclarativeChallengeStore((s) => s.revealHint);
+  const resetChallenge = useDeclarativeChallengeStore((s) => s.resetChallenge);
+  const requestExit = useDeclarativeChallengeStore((s) => s.requestExit);
+  const cancelExit = useDeclarativeChallengeStore((s) => s.cancelExit);
+  const exitToMyCircuit = useDeclarativeChallengeStore((s) => s.exitToMyCircuit);
+  const keepCopy = useDeclarativeChallengeStore((s) => s.keepCopy);
+  const resumeActive = useDeclarativeChallengeStore((s) => s.resumeActive);
+  const returnFromReload = useDeclarativeChallengeStore((s) => s.returnFromReload);
+  const refreshProgress = useDeclarativeChallengeStore((s) => s.refreshProgress);
+
+  const setChallengeOpen = useUiStore((s) => s.setChallengeOpen);
   const reducedMotion = usePrefersReducedMotion();
 
-  // §30 replay: the pasted ticket, and the note we show about it.
-  const [replayText, setReplayText] = useState('');
-  const [replayNote, setReplayNote] = useState<string | null>(null);
-  const [seedCopied, copySeed] = useCopyToClipboard();
+  useEffect(() => {
+    void refreshProgress();
+  }, [refreshProgress]);
 
-  /**
-   * Replay a shared challenge (plan §30). The ticket carries identity inputs
-   * only; the target circuit is rebuilt by the same deterministic generator.
-   */
-  const replaySharedSeed = () => {
-    const parsed = parseShareText(replayText, { difficulty: 'beginner', mode: 'challenge' });
-    if (!parsed) {
-      setReplayNote("That doesn't look like a seed or share code.");
-      return;
-    }
-    setReplayNote(
-      parsed.versionMismatch
-        ? `Replaying seed ${parsed.seed} on generator v${GENERATOR_VERSION}. It was created on v${parsed.generatorVersion}, so the circuit may differ.`
-        : null,
-    );
-    setReplayText('');
-    void start(parsed.difficulty, parsed.seed);
-  };
   const elapsedLabel = useElapsedLabel(status === 'active');
+  const [showSteps, setShowSteps] = useState(true);
+  // All hooks must run unconditionally — the conditional returns below are
+  // view switches only (React rules of hooks).
+  const visibleHints = useMemo(
+    () => (definition ? definition.hints.slice(0, hintsUsed) : []),
+    [definition, hintsUsed],
+  );
+  // §19: on phones the bottom sheet can cover the canvas — the learner may
+  // collapse it to a floating pill and bring it back, exactly like the
+  // guided panel's hide affordance.
+  const [panelHidden, setPanelHidden] = useState(false);
 
-  const [showChecklist, setShowChecklist] = useState(true);
+  if (isPhone && panelHidden && status === 'active') {
+    return (
+      <button
+        type="button"
+        onClick={() => setPanelHidden(false)}
+        aria-label="Show challenge panel"
+        className="absolute bottom-20 right-3 z-20 flex items-center gap-2 rounded-full border border-white/80 bg-white/95 px-3 py-2 shadow-xl shadow-slate-900/10 ring-1 ring-slate-900/5 backdrop-blur-xl transition hover:bg-blue-50 dark:border-slate-700/80 dark:bg-slate-900/95 dark:ring-slate-700/50 dark:hover:bg-slate-800"
+      >
+        <span className="grid size-6 place-items-center rounded-lg bg-blue-600 text-white">
+          <Target className="size-3.5" />
+        </span>
+        <span className="text-[11px] font-semibold text-slate-700 dark:text-slate-200">
+          Challenge
+        </span>
+        <span className="rounded-full bg-blue-100 px-1.5 py-0.5 text-[10px] font-bold text-blue-700 dark:bg-blue-950 dark:text-blue-300">
+          {Math.round((verdict?.completion ?? 0) * 100)}%
+        </span>
+      </button>
+    );
+  }
 
-  // Dock on the right, clear of the Inspector's 48px collapsed icon rail —
-  // the same placement the guided panel uses. Challenge Mode needs the
-  // component palette (left) to stay reachable, since the whole task is
-  // dragging parts onto the canvas.
   const shell = [
     'absolute z-30 flex flex-col overflow-hidden rounded-2xl border border-white/80 bg-white/95 shadow-xl shadow-slate-900/10 ring-1 ring-slate-900/5 backdrop-blur-xl dark:border-slate-700/80 dark:bg-slate-900/95 dark:ring-slate-700/50',
     isPhone
@@ -138,13 +147,76 @@ export function ChallengePanel({ isPhone }: Props) {
       : 'right-14 top-24 w-56 max-h-[calc(100vh-8rem)] lg:w-[340px]',
   ].join(' ');
 
-  const visibleHints = useMemo(
-    () => (scenario ? scenario.hints.slice(0, hintsUsed) : []),
-    [scenario, hintsUsed],
-  );
+  const closePanel = () => {
+    setChallengeOpen(false);
+  };
 
-  // ── Idle: difficulty picker ─────────────────────────────────────────────
-  if (status === 'idle' || status === 'abandoned' || !scenario) {
+  // ── Resume prompt (§14: never silently choose) ─────────────────────────
+  if (resumePrompt) {
+    return (
+      <Modal open onClose={closePanel} title="Continue Challenge?" aria-label="Continue Challenge?">
+        <p className="text-xs leading-relaxed text-slate-600 dark:text-slate-300">
+          You were in the middle of a challenge. Continue where you left off, or return to your
+          saved circuit?
+        </p>
+        <div className="mt-3 flex gap-2">
+          <button
+            type="button"
+            className="flex-1 rounded-xl bg-blue-600 px-3 py-2 text-xs font-semibold text-white hover:bg-blue-500"
+            onClick={() => void resumeActive()}
+          >
+            Continue Challenge
+          </button>
+          <button
+            type="button"
+            className="flex-1 rounded-xl border border-slate-300 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800"
+            onClick={() => void returnFromReload()}
+          >
+            Return to My Circuit
+          </button>
+        </div>
+      </Modal>
+    );
+  }
+
+  // ── Exit confirmation (§13) ─────────────────────────────────────────────
+  if (confirmingExit && definition) {
+    return (
+      <Modal open onClose={cancelExit} title="Leave Challenge?" aria-label="Leave Challenge?">
+        <p className="text-xs leading-relaxed text-slate-600 dark:text-slate-300">
+          Your challenge build will be discarded. You can return to your saved circuit, or keep a
+          copy of the challenge circuit as a normal ElectraSim JSON file.
+        </p>
+        <div className="mt-3 space-y-2">
+          <button
+            type="button"
+            className="flex w-full items-center justify-center gap-1.5 rounded-xl bg-blue-600 px-3 py-2 text-xs font-semibold text-white hover:bg-blue-500"
+            onClick={() => void exitToMyCircuit()}
+          >
+            Return to My Circuit
+          </button>
+          <button
+            type="button"
+            className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-slate-300 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800"
+            onClick={keepCopy}
+          >
+            <Download className="size-3.5" /> Keep a Copy
+          </button>
+          <button
+            type="button"
+            className="w-full rounded-xl px-3 py-2 text-xs font-semibold text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800"
+            onClick={cancelExit}
+          >
+            Cancel
+          </button>
+        </div>
+      </Modal>
+    );
+  }
+
+  // ── Idle: Learn hub (§16, §17) ──────────────────────────────────────────
+  if (status === 'idle' || status === 'exited' || status === 'abandoned' || !definition) {
+    const hasUnfinished = status === 'abandoned';
     return (
       <section className={shell} aria-label="Challenge Mode">
         <header className="flex items-center gap-2 border-b border-slate-200/80 px-3 py-2 dark:border-slate-700/80">
@@ -156,100 +228,71 @@ export function ChallengePanel({ isPhone }: Props) {
           </h2>
           <button
             type="button"
-            onClick={exit}
+            onClick={closePanel}
             aria-label="Close Challenge Mode"
             className="ml-auto rounded-lg p-1 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800"
           >
             <X className="size-4" />
           </button>
         </header>
-        <div className="space-y-2 p-3">
-          <p className="text-[11px] leading-relaxed text-slate-600 dark:text-slate-300">
-            Build the circuit described in the brief. Pick a difficulty to begin.
-          </p>
-          {error && (
-            <p
-              role="alert"
-              className="rounded-lg bg-red-50 px-2 py-1.5 text-[11px] font-medium text-red-700 dark:bg-red-950/60 dark:text-red-300"
-            >
-              {error}
-            </p>
-          )}
-          {DIFFICULTIES.map((difficulty) => (
+        <div className="min-h-0 flex-1 space-y-2 overflow-y-auto p-3">
+          {hasUnfinished && (
             <button
-              key={difficulty.id}
               type="button"
-              onClick={() => void start(difficulty.id)}
-              className="flex w-full items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-left transition hover:border-blue-400 hover:bg-blue-50 dark:border-slate-700 dark:hover:border-blue-500 dark:hover:bg-slate-800"
+              className="flex w-full items-center gap-2 rounded-xl border border-blue-200 bg-blue-50 px-3 py-2 text-left transition hover:bg-blue-100 dark:border-blue-800 dark:bg-blue-950/40 dark:hover:bg-blue-900/40"
+              onClick={() => void resumeActive()}
             >
-              <Play className="size-3.5 text-blue-600 dark:text-blue-400" />
-              <span className="flex-1">
-                <span className="block text-[12px] font-semibold text-slate-800 dark:text-slate-100">
-                  {difficulty.label}
-                </span>
-                <span className="block text-[10px] text-slate-500 dark:text-slate-400">
-                  {difficulty.blurb}
-                </span>
+              <ChevronRight className="size-3.5 text-blue-600 dark:text-blue-400" />
+              <span className="text-[12px] font-semibold text-blue-800 dark:text-blue-200">
+                Continue Challenge
               </span>
-              <ChevronRight className="size-3.5 text-slate-400" />
             </button>
-          ))}
+          )}
 
-          {/* §30 replay — the same affordance the Diagnosis Lab offers. */}
-          <div className="space-y-1.5 rounded-xl border border-slate-200 p-2 dark:border-slate-700">
-            <label
-              htmlFor="challenge-replay-seed"
-              className="block text-[10px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400"
-            >
-              Replay a seed
-            </label>
-            <div className="flex gap-1.5">
-              <input
-                id="challenge-replay-seed"
-                type="text"
-                value={replayText}
-                onChange={(event) => {
-                  setReplayText(event.target.value);
-                  if (replayNote) setReplayNote(null);
-                }}
-                onKeyDown={(event) => {
-                  if (event.key === 'Enter') {
-                    event.preventDefault();
-                    replaySharedSeed();
-                  }
-                }}
-                placeholder="482917 or ES1:482917:…"
-                aria-describedby="challenge-replay-help"
-                className="min-h-[32px] min-w-0 flex-1 rounded-lg border border-slate-200 px-2 py-1 text-[11px] text-slate-800 placeholder:text-slate-400 focus:border-blue-400 focus:outline-none focus:ring-1 focus:ring-blue-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
-              />
-              <button
-                type="button"
-                onClick={replaySharedSeed}
-                disabled={replayText.trim().length === 0}
-                className="min-h-[32px] rounded-lg bg-blue-600 px-2.5 text-[11px] font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-40"
+          <p className="text-[11px] leading-relaxed text-slate-600 dark:text-slate-300">
+            Structured challenges that walk you through real wiring skills. No timers, no scores —
+            just build it right.
+          </p>
+
+          {CHALLENGE_DEFINITIONS.map((challenge) => {
+            const done = progress[challenge.id]?.completed === true;
+            return (
+              <div
+                key={challenge.id}
+                className="rounded-xl border border-slate-200 p-3 dark:border-slate-700"
               >
-                Replay
-              </button>
-            </div>
-            <p
-              id="challenge-replay-help"
-              className="text-[9px] leading-relaxed text-slate-500 dark:text-slate-400"
-            >
-              Paste a seed or share code to rebuild the exact same challenge.
-            </p>
-            {replayNote && (
-              <output className="block text-[9px] font-medium leading-relaxed text-blue-700 dark:text-blue-300">
-                {replayNote}
-              </output>
-            )}
-          </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[12px] font-bold text-slate-800 dark:text-slate-100">
+                    {challenge.title}
+                  </span>
+                  {done && <Check className="size-3.5 text-emerald-600" aria-label="Completed" />}
+                </div>
+                <p className="mt-0.5 text-[10px] text-slate-500 dark:text-slate-400">
+                  {difficultyBadge(challenge.difficulty)} · ~{challenge.estimatedMinutes} minutes
+                </p>
+                <p className="mt-1 text-[10px] leading-relaxed text-slate-600 dark:text-slate-300">
+                  {challenge.objective}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => void start(challenge.id)}
+                  className="mt-2 w-full rounded-lg bg-blue-600 px-3 py-1.5 text-[11px] font-semibold text-white transition hover:bg-blue-500"
+                >
+                  {done ? 'Retry' : 'Start'}
+                </button>
+              </div>
+            );
+          })}
         </div>
       </section>
     );
   }
 
-  // ── Completed: celebration (plan §19) ───────────────────────────────────
-  if (status === 'completed' && score) {
+  // ── Completed: celebration (§32) ───────────────────────────────────────
+  if (status === 'completed') {
+    const next = CHALLENGE_DEFINITIONS.find(
+      (c) => !progress[c.id]?.completed && c.id !== definition.id,
+    );
     return (
       <section className={shell} aria-label="Challenge complete">
         <div
@@ -259,19 +302,16 @@ export function ChallengePanel({ isPhone }: Props) {
           ].join(' ')}
         >
           <Trophy className="size-6 text-emerald-600 dark:text-emerald-400" aria-hidden="true" />
-          <p className="text-[13px] font-bold text-emerald-800 dark:text-emerald-200">
-            🎉 CIRCUIT COMPLETE!
-          </p>
-          <p className="text-[11px] text-emerald-700 dark:text-emerald-300">{scenario.title}</p>
-          <p className="mt-1 text-[20px] font-black tabular-nums text-emerald-700 dark:text-emerald-300">
-            {score.points}
-            <span className="ml-1 text-[11px] font-semibold uppercase">{score.grade}</span>
+          <p className="text-[13px] font-bold text-emerald-800 dark:text-emerald-200">COMPLETE!</p>
+          <p className="text-[11px] text-emerald-700 dark:text-emerald-300">{definition.title}</p>
+          <p className="mt-1 text-[11px] leading-relaxed text-emerald-800 dark:text-emerald-200">
+            {definition.completionMessage}
           </p>
         </div>
         <dl className="grid grid-cols-3 gap-px bg-slate-200 text-center dark:bg-slate-700">
           {[
             ['Time', elapsedLabel],
-            ['Attempts', String(attempts)],
+            ['Checks', String(attempts)],
             ['Hints', String(hintsUsed)],
           ].map(([label, value]) => (
             <div key={label} className="bg-white px-2 py-2 dark:bg-slate-900">
@@ -282,101 +322,121 @@ export function ChallengePanel({ isPhone }: Props) {
             </div>
           ))}
         </dl>
-        <div className="flex gap-2 p-3">
+        <div className="flex flex-col gap-2 p-3">
+          {next && (
+            <button
+              type="button"
+              onClick={() => void start(next.id)}
+              className="flex items-center justify-center gap-1.5 rounded-xl bg-blue-600 px-3 py-2 text-[12px] font-semibold text-white hover:bg-blue-500"
+            >
+              Next Challenge <ChevronRight className="size-3.5" />
+            </button>
+          )}
           <button
             type="button"
-            onClick={() => void start(scenario.difficulty)}
-            className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-blue-600 px-3 py-2 text-[12px] font-semibold text-white hover:bg-blue-500"
+            onClick={() => void start(definition.id)}
+            className="rounded-xl border border-slate-200 px-3 py-2 text-[12px] font-semibold text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
           >
-            Next Circuit <ChevronRight className="size-3.5" />
+            Review Circuit
           </button>
           <button
             type="button"
-            onClick={exit}
-            className="rounded-xl border border-slate-200 px-3 py-2 text-[12px] font-semibold text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
+            onClick={closePanel}
+            className="rounded-xl px-3 py-2 text-[12px] font-semibold text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800"
           >
-            Done
+            Return to My Circuit
           </button>
         </div>
       </section>
     );
   }
 
-  // ── Active ──────────────────────────────────────────────────────────────
-  const completionPct = Math.round((evaluation?.completion ?? 0) * 100);
+  // ── Active (§19) ────────────────────────────────────────────────────────
+  const completionPct = Math.round((verdict?.completion ?? 0) * 100);
 
   return (
     <section className={shell} aria-label="Challenge Mode">
-      {/*
-       * Same tablet-width collapse guarded against in DiagnosisPanel: the
-       * trailing badges are intrinsically sized, so a bare `flex-1 min-w-0`
-       * title column resolves to 0px in the narrow panel and the title spills
-       * out one character wide. Wrap + a real minimum basis keeps it readable.
-       */}
       <header className="flex flex-wrap items-center gap-2 border-b border-slate-200/80 px-3 py-2 dark:border-slate-700/80">
         <span className="grid size-6 shrink-0 place-items-center rounded-lg bg-blue-600 text-white">
           <Target className="size-3.5" />
         </span>
         <div className="min-w-[7rem] flex-1">
           <h2 className="truncate text-[12px] font-semibold text-slate-800 dark:text-slate-100">
-            {scenario.title}
+            {definition.title}
           </h2>
           <p className="text-[9px] uppercase tracking-wide text-slate-500">
-            {scenario.difficulty} · {scenario.challengeId}
+            {difficultyBadge(definition.difficulty)}
           </p>
         </div>
-        {/* §30 "Copy Seed" — share or replay this exact challenge. */}
-        <button
-          type="button"
-          onClick={() =>
-            copySeed(
-              formatShareText({
-                seed: scenario.seed,
-                difficulty: scenario.difficulty,
-                mode: 'challenge',
-                generatorVersion: scenario.generatorVersion,
-                rageTier: null,
-              }),
-            )
-          }
-          aria-label={`Copy seed ${scenario.seed}`}
-          title={`Copy seed ${scenario.seed} — replay this exact challenge`}
-          className="rounded-lg p-1 text-slate-500 transition hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-200"
-        >
-          {seedCopied ? (
-            <Check className="size-3.5 text-emerald-600 dark:text-emerald-400" />
-          ) : (
-            <Copy className="size-3.5" />
-          )}
-          <output className="sr-only">{seedCopied ? 'Seed copied to clipboard' : ''}</output>
-        </button>
         <span className="flex items-center gap-1 rounded-md bg-slate-100 px-1.5 py-0.5 text-[10px] font-bold tabular-nums text-slate-700 dark:bg-slate-800 dark:text-slate-200">
           <Timer className="size-3" aria-hidden="true" />
           <span aria-label={`Elapsed time ${elapsedLabel}`}>{elapsedLabel}</span>
         </span>
+        <button
+          type="button"
+          onClick={closePanel}
+          aria-label="Close Challenge Mode"
+          className="rounded-lg p-1 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800"
+        >
+          <X className="size-4" />
+        </button>
+        {isPhone && (
+          <button
+            type="button"
+            onClick={() => setPanelHidden(true)}
+            aria-label="Hide challenge panel"
+            title="Collapse to a pill so the canvas stays reachable"
+            className="rounded-lg p-1 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800"
+          >
+            <ChevronRight className="size-4" />
+          </button>
+        )}
       </header>
 
       <div className="min-h-0 flex-1 space-y-2.5 overflow-y-auto p-3">
         <p className="text-[11px] font-medium leading-relaxed text-slate-700 dark:text-slate-200">
-          {scenario.objective}
+          {definition.objective}
         </p>
         <p className="text-[10px] leading-relaxed text-slate-500 dark:text-slate-400">
-          {scenario.brief}
+          {definition.brief}
         </p>
 
-        {/* Progress meter */}
+        {/* Steps (§5) */}
+        <div>
+          <button
+            type="button"
+            onClick={() => setShowSteps((open) => !open)}
+            aria-expanded={showSteps}
+            className="flex w-full items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
+          >
+            <ListChecks className="size-3" aria-hidden="true" />
+            Steps ({definition.steps.length})
+          </button>
+          {showSteps && (
+            <ol className="mt-1 space-y-0.5">
+              {definition.steps.map((step) => (
+                <li
+                  key={step.no}
+                  className="flex items-start gap-1.5 text-[11px] text-slate-600 dark:text-slate-300"
+                >
+                  <span className="mt-px shrink-0 text-[10px] font-bold tabular-nums text-slate-400">
+                    {step.no}.
+                  </span>
+                  <span>{step.text}</span>
+                </li>
+              ))}
+            </ol>
+          )}
+        </div>
+
+        {/* Progress meter (§19) */}
         <div>
           <div className="mb-1 flex items-center justify-between text-[9px] uppercase tracking-wide text-slate-500">
             <span>Progress</span>
             <span className="tabular-nums">{completionPct}%</span>
           </div>
-          {/*
-            Native <progress> rather than a div with role="progressbar": it
-            carries the same semantics without introducing an extra keyboard
-            tab stop in an editor that is already dense with controls.
-          */}
           <progress
-            className="h-1.5 w-full overflow-hidden rounded-full [&::-moz-progress-bar]:bg-blue-600 [&::-webkit-progress-bar]:rounded-full [&::-webkit-progress-bar]:bg-slate-200 [&::-webkit-progress-value]:rounded-full [&::-webkit-progress-value]:bg-blue-600 [&::-webkit-progress-value]:transition-[inline-size] dark:[&::-webkit-progress-bar]:bg-slate-700"
+            className="h-1.5 w-full overflow-hidden rounded-full [&::-moz-progress-bar]:bg-blue-600 [&::-webkit-progress-bar]:rounded-full [&::-webkit-progress-bar]:bg-slate-200 [&::-webkit-progress-value]:rounded-full [&::-webkit-progress-value]:bg-blue-600 dark:[&::-webkit-progress-bar]:bg-slate-700"
             value={completionPct}
             max={100}
             aria-label="Challenge progress"
@@ -385,72 +445,54 @@ export function ChallengePanel({ isPhone }: Props) {
           </progress>
         </div>
 
-        {/* Required parts checklist */}
-        <div>
-          <button
-            type="button"
-            onClick={() => setShowChecklist((open) => !open)}
-            aria-expanded={showChecklist}
-            className="flex w-full items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
-          >
-            <ListChecks className="size-3" aria-hidden="true" />
-            Parts needed ({scenario.targetComponentCount})
-          </button>
-          {showChecklist && (
-            <ul className="mt-1 space-y-0.5">
-              {scenario.componentRequirements.map((requirement) => {
-                const missing = evaluation?.comparison.missingComponents.find(
-                  (entry) => entry.type === requirement.type,
-                );
-                const satisfied = !missing;
-                return (
-                  <li
-                    key={requirement.type}
-                    className="flex items-center gap-1.5 text-[11px] text-slate-600 dark:text-slate-300"
-                  >
-                    {satisfied ? (
-                      <Check
-                        className="size-3 shrink-0 text-emerald-600 dark:text-emerald-400"
-                        aria-hidden="true"
-                      />
-                    ) : (
-                      <span
-                        className="size-3 shrink-0 rounded-full border border-slate-300 dark:border-slate-600"
-                        aria-hidden="true"
-                      />
-                    )}
-                    <span className="flex-1">{requirement.label}</span>
-                    <span className="tabular-nums text-slate-400">×{requirement.count}</span>
-                  </li>
-                );
-              })}
-            </ul>
-          )}
-        </div>
+        {/* Rule checklist (plan §6, §9) */}
+        {verdict && (
+          <ul className="space-y-0.5" aria-label="Rule checklist">
+            {verdict.rules.map((rule) => (
+              <li
+                key={rule.id}
+                className="flex items-start gap-1.5 text-[11px] text-slate-600 dark:text-slate-300"
+              >
+                {rule.verdict === 'pass' ? (
+                  <Check
+                    className="mt-px size-3 shrink-0 text-emerald-600 dark:text-emerald-400"
+                    aria-hidden="true"
+                  />
+                ) : (
+                  <CircleAlert
+                    className="mt-px size-3 shrink-0 text-amber-500"
+                    aria-hidden="true"
+                  />
+                )}
+                <span>{rule.label}</span>
+              </li>
+            ))}
+          </ul>
+        )}
 
-        {/* Verdict (live region — plan §46) */}
+        {/* Verdict (live region — plan §35) */}
         <div aria-live="polite" className="space-y-1.5">
-          {evaluation && !evaluation.success && (
+          {verdict && verdict.state !== 'complete' && (
             <div className="rounded-lg bg-amber-50 p-2 dark:bg-amber-950/50">
               <p className="flex items-start gap-1.5 text-[11px] font-semibold text-amber-800 dark:text-amber-200">
                 <CircleAlert className="mt-px size-3 shrink-0" aria-hidden="true" />
-                {evaluation.summary}
+                {verdict.summary}
               </p>
-              <ul className="mt-1 space-y-0.5 pl-4">
-                {evaluation.issues.slice(0, 4).map((issue) => (
-                  <li
-                    key={`${issue.stage}-${issue.message}`}
-                    className="list-disc text-[10px] leading-relaxed text-amber-700 dark:text-amber-300"
-                  >
-                    {issue.message}
-                  </li>
-                ))}
-              </ul>
+              {verdict.nextRule?.reason && (
+                <p className="mt-1 text-[10px] leading-relaxed text-amber-700 dark:text-amber-300">
+                  Next: {verdict.nextRule.reason}
+                </p>
+              )}
             </div>
+          )}
+          {verdict && verdict.extraComponents.length > 0 && (
+            <p className="rounded-lg bg-slate-100 px-2 py-1.5 text-[10px] leading-relaxed text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+              {describeExtraComponents(verdict.extraComponents)}
+            </p>
           )}
         </div>
 
-        {/* Hints (plan §17) */}
+        {/* Hints (plan §10) */}
         {visibleHints.length > 0 && (
           <ul className="space-y-1">
             {visibleHints.map((hint) => (
@@ -465,43 +507,11 @@ export function ChallengePanel({ isPhone }: Props) {
         )}
       </div>
 
-      {/* Abandon confirmation (plan §22) */}
-      {confirmingNew && (
-        <div className="border-t border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-800/60">
-          <p className="text-[11px] font-medium text-slate-700 dark:text-slate-200">
-            Start another challenge?
-          </p>
-          <p className="text-[10px] text-slate-500 dark:text-slate-400">
-            Your current build will be marked as abandoned.
-          </p>
-          <div className="mt-2 flex gap-2">
-            <button
-              type="button"
-              onClick={() => {
-                const difficulty = scenario.difficulty;
-                void abandon().then(() => start(difficulty));
-              }}
-              className="flex-1 rounded-lg bg-red-600 px-2 py-1.5 text-[11px] font-semibold text-white hover:bg-red-500"
-            >
-              Start new
-            </button>
-            <button
-              type="button"
-              onClick={cancelNew}
-              className="flex-1 rounded-lg border border-slate-300 px-2 py-1.5 text-[11px] font-semibold text-slate-700 hover:bg-white dark:border-slate-600 dark:text-slate-200"
-            >
-              Keep building
-            </button>
-          </div>
-        </div>
-      )}
-
       <footer className="flex items-center gap-1.5 border-t border-slate-200/80 p-2.5 dark:border-slate-700/80">
         <button
           type="button"
-          onClick={() => submit()}
-          disabled={componentCount === 0}
-          className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-blue-600 px-3 py-2 text-[12px] font-semibold text-white transition hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-40"
+          onClick={() => check()}
+          className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-blue-600 px-3 py-2 text-[12px] font-semibold text-white transition hover:bg-blue-500"
         >
           <Check className="size-3.5" aria-hidden="true" />
           Check circuit
@@ -509,8 +519,8 @@ export function ChallengePanel({ isPhone }: Props) {
         <button
           type="button"
           onClick={revealHint}
-          disabled={hintsUsed >= scenario.hints.length}
-          aria-label={`Reveal hint (${hintsUsed} of ${scenario.hints.length} used)`}
+          disabled={hintsUsed >= definition.hints.length}
+          aria-label={`Reveal hint (${hintsUsed} of ${definition.hints.length} used)`}
           title="Hints never cost you the challenge"
           className="rounded-xl border border-slate-200 p-2 text-amber-600 transition hover:bg-amber-50 disabled:opacity-30 dark:border-slate-700 dark:hover:bg-slate-800"
         >
@@ -518,18 +528,25 @@ export function ChallengePanel({ isPhone }: Props) {
         </button>
         <button
           type="button"
-          onClick={() => {
-            if (!requestNew()) void start(scenario.difficulty);
-          }}
-          aria-label="New challenge"
-          title="New challenge"
+          onClick={resetChallenge}
+          aria-label="Reset challenge"
+          title="Restore this challenge's starter circuit"
           className="rounded-xl border border-slate-200 p-2 text-slate-500 transition hover:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-800"
         >
           <RotateCcw className="size-4" />
         </button>
+        <button
+          type="button"
+          onClick={requestExit}
+          aria-label="Exit challenge"
+          title="Leave challenge"
+          className="rounded-xl border border-slate-200 p-2 text-slate-500 transition hover:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-800"
+        >
+          <X className="size-4" />
+        </button>
       </footer>
       <p className="sr-only" aria-live="polite">
-        {attempts > 0 ? `${attempts} attempts made.` : ''}
+        {attempts > 0 ? `${attempts} checks made.` : ''}
       </p>
     </section>
   );

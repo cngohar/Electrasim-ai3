@@ -3,9 +3,7 @@
   "private": true,
   "version": "1.6.1",
   "type": "module",
-  "workspaces": [
-    "astro-site"
-  ],
+  "workspaces": ["astro-site"],
   "engines": {
     "node": ">=22.12.0"
   },
@@ -16,7 +14,6 @@
     "build:astro": "npm run build --workspace astro-site",
     "build:stats": "BUILD_STATS=1 vite build && npm run build:astro && node scripts/postbuild.mjs",
     "benchmark:simulation": "node --import tsx scripts/benchmark-simulation.ts",
-    "stress:challenge": "node --import tsx scripts/stress-challenge-mode.ts",
     "stress:generator": "node --import tsx scripts/stress-challenge-generator.ts",
     "stress:diagnosis": "node --import tsx scripts/stress-diagnosis.ts",
     "stress:ohmageddon": "node --import tsx scripts/stress-ohmageddon.ts",

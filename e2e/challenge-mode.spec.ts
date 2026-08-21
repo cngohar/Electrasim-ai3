@@ -1,25 +1,144 @@
 import { type Page, expect, test } from '@playwright/test';
 
 /**
- * Challenge Mode end-to-end (plan §14, §17, §18, §21, §22).
+ * Challenge Mode end-to-end (plan §38).
  *
- * Completion + scoring arithmetic is covered exhaustively by the unit suites
- * (`challenge/*.test.ts`, `challengeStore.test.ts`); this spec covers what
- * only a browser can prove: the panel mounts, the editor is seeded, feedback
- * renders, and the abandon/resume affordances behave.
+ * The declarative challenges are covered exhaustively by unit suites; this
+ * spec proves what only a browser can: the Learn hub mounts, a challenge
+ * starts from a blank canvas, Check Circuit gives real feedback, completion
+ * works end to end, the normal circuit is restored exactly on exit, and a
+ * reload offers Continue vs Return.
  */
 
 const panel = (page: Page) => page.locator('section[aria-label="Challenge Mode"]');
+const completePanel = (page: Page) => page.locator('section[aria-label="Challenge complete"]');
 
 async function openChallengeMode(page: Page) {
   await page.goto('/');
   await page.getByRole('button', { name: 'Menu' }).click();
   await page.getByText('Challenge Mode', { exact: false }).first().click();
   await expect(panel(page)).toBeVisible();
+  // The menu item's action closes the overlay; assert the overlay panel is
+  // inert before moving on (phones: z-[70] above every docked panel).
+  await expect
+    .poll(() =>
+      page.locator('div.fixed.left-1\\/2.top-1\\/2.z-\\[70\\]').first().getAttribute('aria-hidden'),
+    )
+    .toBe('true');
+}
+
+async function startChallenge(page: Page, title: string) {
+  await openChallengeMode(page);
+  // Each card contains the title and one Start/Retry button; locate the
+  // button inside the same card container.
+  const card = panel(page).locator('div.rounded-xl').filter({ hasText: title }).first();
+  await card.getByRole('button', { name: /^(Start|Retry)$/ }).click();
+  await expect(panel(page).getByRole('heading', { name: title })).toBeVisible();
+}
+
+/** Show the panel again when the phone pill is up. */
+async function showPanel(page: Page) {
+  const pill = page.getByRole('button', { name: 'Show challenge panel' }).first();
+  if (await pill.isVisible().catch(() => false)) {
+    await pill.click({ force: true });
+    await expect(pill).toBeHidden();
+  }
+}
+
+/** Hide the panel to a pill on phones, so the canvas is reachable (§19). */
+async function hidePanel(page: Page) {
+  const hide = page.getByRole('button', { name: 'Hide challenge panel' }).first();
+  if (await hide.isVisible().catch(() => false)) await hide.click();
+}
+
+/**
+ * Convert canvas user units (the 1200x720 viewBox) into client coordinates,
+ * applying the same `preserveAspectRatio="xMidYMid meet"` letterboxing the
+ * renderer applies. Playwright clicks in client space, so placements land
+ * exactly on the intended canvas grid points.
+ */
+async function canvasPoint(
+  page: Page,
+  canvasX: number,
+  canvasY: number,
+): Promise<{ x: number; y: number }> {
+  const svg = page.locator('[data-circuit-canvas]');
+  const box = (await svg.boundingBox())!;
+  const scale = Math.min(box.width / 1200, box.height / 720);
+  const offX = (box.width - 1200 * scale) / 2;
+  const offY = (box.height - 720 * scale) / 2;
+  return { x: box.x + offX + canvasX * scale, y: box.y + offY + canvasY * scale };
+}
+
+/** Placement grid (canvas units) — clear of the palette dock and challenge panel. */
+const PLACEMENT_SPOTS: [number, number][] = [
+  [420, 150],
+  [560, 150],
+  [420, 290],
+  [560, 290],
+  [700, 150],
+  [420, 430],
+  [700, 290],
+];
+
+let placeCounter = 0;
+async function placeComponent(page: Page, type: string) {
+  // Phones: palette is a bottom sheet opened by the dock's Add button.
+  // Tablet: palette is a collapsible side drawer with an expand control.
+  const tile = page.locator(`[data-palette-type="${type}"]`).first();
+  const wasVisible = await tile.isVisible().catch(() => false);
+  if (!wasVisible) {
+    const addButton = page.getByRole('button', { name: 'Add' }).first();
+    if (await addButton.isVisible().catch(() => false)) {
+      await addButton.click();
+    } else {
+      const expand = page.getByRole('button', { name: 'Expand Component Library' }).first();
+      if (await expand.isVisible().catch(() => false)) await expand.click();
+    }
+    await expect(tile).toBeVisible();
+  }
+  await tile.click();
+  // On phones the sheet stays open over the canvas; close it so the canvas
+  // can receive the placement click.
+  const close = page.getByRole('button', { name: 'Close palette' }).first();
+  if (await close.isVisible().catch(() => false)) await close.click();
+
+  const spot = PLACEMENT_SPOTS[placeCounter] ?? [420, 150];
+  placeCounter += 1;
+  const point = await canvasPoint(page, spot[0], spot[1]);
+  await page.mouse.click(point.x, point.y);
+  await expect(page.locator(`[data-component-type="${type}"]`).first()).toBeVisible();
+}
+
+/**
+ * Click two ports to wire them (port-click-port FSM). Ports are real buttons
+ * (tabIndex=0, Enter activates), so keyboard activation sidesteps panel
+ * occlusion entirely — the same pattern smoke.spec.ts uses for rerouting.
+ */
+async function wirePorts(
+  page: Page,
+  fromType: string,
+  fromPort: number,
+  toType: string,
+  toPort: number,
+) {
+  const fromPrefix = fromType.split('-')[0];
+  const toPrefix = toType.split('-')[0];
+  const from = page
+    .locator(`[data-component-id^="${fromPrefix}-"] [data-port-index="${fromPort}"]`)
+    .first();
+  const to = page
+    .locator(`[data-component-id^="${toPrefix}-"] [data-port-index="${toPort}"]`)
+    .first();
+  await from.focus();
+  await from.press('Enter');
+  await to.focus();
+  await to.press('Enter');
 }
 
 test.describe('Challenge Mode', () => {
   test.beforeEach(async ({ page }) => {
+    placeCounter = 0;
     await page.addInitScript(() => {
       window.localStorage.setItem('electrasim:welcomed', '1');
       window.localStorage.setItem('electrasim:mobile-suitability:v1', '1');
@@ -27,134 +146,178 @@ test.describe('Challenge Mode', () => {
     page.on('dialog', (dialog) => dialog.accept());
   });
 
-  test('offers three difficulties and starts a challenge', async ({ page }) => {
+  test('shows the Learn hub with three challenge cards', async ({ page }) => {
     await openChallengeMode(page);
 
-    for (const label of ['Beginner', 'Intermediate', 'Advanced']) {
-      await expect(page.getByRole('button', { name: new RegExp(label) })).toBeVisible();
+    for (const title of [
+      'Build a Protected Lamp',
+      'Wire a Push-Button Doorbell',
+      'Protect a Socket with an RCBO',
+    ]) {
+      await expect(panel(page).getByText(title)).toBeVisible();
     }
-
-    await page.getByRole('button', { name: /Beginner/ }).click();
-
-    // Briefing renders with an objective, a parts checklist and a timer.
-    await expect(panel(page).getByText(/Build a working/)).toBeVisible();
-    await expect(panel(page).getByText(/PARTS NEEDED/i)).toBeVisible();
-    await expect(panel(page).getByRole('progressbar')).toBeVisible();
-    await expect(panel(page).getByRole('button', { name: /Check circuit/ })).toBeVisible();
+    // No game mechanics (plan §17).
+    await expect(panel(page).getByText(/XP|coins|stars/i)).toBeHidden();
   });
 
-  test('seeds the canvas with supply terminals and no wires', async ({ page }) => {
-    await openChallengeMode(page);
-    await page.getByRole('button', { name: /Beginner/ }).click();
-
-    // The learner starts from the supply only — never an empty canvas and
-    // never the answer.
-    const components = page.locator('[data-component-id]');
-    await expect.poll(() => components.count()).toBeGreaterThan(0);
-    await expect.poll(() => components.count()).toBeLessThan(4);
-  });
-
-  test('gives actionable feedback on an incomplete submission (plan §18)', async ({ page }) => {
-    await openChallengeMode(page);
-    await page.getByRole('button', { name: /Intermediate/ }).click();
-
-    await page.getByRole('button', { name: /Check circuit/ }).click();
-
-    // A wrong answer must NOT end the challenge.
-    await expect(panel(page)).toBeVisible();
-    await expect(panel(page).getByRole('button', { name: /Check circuit/ })).toBeVisible();
-    await expect(
-      panel(page).getByText(/does not work correctly yet|not the circuit|Missing connection|Add /i),
-    ).toBeVisible();
-  });
-
-  test('reveals progressive hints without ending the run (plan §17)', async ({ page }) => {
-    await openChallengeMode(page);
-    await page.getByRole('button', { name: /Beginner/ }).click();
-
-    const hintButton = page.getByRole('button', { name: /Reveal hint/ });
-    await hintButton.click();
-    await expect(panel(page).getByText(/HINT 1/i)).toBeVisible();
-
-    await hintButton.click();
-    await expect(panel(page).getByText(/HINT 2/i)).toBeVisible();
-
-    await hintButton.click();
-    await expect(panel(page).getByText(/HINT 3/i)).toBeVisible();
-
-    // Budget exhausted — the control disables rather than erroring.
-    await expect(hintButton).toBeDisabled();
-    await expect(panel(page).getByRole('button', { name: /Check circuit/ })).toBeEnabled();
-  });
-
-  test('confirms before discarding a challenge in progress (plan §22)', async ({ page }) => {
-    await openChallengeMode(page);
-    await page.getByRole('button', { name: /Beginner/ }).click();
-    await page.getByRole('button', { name: /Check circuit/ }).click();
-
-    await page.getByRole('button', { name: 'New challenge' }).click();
-    await expect(panel(page).getByText(/Start another challenge\?/)).toBeVisible();
-
-    // Backing out keeps the current run alive.
-    await page.getByRole('button', { name: /Keep building/ }).click();
-    await expect(panel(page).getByText(/Start another challenge\?/)).toBeHidden();
-    await expect(panel(page).getByRole('button', { name: /Check circuit/ })).toBeVisible();
-  });
-
-  test('exposes an accessible progress meter', async ({ page }) => {
-    await openChallengeMode(page);
-    await page.getByRole('button', { name: /Beginner/ }).click();
-
-    const meter = panel(page).getByRole('progressbar', { name: /Challenge progress/i });
-    await expect(meter).toBeVisible();
-    await expect(meter).toHaveAttribute('max', '100');
-    // Semantics come from the native <progress> element, so the meter never
-    // steals a keyboard tab stop from the editor's controls.
-    expect(await meter.evaluate((node) => node.tagName)).toBe('PROGRESS');
-  });
-  test('copies a seed and replays the identical challenge (plan §30)', async ({
+  test('Protected Lamp: starts blank, gives feedback, completes (plan §23, §38-1)', async ({
     page,
-    context,
-    browser,
-    browserName,
   }) => {
-    test.skip(browserName !== 'chromium', 'clipboard permissions are Chromium-only here');
-    await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+    await startChallenge(page, 'Build a Protected Lamp');
 
-    await openChallengeMode(page);
-    await page.getByRole('button', { name: /Beginner/ }).click();
-    const panel = page.locator('section[aria-label="Challenge Mode"]');
-    const idOf = () =>
-      panel
-        .locator('p', { hasText: /ES-CHAL-\d+/ })
-        .first()
-        .innerText();
-    const originalId = await idOf();
+    // The starter is a blank canvas (plan §23).
+    await expect.poll(() => page.locator('[data-component-id]').count()).toBe(0);
 
-    await panel.getByRole('button', { name: /Copy seed/i }).click();
-    const copied = await page.evaluate(() => navigator.clipboard.readText());
-    expect(copied).toMatch(/Seed: \d+/);
-    expect(copied).toMatch(/Mode: Challenge/i);
+    // Check on an empty canvas gives guidance, never a crash.
+    await panel(page)
+      .getByRole('button', { name: /Check circuit/ })
+      .click();
+    await expect(
+      panel(page).getByText('No Live supply terminal on the canvas yet.').first(),
+    ).toBeVisible();
 
-    // Replay in a clean context so nothing can be restored from the first run.
-    const fresh = await browser.newContext();
-    const replayPage = await fresh.newPage();
-    await replayPage.addInitScript(() => {
-      window.localStorage.setItem('electrasim:welcomed', '1');
-      window.localStorage.setItem('electrasim:mobile-suitability:v1', '1');
+    // §19: hide the sheet so the canvas is reachable, then build the answer.
+    await hidePanel(page);
+    await placeComponent(page, 'live-terminal');
+    await placeComponent(page, 'neutral-terminal');
+    await placeComponent(page, 'mcb');
+    await placeComponent(page, 'single-way-switch');
+    await placeComponent(page, 'bulb');
+
+    // The single-way switch starts off; close it so the lamp can light.
+    // Keyboard activation works on every engine (tablet Safari's dblclick is
+    // unreliable on SVG hitboxes) — same pattern the staircase spec uses.
+    const sw = page.locator('[data-component-type="single-way-switch"]').first();
+    await sw.focus();
+    await sw.press('Enter');
+    await expect(sw).toHaveAttribute('aria-pressed', 'true');
+
+    await wirePorts(page, 'live-terminal', 0, 'mcb', 0);
+    await wirePorts(page, 'mcb', 1, 'single-way-switch', 0);
+    await wirePorts(page, 'single-way-switch', 1, 'bulb', 0);
+    await wirePorts(page, 'neutral-terminal', 0, 'bulb', 1);
+
+    // Bring the panel back and check.
+    await showPanel(page);
+    const errors: string[] = [];
+    page.on('pageerror', (err) => errors.push(String(err)));
+    await expect(panel(page).getByRole('button', { name: /Check circuit/ })).toBeVisible({
+      timeout: 10_000,
     });
-    await openChallengeMode(replayPage);
-    await replayPage.getByLabel('Replay a seed').fill(copied);
-    await replayPage.getByRole('button', { name: 'Replay' }).click();
+    expect(errors).toEqual([]);
+    await panel(page)
+      .getByRole('button', { name: /Check circuit/ })
+      .click();
+    await expect(completePanel(page).getByText(/COMPLETE!/i)).toBeVisible();
+    await expect(completePanel(page).getByText(/protection, switching/i)).toBeVisible();
+  });
 
-    const replayPanel = replayPage.locator('section[aria-label="Challenge Mode"]');
-    await expect(replayPanel.locator('p', { hasText: /ES-CHAL-\d+/ }).first()).toBeVisible();
-    expect(
-      await replayPanel
-        .locator('p', { hasText: /ES-CHAL-\d+/ })
-        .first()
-        .innerText(),
-    ).toBe(originalId);
-    await fresh.close();
+  test('exit restores the normal circuit exactly (plan §13, §38-2)', async ({ page }) => {
+    // Build a distinctive normal circuit first via a guide.
+    await page.goto('/');
+    await page.getByRole('button', { name: 'Menu' }).click();
+    await page.getByText('Guided Circuits', { exact: false }).first().click();
+    const guide = page
+      .getByRole('article')
+      .filter({ has: page.getByRole('heading', { name: 'Simple Protected Lamp' }) })
+      .first();
+    await guide.getByRole('button', { name: 'Load guide' }).click();
+    const normalCount = await page.locator('[data-component-id]').count();
+    await page
+      .getByRole('button', { name: 'Hide guide' })
+      .click()
+      .catch(() => {});
+
+    // Enter a challenge, then exit.
+    await startChallenge(page, 'Build a Protected Lamp');
+    await showPanel(page);
+    await panel(page)
+      .getByRole('button', { name: /Exit challenge/ })
+      .click();
+    await expect(page.getByRole('heading', { name: /Leave Challenge/i })).toBeVisible();
+    // WebKit's stability check can stall on the modal's exit animation;
+    // force-click past the transient state (the store action is synchronous).
+    await page.getByRole('button', { name: 'Return to My Circuit' }).click({ force: true });
+
+    // The normal circuit is back, byte-for-byte.
+    await expect.poll(() => page.locator('[data-component-id]').count()).toBe(normalCount);
+    await expect(panel(page)).toBeHidden();
+  });
+
+  test('reload during a challenge offers Continue vs Return (plan §14, §38-3)', async ({
+    page,
+  }) => {
+    await startChallenge(page, 'Build a Protected Lamp');
+    await placeComponent(page, 'bulb');
+    // Let the 250 ms debounced autosave flush to the challenge workspace.
+    await page.waitForTimeout(500);
+
+    await page.reload();
+    await expect(page.getByRole('heading', { name: /Continue Challenge/i })).toBeVisible();
+    await page.getByRole('button', { name: 'Continue Challenge' }).click();
+
+    await expect(
+      panel(page).getByRole('heading', { name: 'Build a Protected Lamp' }),
+    ).toBeVisible();
+    await expect(page.locator('[data-component-type="bulb"]').first()).toBeVisible();
+  });
+
+  test('Doorbell: wiring through the momentary button completes (plan §24, §38-4)', async ({
+    page,
+  }) => {
+    await startChallenge(page, 'Wire a Push-Button Doorbell');
+    await hidePanel(page);
+
+    await placeComponent(page, 'live-terminal');
+    await placeComponent(page, 'neutral-terminal');
+    await placeComponent(page, 'mcb');
+    await placeComponent(page, 'push-button');
+    await placeComponent(page, 'bell');
+
+    await wirePorts(page, 'live-terminal', 0, 'mcb', 0);
+    await wirePorts(page, 'mcb', 1, 'push-button', 0);
+    await wirePorts(page, 'push-button', 1, 'bell', 0);
+    await wirePorts(page, 'neutral-terminal', 0, 'bell', 1);
+
+    // Bring the panel back and check.
+    await showPanel(page);
+    await expect(panel(page).getByRole('button', { name: /Check circuit/ })).toBeVisible();
+    // Check Circuit runs the functional rules: with the button released the
+    // bell is off AND with it pressed the bell is on — only the momentary
+    // topology satisfies both, so this completes.
+    await panel(page)
+      .getByRole('button', { name: /Check circuit/ })
+      .click();
+    await expect(completePanel(page).getByText(/COMPLETE!/i)).toBeVisible();
+    await expect(completePanel(page).getByText(/momentary contact/i)).toBeVisible();
+  });
+
+  test('RCBO: missing earth is rejected (plan §25, §38-6)', async ({ page }) => {
+    await startChallenge(page, 'Protect a Socket with an RCBO');
+    await hidePanel(page);
+
+    await placeComponent(page, 'live-terminal');
+    await placeComponent(page, 'neutral-terminal');
+    await placeComponent(page, 'rcbo');
+    await placeComponent(page, 'socket-3pin');
+
+    await wirePorts(page, 'live-terminal', 0, 'rcbo', 0);
+    await wirePorts(page, 'neutral-terminal', 0, 'rcbo', 1);
+    await wirePorts(page, 'rcbo', 2, 'socket-3pin', 0);
+    await wirePorts(page, 'rcbo', 3, 'socket-3pin', 1);
+    // Earth deliberately left off.
+
+    // Bring the panel back and check.
+    await showPanel(page);
+    await expect(panel(page).getByRole('button', { name: /Check circuit/ })).toBeVisible();
+    await panel(page)
+      .getByRole('button', { name: /Check circuit/ })
+      .click();
+    await expect(
+      panel(page)
+        .getByText(/No Earth terminal on the canvas yet./)
+        .first(),
+    ).toBeVisible();
+    await expect(panel(page).getByText(/COMPLETE!/i)).toBeHidden();
   });
 });

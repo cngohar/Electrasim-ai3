@@ -1,9 +1,10 @@
 /**
  * Challenge domain barrel.
  *
- * Exposes the circuit generator foundation (Phase A/B), Challenge Mode
- * (Phase C) and the Diagnosis Lab (Phase D) per plan §51. Ohmageddon is added
- * in a later phase and will be exported from here too.
+ * Exposes the circuit generator foundation (Phase A/B), the declarative
+ * Challenge Mode, the Diagnosis Lab (Phase D) and Ohmageddon. The old
+ * generator-based Challenge Mode was replaced by the declarative system
+ * (plan §44: "Do not turn Challenge Mode into a second random generator").
  */
 
 export * from './types';
@@ -14,10 +15,7 @@ export * from './generator/topology';
 export * from './generator/layout';
 export * from './generator/validator';
 export * from './generator/generator';
-export * from './challenge/scenario';
-export * from './challenge/comparison';
-export * from './challenge/evaluator';
-export * from './challenge/scoring';
+export * from './declarative';
 export * from './faults/eligibility';
 export * from './faults/injection';
 export * from './faults/labels';
@@ -25,5 +23,6 @@ export * from './faults/verification';
 export * from './diagnosis/scenario';
 export * from './diagnosis/evaluator';
 export * from './diagnosis/scoring';
+export * from './format';
 export * from './share';
 export * from './rage';

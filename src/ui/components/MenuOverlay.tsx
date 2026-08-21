@@ -46,7 +46,7 @@ export function MenuOverlay({ open, onClose }: Props) {
     {
       icon: Target,
       label: 'Challenge Mode',
-      description: 'Build a generated circuit against the clock',
+      description: 'Build circuits from structured challenges',
       portColor: 'bg-amber-500',
       action: () => {
         useUiStore.getState().setChallengeOpen(true);

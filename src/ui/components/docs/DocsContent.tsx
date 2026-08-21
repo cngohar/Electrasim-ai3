@@ -338,10 +338,11 @@ function LearningModesSection() {
       </SectionHeading>
       <div className="space-y-3">
         <p className="text-xs leading-relaxed text-slate-600 dark:text-slate-400">
-          Beyond the free-form canvas, ElectraSim can generate exercises for you. All three modes
-          are built on one circuit generator and the same simulator you use everywhere else, so the
-          circuits they produce are ordinary ElectraSim circuits — you can inspect, rewire and
-          export them exactly as usual.
+          Beyond the free-form canvas, ElectraSim offers structured learning. Challenge Mode gives
+          you hand-authored build tasks; the Diagnosis Lab generates faults for you to find. Both
+          use the same circuit model and simulator as the rest of the app, so every circuit they
+          involve is an ordinary ElectraSim circuit — you can inspect, rewire and export it exactly
+          as usual.
         </p>
 
         {LEARNING_MODES.map((mode) => (
@@ -384,11 +385,12 @@ function LearningModesSection() {
           </h3>
           <p className="mt-1 text-xs leading-relaxed text-slate-600 dark:text-slate-400">
             Every exercise is generated from a <strong>seed</strong> — a number shown next to its id
-            (for example <code className="rounded bg-slate-100 px-1 dark:bg-slate-700">ES-DIAG-482917</code>).
+            (for example{' '}
+            <code className="rounded bg-slate-100 px-1 dark:bg-slate-700">ES-DIAG-482917</code>).
             Generation is deterministic, so the same seed, difficulty and app version always rebuild
             the identical circuit and fault. Use <strong>Copy seed</strong> in the Diagnosis Lab
-            header to share an exercise with a tutor or attach it to a bug report, and paste one into{' '}
-            <strong>Replay a seed</strong> to work through exactly the same problem. Nothing is
+            header to share an exercise with a tutor or attach it to a bug report, and paste one
+            into <strong>Replay a seed</strong> to work through exactly the same problem. Nothing is
             uploaded — the seed is all that travels.
           </p>
         </div>
