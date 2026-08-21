@@ -12,7 +12,7 @@ const GOOGLE_FORM_URL = data.google_form_url;
   description={data.seo_description}
   canonical="https://electrasim.com/contact/"
 >
-  <div class="contact-hero">
+  <div class="contact-hero" data-live>
     <div class="wrap">
       <span class="label">Contact</span>
       <h1 set:html={data.hero_heading.replace('\n', '<br>')}></h1>
@@ -20,7 +20,7 @@ const GOOGLE_FORM_URL = data.google_form_url;
     </div>
   </div>
 
-  <main class="contact-wrap">
+  <main class="contact-wrap" data-live>
 
     <div class="contact-grid">
       <a href={FACEBOOK_URL} target="_blank" rel="noopener noreferrer" class="contact-card">

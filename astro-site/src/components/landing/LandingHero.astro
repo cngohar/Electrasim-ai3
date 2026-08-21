@@ -1,4 +1,7 @@
 ---
+import Icon from '../Icon.astro';
+import type { StatSpec } from '../../types/pages';
+
 interface Props {
   badge: string;
   heading: string;
@@ -7,63 +10,125 @@ interface Props {
   primaryCta: string;
   secondaryCta: string;
   trustItems: string[];
+  statsLabel: string;
+  stats: StatSpec[];
 }
 
-const { badge, heading, highlight, description, primaryCta, secondaryCta, trustItems } =
-  Astro.props;
+const {
+  badge,
+  heading,
+  highlight,
+  description,
+  primaryCta,
+  secondaryCta,
+  trustItems,
+  statsLabel,
+  stats,
+} = Astro.props;
+
+/** Cycled by /js/landing-hero.js. First word is server-rendered. */
+const flipWords = ['Build.', 'Energise.', 'Break.', 'Diagnose.'];
+
+/**
+ * Four lamps sitting on real junctions of the hero circuit graph. Intrinsic
+ * sizes are declared so the browser reserves the box and the hero never
+ * shifts (CLS = 0) while the WebP decodes.
+ */
+const bulbs = [
+  { id: 0, slug: 'incandescent', tag: 'A19 · 60 W', alt: 'Incandescent bulb', w: 189, h: 320 },
+  { id: 1, slug: 'halogen', tag: 'Halogen · 42 W', alt: 'Halogen capsule', w: 79, h: 320 },
+  { id: 2, slug: 'cfl', tag: 'CFL · 15 W', alt: 'CFL spiral lamp', w: 123, h: 320 },
+  { id: 3, slug: 'led', tag: 'LED · 9 W', alt: 'LED filament bulb', w: 196, h: 320 },
+];
 ---
 
-<header class="hero" role="banner">
-  <div class="wrap">
-    <div class="hero-eyebrow">
-      <span class="hero-eyebrow-dot" aria-hidden="true"></span>
+<section class="hero" id="hero" data-live>
+  <canvas id="circuit-canvas" aria-hidden="true"></canvas>
+
+  <div class="lamps" aria-hidden="true">
+    {bulbs.map((bulb) => (
+      <figure class={`lamp lamp-${bulb.id}`} id={`bulb-${bulb.id}`}>
+        <span class="lamp-aura" id={`aura-${bulb.id}`}></span>
+        <picture>
+          <source type="image/webp" srcset={`/images/bulbs/bulb-${bulb.slug}.webp`} />
+          <img
+            src={`/images/bulbs/bulb-${bulb.slug}.png`}
+            alt={bulb.alt}
+            class={`lamp-img lamp-img-${bulb.slug}`}
+            id={`img-${bulb.id}`}
+            width={bulb.w}
+            height={bulb.h}
+            decoding="async"
+            fetchpriority="low"
+          />
+        </picture>
+        <figcaption class="lamp-tag">{bulb.tag}</figcaption>
+      </figure>
+    ))}
+  </div>
+
+  <div class="mcb">
+    <button class="mcb-btn" id="mcb-toggle" type="button" aria-pressed="true" aria-label="Toggle circuit power">
+      <span class="mcb-cap">Main breaker</span>
+      <span class="mcb-body" id="mcb-box">
+        <span class="mcb-pole">I</span>
+        <span class="mcb-track"><span class="mcb-thumb"></span></span>
+        <span class="mcb-pole mcb-pole-off">O</span>
+      </span>
+      <span class="mcb-state" id="mcb-text">Closed</span>
+    </button>
+  </div>
+
+  <div class="wrap hero-in">
+    <p class="hero-badge">
+      <span class="hero-badge-led" aria-hidden="true"></span>
       {badge}
-    </div>
-    <h1>{heading}<br />{' '}<span class="accent">{highlight}</span></h1>
+    </p>
+
+    <h1 class="hero-title">
+      <span class="flipper"><span class="flipper-word" id="flipper-word">{flipWords[0]}</span></span>
+      <span class="hero-title-sub">{heading} <em>{highlight}</em></span>
+    </h1>
+
     <p class="hero-desc">{description}</p>
-    <div class="cta-row">
-      <a href="/app/" class="btn-primary">{primaryCta}</a>
-      <a href="#how-it-works" class="btn-outline">{secondaryCta}</a>
+
+    <div class="hero-actions">
+      <a href="/app/" class="btn-hero-primary">
+        <Icon name="bolt" size={18} stroke={2.2} />
+        {primaryCta}
+      </a>
+      <a href="#how-it-works" class="btn-hero-secondary">
+        {secondaryCta}
+        <Icon name="arrow" size={16} />
+      </a>
     </div>
-    <div class="trust">
+
+    <ul class="hero-trust">
       {trustItems.map((item) => (
-        <span class="trust-item"><span class="trust-dot" aria-hidden="true"></span>{item}</span>
+        <li><Icon name="check" size={13} stroke={2.6} />{item}</li>
+      ))}
+    </ul>
+  </div>
+
+  <a href="#stats" class="hero-scroll" aria-label="Scroll to specifications">
+    <span class="hero-scroll-line" aria-hidden="true"></span>
+    <span class="hero-scroll-text">Scroll</span>
+  </a>
+</section>
+
+<section class="stats-section" id="stats" aria-label={statsLabel} data-live>
+  <div class="wrap">
+    <p class="dim">{statsLabel}</p>
+    <div class="rail-x rail-meter" aria-hidden="true"><span class="pulse-spark"></span></div>
+    <div class="stats-grid">
+      {stats.map((stat, i) => (
+        <div class="stat-card">
+          <span class="stat-ref">{`S-0${i + 1}`}</span>
+          <span class="stat-value">{stat.value}</span>
+          <span class="stat-unit">{stat.unit}</span>
+          <span class="stat-note">{stat.note}</span>
+        </div>
       ))}
     </div>
-    <div class="hero-frame">
-      <picture>
-        <source
-          type="image/avif"
-          srcset="/images/electrasim-simulator-480.avif 480w, /images/electrasim-simulator-800.avif 800w, /images/electrasim-simulator-1200.avif 1200w"
-          sizes="(max-width: 640px) calc(100vw - 2rem), (max-width: 960px) calc(100vw - 3rem), 900px"
-        />
-        <source
-          type="image/webp"
-          srcset="/images/electrasim-simulator-480.webp 480w, /images/electrasim-simulator-800.webp 800w, /images/electrasim-simulator-1200.webp 1200w"
-          sizes="(max-width: 640px) calc(100vw - 2rem), (max-width: 960px) calc(100vw - 3rem), 900px"
-        />
-        <img
-          src="/images/electrasim-simulator-1200.webp"
-          srcset="/images/electrasim-simulator-480.webp 480w, /images/electrasim-simulator-800.webp 800w, /images/electrasim-simulator-1200.webp 1200w"
-          sizes="(max-width: 640px) calc(100vw - 2rem), (max-width: 960px) calc(100vw - 3rem), 900px"
-          alt="ElectraSim circuit simulator showing MCB breaker, bulb, fan and socket connected on the canvas"
-          width="1200"
-          height="750"
-          loading="eager"
-          fetchpriority="high"
-        />
-      </picture>
-    </div>
   </div>
-</header>
-
-<div class="stats-strip" aria-label="Key facts">
-  <div class="wrap">
-    <div class="stats-grid">
-      <div><span class="stat-num">100%</span><span class="stat-label">Free Forever</span></div>
-      <div><span class="stat-num">0</span><span class="stat-label">Sign-ups Required</span></div>
-      <div><span class="stat-num">16+</span><span class="stat-label">Component Types</span></div>
-      <div><span class="stat-num">60fps</span><span class="stat-label">Live Simulation</span></div>
-    </div>
-  </div>
-</div>
+</section>

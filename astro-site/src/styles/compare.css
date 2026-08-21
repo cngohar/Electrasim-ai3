@@ -735,3 +735,238 @@
     scroll-behavior: auto;
   }
 }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   COMPARE — "the test bench"
+   The table is an instrument chart; ElectraSim's row is the energised one.
+   ══════════════════════════════════════════════════════════════════════════ */
+.compare-hero {
+  position: relative;
+  padding: 4rem 0 3rem;
+  background: var(--bg);
+  text-align: left;
+}
+.compare-hero::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 2px;
+  background-color: var(--rail-ink);
+  background-image: linear-gradient(90deg, transparent 0 60%, var(--rail-glow) 70%, var(--live-2) 75%, var(--rail-glow) 80%, transparent 90% 100%);
+  background-size: 720px 100%;
+  background-repeat: repeat-x;
+  animation: scanX 5s linear infinite paused;
+}
+.is-live.compare-hero::after {
+  animation-play-state: running;
+}
+.compare-hero-copy {
+  text-align: left;
+  margin-left: 0;
+}
+.compare-hero h1 {
+  font-size: clamp(2rem, 4.4vw, 3.1rem);
+  max-width: 20ch;
+}
+.compare-hero-lead {
+  max-width: 64ch;
+  margin-left: 0;
+}
+.compare-hero-actions {
+  justify-content: flex-start;
+}
+.compare-overline {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--live);
+}
+.compare-overline::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--live);
+  box-shadow: 0 0 0 3px var(--blue-l);
+}
+.compare-breadcrumb {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+}
+.compare-section-heading,
+.compare-section-heading-left {
+  letter-spacing: -0.02em;
+}
+.compare-review-note,
+.compare-trademark-note,
+.compare-disclosure,
+.compare-safety-note {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  line-height: 1.7;
+  letter-spacing: 0.01em;
+}
+
+/* ── Comparison table = instrument chart ────────────────────────────────── */
+.comparison-table-region {
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+}
+.comparison-table thead th {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+.comparison-table th,
+.comparison-table td {
+  border-color: var(--border);
+}
+.comparison-table tbody tr:hover {
+  background: var(--bg-2);
+}
+/* the row under test */
+.comparison-table-featured {
+  position: relative;
+}
+.comparison-table-featured th:first-child {
+  box-shadow: inset 3px 0 0 var(--live);
+}
+.comparison-table-owner {
+  font-family: var(--font-mono);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--live);
+}
+
+/* ── Tool profiles = instrument cards ───────────────────────────────────── */
+.tool-profile {
+  position: relative;
+  border-radius: var(--radius);
+  transition: border-color 0.22s, box-shadow 0.22s;
+}
+.tool-profile::before {
+  content: "";
+  position: absolute;
+  left: 16px;
+  right: 16px;
+  top: -1px;
+  height: 2px;
+  border-radius: 0 0 2px 2px;
+  background: var(--border);
+  transition: background 0.28s;
+}
+.tool-profile:hover {
+  border-color: var(--border-bright);
+  box-shadow: 0 10px 30px rgba(37, 99, 235, 0.08);
+}
+.tool-profile:hover::before {
+  background: linear-gradient(90deg, transparent, var(--live) 30%, var(--energy) 70%, transparent);
+}
+.tool-profile-heading {
+  letter-spacing: -0.015em;
+}
+.tool-profile-strength {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--live);
+}
+.tool-profile-sources a {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+}
+
+/* ── Task fit = numbered terminals on a feeder ──────────────────────────── */
+.task-fit-list {
+  position: relative;
+}
+.task-fit-item {
+  position: relative;
+  border-radius: var(--radius);
+}
+.task-fit-number {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  border-radius: 8px;
+  background: var(--blue-l);
+  border: 1px solid var(--border-bright);
+  color: var(--live);
+}
+
+/* ── FAQ = ways ─────────────────────────────────────────────────────────── */
+.compare-faq-item {
+  border-radius: var(--radius);
+}
+.compare-method-list li,
+.tool-profile-list li {
+  color: var(--body-copy);
+}
+
+/* ── Closing CTA ────────────────────────────────────────────────────────── */
+.compare-cta {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--radius-lg);
+}
+.compare-cta::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 3px;
+  background-image: linear-gradient(90deg, transparent 0 60%, rgba(255, 184, 0, 0.55) 70%, #ffd76a 75%, rgba(255, 184, 0, 0.55) 80%, transparent 90% 100%);
+  background-size: 620px 100%;
+  background-repeat: repeat-x;
+  animation: scanX 4.5s linear infinite paused;
+}
+.is-live .compare-cta::before {
+  animation-play-state: running;
+}
+
+/* Left-align the remaining centred blocks in the hero. */
+.compare-hero h1,
+.compare-hero .compare-hero-lead,
+.compare-hero .compare-review-note,
+.compare-hero .compare-product-shot {
+  margin-left: 0;
+  margin-right: auto;
+}
+.compare-hero h1 {
+  max-width: 22ch;
+}
+
+/* ── Centred hero ───────────────────────────────────────────────────────── */
+.compare-hero {
+  text-align: center;
+}
+.compare-hero-copy {
+  margin-left: auto;
+  margin-right: auto;
+}
+.compare-hero h1,
+.compare-hero .compare-hero-lead,
+.compare-hero .compare-review-note,
+.compare-hero .compare-product-shot {
+  margin-left: auto;
+  margin-right: auto;
+}
+.compare-hero-actions {
+  justify-content: center;
+}
+.compare-breadcrumb {
+  text-align: left;
+}
+.compare-hero-copy {
+  text-align: center;
+}

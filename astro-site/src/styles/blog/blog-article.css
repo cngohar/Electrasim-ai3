@@ -390,3 +390,168 @@
     grid-column: 1;
   }
 }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   ARTICLE — "the datasheet"
+   Drawing-sheet header, a reading conductor down the margin, and every H2 is
+   a terminal on it.
+   ══════════════════════════════════════════════════════════════════════════ */
+.bc-wrap {
+  position: relative;
+  background: var(--bg);
+}
+.bc {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+}
+
+.art-wrap {
+  position: relative;
+}
+/* The reading conductor — runs the length of the article column. */
+.art-inner {
+  position: relative;
+}
+@media (min-width: 1000px) {
+  .art-inner::before {
+    content: "";
+    position: absolute;
+    left: -1.75rem;
+    top: 0.5rem;
+    bottom: 2rem;
+    width: 2px;
+    background-color: var(--rail-ink);
+    background-image: linear-gradient(180deg, transparent 0 60%, var(--rail-glow) 70%, var(--live-2) 75%, var(--rail-glow) 80%, transparent 90% 100%);
+    background-size: 100% 620px;
+    background-repeat: repeat-y;
+    animation: scanY 8s linear infinite paused;
+    pointer-events: none;
+  }
+  .is-live .art-inner::before {
+    animation-play-state: running;
+  }
+  /* every section heading is a terminal tapped off it */
+  .art-inner h2::before {
+    content: "";
+    position: absolute;
+    /* centred on the rail: -(art-inner padding + rail offset + half node) */
+    left: -3.6rem;
+    top: 0.62em;
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    background: var(--bg);
+    border: 2px solid var(--live);
+  }
+}
+.art-inner h2 {
+  position: relative;
+  font-size: 1.45rem;
+  letter-spacing: -0.02em;
+  margin-top: 2.75rem;
+}
+.art-inner h3 {
+  font-size: 1.08rem;
+  margin-top: 1.9rem;
+}
+
+/* Drawing-sheet title block */
+.art-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: none;
+  border: 0;
+  border-radius: 0;
+  padding: 0;
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  color: var(--live);
+}
+.art-tag::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--live);
+  box-shadow: 0 0 0 3px var(--blue-l);
+}
+.art-inner h1 {
+  font-size: clamp(1.85rem, 4.2vw, 2.7rem);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+}
+.art-meta {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.03em;
+  color: var(--text-dim);
+  gap: 0;
+  padding-bottom: 1.1rem;
+}
+.art-meta span:not(:last-child)::after {
+  content: "·";
+  margin: 0 0.7rem;
+  color: var(--border-bright);
+}
+.updated-badge {
+  font-family: var(--font-mono);
+  font-size: 0.66rem;
+  letter-spacing: 0.08em;
+  border-radius: 5px;
+}
+
+/* Tags + prev/next as terminals */
+.art-tag-item {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+}
+.art-tag-item:hover {
+  border-color: var(--border-bright);
+  background: var(--blue-l);
+  color: var(--live);
+}
+.post-nav a {
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  transition: border-color 0.18s, box-shadow 0.18s, transform 0.18s;
+}
+.post-nav a:hover {
+  border-color: var(--border-bright);
+  box-shadow: 0 8px 22px rgba(37, 99, 235, 0.1);
+  transform: translateY(-2px);
+}
+.nav-dir {
+  font-family: var(--font-mono);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--live);
+}
+
+/* Closing CTA = an energised panel */
+.art-cta {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--radius-lg);
+}
+.art-cta::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 3px;
+  background-image: linear-gradient(90deg, transparent 0 60%, rgba(255, 184, 0, 0.55) 70%, #ffd76a 75%, rgba(255, 184, 0, 0.55) 80%, transparent 90% 100%);
+  background-size: 620px 100%;
+  background-repeat: repeat-x;
+  animation: scanX 4.5s linear infinite paused;
+}
+.is-live .art-cta::before {
+  animation-play-state: running;
+}

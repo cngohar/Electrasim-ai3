@@ -48,3 +48,145 @@
   justify-content: center;
   gap: 1rem;
 }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   404 — "open circuit"
+   The conductor runs in from the left, stops dead at the break, and the
+   right-hand leg stays unenergised. The page is the diagnosis.
+   ══════════════════════════════════════════════════════════════════════════ */
+.not-found {
+  position: relative;
+  background: var(--bg);
+  overflow: hidden;
+}
+.not-found-inner {
+  position: relative;
+  padding: 6rem 1.5rem 7rem;
+  max-width: var(--page);
+  margin: 0 auto;
+  text-align: center;
+}
+
+/* live leg — carries current up to the break */
+.not-found-inner::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 4.6rem;
+  width: calc(50% - 5.5rem);
+  height: 2px;
+  background-color: var(--rail-ink);
+  background-image: linear-gradient(90deg, transparent 0 55%, rgba(37, 99, 235, 0.5) 68%, var(--live-2) 76%, rgba(37, 99, 235, 0.5) 84%, transparent 94% 100%);
+  background-size: 340px 100%;
+  background-repeat: repeat-x;
+  animation: scanX 2.4s linear infinite paused;
+}
+.is-live .not-found-inner::before {
+  animation-play-state: running;
+}
+/* dead leg — no scan, deliberately inert */
+.not-found-inner::after {
+  content: "";
+  position: absolute;
+  right: 0;
+  top: 4.6rem;
+  width: calc(50% - 5.5rem);
+  height: 2px;
+  background: var(--rail-ink);
+}
+
+.not-found-code {
+  position: relative;
+  display: inline-block;
+  font-family: var(--font-mono);
+  font-size: clamp(3.4rem, 11vw, 6rem);
+  font-weight: 700;
+  letter-spacing: -0.04em;
+  line-height: 1;
+  color: var(--text);
+  margin-bottom: 1.5rem;
+}
+/* the break: two exposed conductor ends either side of the code */
+.not-found-code::before,
+.not-found-code::after {
+  content: "";
+  position: absolute;
+  top: 0.42em;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+.not-found-code::before {
+  left: -2.4rem;
+  background: var(--fault);
+  box-shadow: 0 0 0 4px rgba(220, 38, 38, 0.15);
+  animation: faultBlink 1.4s steps(1, end) infinite paused;
+}
+.not-found-code::after {
+  right: -2.4rem;
+  background: var(--bg);
+  border: 2px solid var(--rail-ink);
+}
+.is-live .not-found-code::before {
+  animation-play-state: running;
+}
+@keyframes faultBlink {
+  0%,
+  55% {
+    opacity: 1;
+  }
+  56%,
+  100% {
+    opacity: 0.25;
+  }
+}
+
+.not-found h1 {
+  font-size: clamp(1.5rem, 3.4vw, 2.3rem);
+  margin-bottom: 0.75rem;
+}
+.not-found p {
+  max-width: 46ch;
+  margin: 0 auto 2.25rem;
+  color: var(--text-mid);
+}
+.not-found-actions {
+  display: flex;
+  gap: 0.85rem;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+/* fault readout under the actions */
+.not-found-inner > .not-found-actions::after {
+  content: "";
+}
+.not-found-code + h1::before {
+  content: "OPEN CIRCUIT · NO ROUTE TO THIS PATH";
+  display: block;
+  margin-bottom: 0.9rem;
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.16em;
+  color: var(--fault);
+}
+
+@media (max-width: 720px) {
+  .not-found-inner {
+    padding: 4rem 1.15rem 5rem;
+  }
+  .not-found-inner::before,
+  .not-found-inner::after {
+    display: none;
+  }
+  .not-found-code::before,
+  .not-found-code::after {
+    display: none;
+  }
+}
+
+/* `.not-found` is a centring flexbox; an auto cross-axis margin would stop
+   the inner block stretching, so pin its width. */
+.not-found-inner {
+  width: 100%;
+}

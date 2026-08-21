@@ -1,12 +1,15 @@
+---
+/**
+ * Blueprint canvas + the conductor spine that runs every page.
+ * One fixed rail, one looping pulse, three terminal nodes — the whole
+ * sitewide "electrically alive" motif for a single repainting 2px line.
+ */
+---
+
 <div class="circuit-bg" aria-hidden="true"></div>
-<div class="traces" aria-hidden="true">
-  <div class="trace"></div>
-  <div class="trace"></div>
-  <div class="trace"></div>
-  <div class="trace"></div>
-  <div class="trace-v"></div>
-  <div class="trace-v"></div>
-  <div class="node"></div>
-  <div class="node"></div>
-  <div class="node"></div>
+<div class="spine" aria-hidden="true">
+  <span class="pulse-y"></span>
+  <span class="spine-node"></span>
+  <span class="spine-node"></span>
+  <span class="spine-node"></span>
 </div>

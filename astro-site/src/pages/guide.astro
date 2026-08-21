@@ -43,7 +43,7 @@ const guidedTemplates = data.guided_templates as GuidedTemplate[];
     circuits={circuits}
   />
 
-  <main class="guide-main">
+  <main class="guide-main" data-live>
     <div class="wrap">
       <GuideOverview features={latestFeatures} templates={guidedTemplates} />
       {circuits.map((circuit) => <GuideCircuitCard circuit={circuit} />)}

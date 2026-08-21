@@ -16,6 +16,13 @@ export default defineConfig({
   // site's strict CSP. Blog code blocks use the external `.art-inner pre`
   // styles instead, and the current corpus does not use language-tagged fences.
   markdown: { syntaxHighlight: false },
+  devToolbar: { enabled: false },
+  vite: {
+    server: {
+      // Allow sandboxed/remote dev previews (e.g. *.e2b.app) to reach the dev server.
+      allowedHosts: ['.e2b.app', 'localhost', '127.0.0.1'],
+    },
+  },
   integrations: [
     sitemap({
       filter: (page) => !page.includes('/404') && !page.includes('/admin'),

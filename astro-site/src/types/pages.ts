@@ -4,6 +4,20 @@ export type ContentCard = {
   body: string;
 };
 
+export type StatSpec = {
+  value: string;
+  unit: string;
+  note: string;
+};
+
+export type ModeSpec = {
+  ref: string;
+  rating: string;
+  title: string;
+  body: string;
+  points: string[];
+};
+
 export type LandingPage = {
   seo_title: string;
   seo_description: string;
@@ -14,6 +28,12 @@ export type LandingPage = {
   hero_cta_primary: string;
   hero_cta_secondary: string;
   hero_trust_items: string[];
+  stats_label: string;
+  stats: StatSpec[];
+  modes_label: string;
+  modes_heading: string;
+  modes_description: string;
+  modes: ModeSpec[];
   features_label: string;
   features_heading: string;
   features_description: string;

@@ -404,3 +404,208 @@
   background: none;
   pointer-events: none;
 }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   BLOG INDEX — "the reference library"
+   Topics are terminal chips on a rail; each section is a feeder, and the
+   product-news feeder is amber so it reads apart from the guides.
+   ══════════════════════════════════════════════════════════════════════════ */
+.blog-index-hero,
+.page-hero {
+  position: relative;
+  padding: 4.5rem 0 3.25rem;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+}
+.blog-index-hero::after,
+.page-hero::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 2px;
+  background-color: var(--rail-ink);
+  background-image: linear-gradient(90deg, transparent 0 60%, var(--rail-glow) 70%, var(--live-2) 75%, var(--rail-glow) 80%, transparent 90% 100%);
+  background-size: 720px 100%;
+  background-repeat: repeat-x;
+  animation: scanX 5s linear infinite paused;
+}
+.is-live.blog-index-hero::after,
+.is-live.page-hero::after {
+  animation-play-state: running;
+}
+.blog-index-hero h1,
+.page-hero h1 {
+  font-size: clamp(2rem, 4.6vw, 3.2rem);
+  max-width: 20ch;
+  margin-bottom: 0.9rem;
+}
+.blog-index-hero p,
+.page-hero p {
+  max-width: 62ch;
+  color: var(--text-mid);
+}
+
+/* Topic chips sit on their own rail. */
+.topic-nav {
+  position: relative;
+  padding-top: 1.6rem;
+  border: 0;
+}
+.topic-nav::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 2px;
+  background-color: var(--rail-ink);
+  background-image: repeating-linear-gradient(90deg, var(--live) 0 7px, transparent 7px 17px);
+  opacity: 0.5;
+  animation: march 0.85s linear infinite paused;
+}
+.is-live .topic-nav::before {
+  animation-play-state: running;
+}
+.topic-nav-label {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+.topic-links a {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  letter-spacing: 0.03em;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+  transition: border-color 0.16s, color 0.16s, background 0.16s;
+}
+.topic-links a:hover {
+  border-color: var(--border-bright);
+  background: var(--blue-l);
+  color: var(--live);
+}
+
+/* Section headers = terminals. */
+.blog-section-kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--live);
+}
+.blog-section-kicker::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--live);
+  box-shadow: 0 0 0 3px var(--blue-l);
+}
+.blog-section-header h2 {
+  font-size: clamp(1.4rem, 3vw, 2rem);
+  letter-spacing: -0.02em;
+}
+
+/* Product news feeder — amber, so release notes read apart from guides. */
+.update-section .blog-section-kicker {
+  color: var(--warning-text);
+}
+.update-section .blog-section-kicker::before {
+  background: var(--energy);
+  box-shadow: 0 0 0 3px var(--warning-bg);
+}
+.update-section .card {
+  border-left: 3px solid var(--energy);
+}
+
+/* Post cards = terminal blocks. */
+.card {
+  position: relative;
+  border-radius: var(--radius);
+  transition: border-color 0.22s, box-shadow 0.22s, transform 0.22s;
+}
+.card::before {
+  content: "";
+  position: absolute;
+  left: 16px;
+  right: 16px;
+  top: -1px;
+  height: 2px;
+  border-radius: 0 0 2px 2px;
+  background: var(--border);
+  transition: background 0.28s, box-shadow 0.28s;
+}
+.card:hover {
+  border-color: var(--border-bright);
+  box-shadow: 0 10px 30px rgba(37, 99, 235, 0.1);
+  transform: translateY(-3px);
+}
+.card:hover::before {
+  background: linear-gradient(90deg, transparent, var(--live) 30%, var(--energy) 70%, transparent);
+  box-shadow: 0 0 12px var(--rail-glow);
+}
+.update-section .card::before {
+  display: none;
+}
+.tag {
+  font-family: var(--font-mono);
+  font-size: 0.66rem;
+  letter-spacing: 0.1em;
+  border-radius: 5px;
+}
+.featured-badge {
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.14em;
+  border-radius: 5px;
+}
+.card-meta,
+.read-time {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.04em;
+}
+.read-link {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+  color: var(--live);
+}
+
+/* Pagination = a way selector. */
+.pagination a,
+.pagination span {
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  border-radius: 7px;
+}
+
+/* ── Centred hero ───────────────────────────────────────────────────────── */
+.blog-index-hero,
+.page-hero {
+  text-align: center;
+}
+.blog-index-hero h1,
+.page-hero h1,
+.blog-index-hero p,
+.page-hero p {
+  margin-left: auto;
+  margin-right: auto;
+}
+/* A pre-existing rule offset this wrap to the left gutter; centre it. */
+.blog-index-hero .wrap,
+.page-hero .wrap {
+  max-width: 900px;
+  margin-left: auto;
+  margin-right: auto;
+}

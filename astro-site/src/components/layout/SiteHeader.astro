@@ -9,11 +9,16 @@ const { assetVersion } = Astro.props;
 <nav class="nav" role="navigation" aria-label="Main navigation">
   <div class="nav-in">
     <a href="/" class="logo">
-      <span class="logo-icon" aria-hidden="true">⚡</span>
+      <span class="logo-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+        </svg>
+      </span>
       <span class="logo-text">Electra<span class="logo-accent">Sim</span></span>
     </a>
     <div class="nav-links">
       <a href="/#features" class="hide-m">Features</a>
+      <a href="/#how-it-works" class="hide-m">How it works</a>
       <a href="/guide/" class="hide-m">Guide</a>
       <a href="/blog/" class="hide-m">Blog</a>
       <a href="/compare/" class="hide-m">Compare</a>
@@ -29,7 +34,7 @@ const { assetVersion } = Astro.props;
         <span class="theme-icon theme-icon-moon" aria-hidden="true">&#9790;</span>
         <span class="theme-icon theme-icon-sun" aria-hidden="true">&#9728;</span>
       </button>
-      <a href="/app/" class="btn-nav">Open App →</a>
+      <a href="/app/" class="btn-nav">Launch App <span aria-hidden="true">→</span></a>
     </div>
     <button
       class="nav-mobile-toggle"
@@ -45,8 +50,10 @@ const { assetVersion } = Astro.props;
       </svg>
     </button>
   </div>
+  <span class="nav-rail" data-live aria-hidden="true"><span class="pulse-x"></span></span>
   <div class="nav-mobile-menu" id="nav-mobile-menu" role="menu">
     <a href="/#features">Features</a>
+    <a href="/#how-it-works">How it works</a>
     <a href="/guide/">Guide</a>
     <a href="/blog/">Blog</a>
     <a href="/compare/">Compare</a>
@@ -63,7 +70,7 @@ const { assetVersion } = Astro.props;
       <span class="theme-icon theme-icon-sun" aria-hidden="true">&#9728;</span>
       <span class="theme-toggle-label">Appearance</span>
     </button>
-    <a href="/app/" class="btn-nav">⚡ Open App</a>
+    <a href="/app/" class="btn-nav">Launch App →</a>
   </div>
 </nav>
 <script is:inline defer src={`/js/site-nav.js?v=${assetVersion}`}></script>

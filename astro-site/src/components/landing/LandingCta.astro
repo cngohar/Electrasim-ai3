@@ -1,4 +1,6 @@
 ---
+import Icon from '../Icon.astro';
+
 interface Props {
   heading: string;
   description: string;
@@ -8,12 +10,14 @@ interface Props {
 const { heading, description, button } = Astro.props;
 ---
 
-<section class="sec">
+<section class="cta-section" data-live>
+  <span class="cta-bus" aria-hidden="true"><span class="pulse-x"></span></span>
   <div class="wrap">
-    <div class="cta-box">
-      <h2>{heading}</h2>
-      <p>{description}</p>
-      <a href="/app/" class="btn-cta">{button}</a>
-    </div>
+    <h2 class="cta-title">{heading}</h2>
+    <p class="cta-desc">{description}</p>
+    <a href="/app/" class="btn-cta">
+      <Icon name="bolt" size={19} stroke={2.4} />
+      {button}
+    </a>
   </div>
 </section>

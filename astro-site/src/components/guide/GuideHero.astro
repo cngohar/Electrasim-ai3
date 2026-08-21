@@ -23,7 +23,7 @@ const headingLines = heading.split('\n');
   </div>
 </div>
 
-<div class="guide-hero">
+<div class="guide-hero" data-live>
   <div class="wrap">
     <span class="label">Step-by-Step Guide</span>
     <h1>{headingLines.map((line, index) => <>{index > 0 && <br />}{line}</>)}</h1>

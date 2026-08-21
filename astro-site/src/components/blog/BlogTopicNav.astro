@@ -12,7 +12,7 @@ const visibleTopics = selectTopicArchives(topics, activeSlug);
 ---
 
 {visibleTopics.length > 0 && (
-  <nav class="topic-nav" aria-label="Browse blog topics">
+  <nav class="topic-nav" aria-label="Browse blog topics" data-live>
     <span class="topic-nav-label">Browse topics</span>
     <div class="topic-links">
       {visibleTopics.map((topic) => (

@@ -164,3 +164,189 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   CONTACT — "the terminal block"
+   Two incoming terminals fed from a busbar; the FAQ is a stack of ways.
+   ══════════════════════════════════════════════════════════════════════════ */
+.contact-hero {
+  position: relative;
+  padding: 4.5rem 0 3.25rem;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+}
+.contact-hero::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 2px;
+  background-color: var(--rail-ink);
+  background-image: linear-gradient(90deg, transparent 0 60%, var(--rail-glow) 70%, var(--live-2) 75%, var(--rail-glow) 80%, transparent 90% 100%);
+  background-size: 720px 100%;
+  background-repeat: repeat-x;
+  animation: scanX 5s linear infinite paused;
+}
+.is-live.contact-hero::after {
+  animation-play-state: running;
+}
+.contact-hero h1 {
+  font-size: clamp(2rem, 4.6vw, 3.2rem);
+  max-width: 18ch;
+  margin: 0 0 0.9rem;
+}
+.contact-hero p {
+  max-width: 58ch;
+  margin: 0;
+  color: var(--text-mid);
+}
+
+.contact-wrap {
+  position: relative;
+  padding: 3.5rem 0 5rem;
+}
+
+/* Busbar feeding the two terminals. */
+.contact-grid {
+  position: relative;
+  padding-top: 2.6rem;
+  gap: 1.25rem;
+}
+.contact-grid::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 6px;
+  border-radius: 3px;
+  background: linear-gradient(180deg, var(--metal-2), var(--rail-ink));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6);
+}
+.contact-card {
+  position: relative;
+  text-align: left;
+  padding: 1.9rem 1.7rem;
+  border-radius: var(--radius);
+}
+/* the drop from the busbar into each terminal */
+.contact-card::after {
+  content: "";
+  position: absolute;
+  left: 2.2rem;
+  top: -2.6rem;
+  width: 2px;
+  height: 2.6rem;
+  background-color: var(--rail-ink);
+  background-image: linear-gradient(180deg, transparent 0 55%, var(--rail-glow) 68%, var(--live-2) 75%, var(--rail-glow) 82%, transparent 92% 100%);
+  background-size: 100% 120px;
+  background-repeat: repeat-y;
+  animation: scanY 2.8s linear infinite paused;
+  --scan-tile: 120px;
+}
+.contact-grid > :nth-child(2)::after {
+  animation-delay: -1.4s;
+}
+.is-live .contact-card::after {
+  animation-play-state: running;
+}
+.contact-icon {
+  width: 46px;
+  height: 46px;
+  border-radius: 11px;
+  background: var(--blue-l);
+  border: 1px solid var(--border-bright);
+  color: var(--live);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.3rem;
+  margin-bottom: 1.1rem;
+}
+.contact-card h2 {
+  font-size: 1.15rem;
+  margin-bottom: 0.5rem;
+}
+.contact-card p {
+  font-size: 0.9rem;
+  color: var(--text-mid);
+  margin-bottom: 1.2rem;
+}
+.contact-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.55rem 1rem;
+  border-radius: 8px;
+  background: var(--blue-l);
+  border: 1px solid var(--border-bright);
+  color: var(--live);
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  letter-spacing: 0.06em;
+  font-weight: 600;
+}
+.contact-card:hover .contact-btn {
+  background: var(--live);
+  border-color: var(--live);
+  color: #fff;
+}
+
+/* FAQ = a stack of ways, each with its own terminal marker. */
+.faq-sec {
+  margin-top: 4rem;
+}
+.faq-sec h2 {
+  font-size: clamp(1.5rem, 3vw, 2.1rem);
+  margin-bottom: 1.75rem;
+  text-align: left;
+}
+.faq-list {
+  counter-reset: faq;
+  gap: 0.75rem;
+}
+.faq-item {
+  counter-increment: faq;
+  position: relative;
+  padding: 1.3rem 1.5rem 1.3rem 3.6rem;
+  border-radius: var(--radius);
+}
+.faq-item::after {
+  content: "Q" counter(faq, decimal-leading-zero);
+  position: absolute;
+  left: 1.3rem;
+  top: 1.35rem;
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.08em;
+  color: var(--live);
+}
+.faq-item h3 {
+  font-size: 1rem;
+  margin-bottom: 0.4rem;
+}
+.faq-item p {
+  font-size: 0.9rem;
+  color: var(--text-mid);
+}
+
+/* Keep the hero copy on the same measure as the body below it. */
+.contact-hero .wrap {
+  max-width: 860px;
+}
+.contact-wrap {
+  max-width: 860px;
+  padding: 3.5rem 1.5rem 5rem;
+}
+
+/* ── Centred hero ───────────────────────────────────────────────────────── */
+.contact-hero {
+  text-align: center;
+}
+.contact-hero h1,
+.contact-hero p {
+  margin-left: auto;
+  margin-right: auto;
+}

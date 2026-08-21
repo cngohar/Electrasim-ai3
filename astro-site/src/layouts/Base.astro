@@ -96,6 +96,10 @@ const websiteSchema = {
   <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
   <link rel="apple-touch-icon" href="/pwa-192.svg" />
 
+  <!-- Self-hosted display + body fonts (CSP: font-src 'self') -->
+  <link rel="preload" as="font" type="font/woff2" href="/fonts/plus-jakarta-sans-latin.woff2" crossorigin />
+  <link rel="preload" as="font" type="font/woff2" href="/fonts/space-grotesk-latin.woff2" crossorigin />
+
   <!-- WebSite structured data (sitelinks searchbox + brand entity) -->
   <script type="application/ld+json" set:html={JSON.stringify(websiteSchema)} />
   <slot name="head" />
@@ -109,5 +113,6 @@ const websiteSchema = {
   <FloatingContact />
   <SiteFooter />
   <ScrollTop assetVersion={packageMetadata.version} />
+  <script is:inline defer src={`/js/schematic.js?v=${packageMetadata.version}`}></script>
 </body>
 </html>

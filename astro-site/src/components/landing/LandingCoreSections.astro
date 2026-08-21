@@ -1,4 +1,5 @@
 ---
+import Icon from '../Icon.astro';
 import type { LandingPage } from '../../types/pages';
 
 interface Props {
@@ -6,59 +7,126 @@ interface Props {
 }
 
 const { content: d } = Astro.props;
+
+const STEP_ICONS = ['monitor', 'grid', 'cable', 'bolt'];
+const STEP_TAGS = ['electrasim.com/app', 'Palette', 'Auto-router', 'Live solver'];
 ---
 
-<section class="sec" id="features" aria-labelledby="feat-h">
+{/* ── Way 01 · the workbench ─────────────────────────────────────────── */}
+<section class="sec features-section" id="features" aria-labelledby="feat-h" data-live>
   <div class="wrap">
-    <div class="sh">
+    <div class="sec-head">
       <span class="label">{d.features_label}</span>
-      <h2 id="feat-h">{d.features_heading}</h2>
-      <p>{d.features_description}</p>
+      <h2 class="section-title" id="feat-h">{d.features_heading}</h2>
+      <p class="section-desc">{d.features_description}</p>
     </div>
-    <div class="fg">
-      {d.features.map((feature) => (
-        <article class="fc">
-          <div class="fi">{feature.icon}</div>
+
+    <div class="ring-wrap">
+      <div class="ring" aria-hidden="true">
+        <span class="rail-x ring-top"><span class="pulse-x ps-slow"></span></span>
+        <span class="ring-side ring-left"></span>
+        <span class="ring-side ring-right"></span>
+        <span class="rail-x ring-bottom"><span class="pulse-x rev ps-slow pd-2"></span></span>
+      </div>
+      <div class="features-grid">
+        {d.features.map((feature, i) => (
+          <article class="feature-card">
+          <header class="card-head">
+            <span class="card-icon"><Icon name={feature.icon} size={22} /></span>
+            <span class="ref-tag">{`F-${String(i + 1).padStart(2, '0')}`}</span>
+          </header>
           <h3>{feature.title}</h3>
           <p>{feature.body}</p>
         </article>
-      ))}
+        ))}
+      </div>
     </div>
   </div>
 </section>
 
-<section class="sec sec-alt" id="how-it-works" aria-labelledby="how-h">
+{/* ── Way 02 · learning modes, drawn as a consumer unit ──────────────── */}
+<section class="sec sec-alt modes-section" id="learning-modes" aria-labelledby="modes-h" data-live>
   <div class="wrap">
-    <div class="sh">
-      <span class="label">{d.how_label}</span>
-      <h2 id="how-h">{d.how_heading}</h2>
-      <p>{d.how_description}</p>
+    <div class="sec-head sec-head-center">
+      <span class="label">{d.modes_label}</span>
+      <h2 class="section-title" id="modes-h">{d.modes_heading}</h2>
+      <p class="section-desc">{d.modes_description}</p>
     </div>
-    <div class="steps">
-      {d.steps.map((step, index) => (
-        <div class="step">
-          <div class="sn">{index + 1}</div>
+
+    <div class="cu">
+      <div class="cu-busbar" aria-hidden="true"><span class="pulse-x"></span></div>
+      <div class="cu-ways">
+        {d.modes.map((mode) => (
+          <article class="way">
+            <span class="way-feed" aria-hidden="true"></span>
+            <header class="way-head">
+              <span class="way-lever" aria-hidden="true"><span class="way-thumb"></span></span>
+              <span class="way-id">
+                <span class="way-ref">{mode.ref}</span>
+                <span class="way-rating">{mode.rating}</span>
+              </span>
+            </header>
+            <h3>{mode.title}</h3>
+            <p>{mode.body}</p>
+            <ul class="way-points">
+              {mode.points.map((point) => (
+                <li><Icon name="check" size={13} stroke={2.6} />{point}</li>
+              ))}
+            </ul>
+          </article>
+        ))}
+      </div>
+    </div>
+  </div>
+</section>
+
+{/* ── Way 03 · first circuit ─────────────────────────────────────────── */}
+<section class="sec steps-section" id="how-it-works" aria-labelledby="how-h" data-live>
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="label">{d.how_label}</span>
+      <h2 class="section-title" id="how-h">{d.how_heading}</h2>
+      <p class="section-desc">{d.how_description}</p>
+    </div>
+
+    <div class="chain" aria-hidden="true">
+      <span class="rail-x chain-rail"><span class="pulse-spark ps-fast"></span></span>
+    </div>
+    <ol class="steps-grid">
+      {d.steps.map((step, i) => (
+        <li class="step-card">
+          <header class="card-head">
+            <span class="card-icon"><Icon name={STEP_ICONS[i % STEP_ICONS.length]} size={22} /></span>
+            <span class="step-no">{String(i + 1).padStart(2, '0')}</span>
+          </header>
           <h3>{step.title}</h3>
           <p>{step.body}</p>
-        </div>
+          <span class="step-tag">{STEP_TAGS[i % STEP_TAGS.length]}</span>
+        </li>
       ))}
-    </div>
+    </ol>
   </div>
 </section>
 
-<section class="sec" id="use-cases" aria-labelledby="uc-h">
+{/* ── Way 04 · audiences ─────────────────────────────────────────────── */}
+<section class="sec sec-alt usecase-section" id="use-cases" aria-labelledby="uc-h" data-live>
   <div class="wrap">
-    <div class="sh">
+    <div class="sec-head">
       <span class="label">{d.usecases_label}</span>
-      <h2 id="uc-h">{d.usecases_heading}</h2>
-      <p>{d.usecases_description}</p>
+      <h2 class="section-title" id="uc-h">{d.usecases_heading}</h2>
+      <p class="section-desc">{d.usecases_description}</p>
     </div>
-    <div class="ug">
+    <div class="rail-x rail-bus" aria-hidden="true"><span class="pulse-x ps-slow"></span></div>
+    <div class="usecase-grid">
       {d.use_cases.map((useCase) => (
-        <div class="uc">
-          <div class="uc-i">{useCase.icon}</div>
-          <div><h3>{useCase.title}</h3><p>{useCase.body}</p></div>
-        </div>
+        <article class="usecase-card">
+          <span class="uc-drop" aria-hidden="true"><span class="pulse-y"></span></span>
+          <span class="card-icon"><Icon name={useCase.icon} size={20} /></span>
+          <div>
+            <h3>{useCase.title}</h3>
+            <p>{useCase.body}</p>
+          </div>
+        </article>
       ))}
     </div>
   </div>

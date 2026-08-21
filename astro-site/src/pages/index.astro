@@ -36,6 +36,7 @@ const blogHighlights = selectPostsById(
       "image":"https://electrasim.com/og-image.png",
       "offers":{"@type":"Offer","price":"0","priceCurrency":"USD"}
     })} />
+    <script is:inline defer src={`/js/landing-hero.js?v=${packageMetadata.version}`}></script>
   </Fragment>
 
   <LandingHero
@@ -46,6 +47,8 @@ const blogHighlights = selectPostsById(
     primaryCta={d.hero_cta_primary}
     secondaryCta={d.hero_cta_secondary}
     trustItems={d.hero_trust_items}
+    statsLabel={d.stats_label}
+    stats={d.stats}
   />
   <LandingCoreSections content={d} />
   <LandingBlogHighlights

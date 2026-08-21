@@ -1,104 +1,157 @@
 {
-  "seo_title": "Free Online Electrical Wiring Simulator | ElectraSim",
-  "seo_description": "Build house-wiring circuits with MCBs, RCDs, RCBOs, switches, sockets and faults. Free in your browser—no download or sign-up.",
-  "hero_badge": "⚡ Free & No Sign-Up Required",
-  "hero_heading": "Build and Simulate",
-  "hero_heading_highlight": "Real Electrical Wiring",
-  "hero_description": "ElectraSim is a free online electrical wiring simulator for building and testing realistic circuits directly in your browser.",
-  "hero_cta_primary": "⚡ Launch the Simulator",
-  "hero_cta_secondary": "See how it works ↓",
+  "seo_title": "ElectraSim — Free Online Electrical Wiring Simulator & Circuit Trainer",
+  "seo_description": "Build, energise and fault-find real domestic wiring in your browser. 115 components, live simulation, Challenge Mode and a seeded Diagnosis Lab. Free, offline-capable, no sign-up.",
+
+  "hero_badge": "Free · No sign-up · Works offline",
+  "hero_heading": "Real electrical wiring,",
+  "hero_heading_highlight": "in your browser",
+  "hero_description": "An interactive wiring lab that behaves like the real thing. Place a breaker, run the cable, close the switch — and watch current actually flow, trip and fault.",
+  "hero_cta_primary": "Launch the Simulator",
+  "hero_cta_secondary": "See how it works",
   "hero_trust_items": [
-    "✅ Works offline",
-    "✅ No installation",
-    "✅ No sign-up",
-    "✅ Data stays local",
-    "✅ Installable PWA"
+    "Runs offline",
+    "No installation",
+    "No account",
+    "Data stays on device",
+    "Installable PWA"
   ],
-  "features_label": "Features",
-  "features_heading": "Everything you need to learn, build & simulate",
-  "features_description": "A complete electrical circuit toolkit — all running locally in your browser, no server, no cloud, no account needed.",
+
+  "stats_label": "Rated capacity",
+  "stats": [
+    { "value": "115", "unit": "components", "note": "Switchgear to 3-phase" },
+    { "value": "60", "unit": "fps", "note": "Off-thread solver" },
+    { "value": "833", "unit": "tests", "note": "On the circuit engine" },
+    { "value": "0", "unit": "accounts", "note": "Nothing leaves the device" }
+  ],
+
+  "features_label": "Way 01 · The workbench",
+  "features_heading": "A wiring bench that answers back",
+  "features_description": "Every component is modelled — ports, poles, ratings and behaviour. Close a switch and the engine re-solves the Live, Neutral and Earth paths, then shows you what that means.",
   "features": [
     {
-      "icon": "🔌",
-      "title": "Drag & Drop Components",
-      "body": "Place MCB breakers, switches, light bulbs, fans, motors and sockets from the palette. Components snap to a grid for clean, professional layouts."
+      "icon": "palette",
+      "title": "115-component palette",
+      "body": "MCBs, RCDs, RCBOs, AFDDs, SPDs and MCCBs. Sockets for BS 1363, Schuko, US, AS/NZS and BS 546. Contactors, relays, timers, thermostats, transformers, 3-phase boards and motors."
     },
     {
-      "icon": "⚡",
-      "title": "Real-Time Simulation",
-      "body": "Hit Run and watch electricity flow instantly. Energised wires animate, bulbs light up, fans spin. Toggle switches and see changes propagate live."
+      "icon": "flow",
+      "title": "Live path tracing",
+      "body": "The engine walks the real Live / Neutral / Earth topology. Energised wires animate current direction, bulbs glow to their wattage, fans spin and motors pulse."
     },
     {
-      "icon": "🔴",
-      "title": "Fault Detection",
-      "body": "Trace open and short circuits, then inject reverse-polarity and missing-earth faults for practice. Fault states highlight clearly for faster diagnosis."
+      "icon": "fault",
+      "title": "Honest fault behaviour",
+      "body": "Open neutral, missing earth, short to live, reverse polarity, overload. Protective devices trip because the circuit says they should — not because a script fired."
     },
     {
-      "icon": "🔀",
-      "title": "Smart Wire Routing",
-      "body": "Click a port to start wiring — ElectraSim auto-routes orthogonal wires around components. Custom multi-step wiring also supported."
+      "icon": "route",
+      "title": "Smart + custom routing",
+      "body": "Two clicks and the router lays a tidy orthogonal path around obstacles — L-route in under a millisecond, A* for dense boards. Or draw the run yourself, checkpoint by checkpoint."
     },
     {
-      "icon": "📐",
-      "title": "Multi-Select & Align",
-      "body": "Shift-click or drag-select multiple components. Align left, center, right, top or bottom with one click for professional diagrams."
+      "icon": "standards",
+      "title": "Pro standards mode",
+      "body": "Regulatory gating before the simulation starts, Zs checks, and heat / voltage-drop diagnostics banded along the cable route. Teacher override is recorded as an audit event."
     },
     {
-      "icon": "💾",
-      "title": "Import, Export & Share",
-      "body": "Save your circuit as JSON, export as SVG or PNG, or generate a shareable URL. Your work is autosaved locally and survives page reloads."
+      "icon": "share",
+      "title": "Export and hand over",
+      "body": "Schema-versioned JSON, animated SVG, 2× PNG, a printable title block, or a share URL that carries the whole circuit in the fragment. No backend, ever."
     }
   ],
-  "how_label": "How it works",
-  "how_heading": "Up and running in 4 steps",
-  "how_description": "No account, no download, no setup. Open ElectraSim and start building immediately.",
+
+  "modes_label": "Way 02 · Learning modes",
+  "modes_heading": "Three ways to actually practise",
+  "modes_description": "Free-build is where most simulators stop. These are the modes that tell you whether you got it right.",
+  "modes": [
+    {
+      "ref": "CH",
+      "rating": "Guided",
+      "title": "Challenge Mode",
+      "body": "Hand-authored builds judged by an ordered rule checklist — protected lamp, momentary doorbell, RCBO-fed socket. Rules are checked on topology, not coordinates, so any electrically equivalent wiring passes.",
+      "points": [
+        "Progressive hints, plain-English verdicts",
+        "Safe workspace — your circuit is snapshotted and restored",
+        "Functional rules proven against the real simulator"
+      ]
+    },
+    {
+      "ref": "DX",
+      "rating": "Diagnose",
+      "title": "Diagnosis Lab",
+      "body": "The generator breaks a working circuit on purpose and hands it to you. Find the fault, prove it, repair it. Trip messages that would name the fault are withheld so the answer stays hidden.",
+      "points": [
+        "Deterministic from a seed — copy it, paste it, same circuit",
+        "Three difficulty profiles",
+        "Verified across 269,808 fault injections"
+      ]
+    },
+    {
+      "ref": "OH",
+      "rating": "Rage",
+      "title": "Ohmageddon",
+      "body": "Opt-in punishment. Compound faults, misleading symptoms and a timer. Electrically honest — never unfair — but it will not hold your hand.",
+      "points": [
+        "Up to two simultaneous faults",
+        "Misleading-symptom modifier",
+        "Same seed system, so a brutal run is shareable"
+      ]
+    }
+  ],
+
+  "how_label": "Way 03 · First circuit",
+  "how_heading": "Energised in four steps",
+  "how_description": "No account, no download, no setup. Open it and start wiring.",
   "steps": [
     {
-      "title": "Open the app",
-      "body": "Click \"Launch the Simulator\". It loads instantly — works offline after the first visit."
+      "title": "Open the bench",
+      "body": "Loads straight into the browser and keeps working offline after the first visit. Install it as an app if you want it on the home screen."
     },
     {
-      "title": "Place components",
-      "body": "Open the Components panel and click any component — MCB, switch, bulb, fan — to place it on the canvas."
+      "title": "Place the gear",
+      "body": "Pick supply, protection, switching and loads from the palette. Everything snaps to the grid, and Pro mode recommends parts that match your standard and plug system."
     },
     {
-      "title": "Wire them up",
-      "body": "Click a port dot on one component, then a port on another. ElectraSim routes the wire automatically."
+      "title": "Run the cable",
+      "body": "Click a port, click the destination, and the router finds a tidy path around whatever is in the way. Port types are validated as you go."
     },
     {
-      "title": "Run & learn",
-      "body": "Press Run to simulate. Toggle switches, add faults, and see exactly how your circuit behaves."
+      "title": "Energise and break it",
+      "body": "Run the simulation, flip switches, then inject a fault and watch the protective device do its job. Undo is bounded to the last 100 states."
     }
   ],
-  "usecases_label": "Who is it for?",
-  "usecases_heading": "Students, teachers, electricians & curious minds",
-  "usecases_description": "ElectraSim is designed for anyone who wants to understand or teach how electrical circuits work.",
+
+  "usecases_label": "Way 04 · On the bench",
+  "usecases_heading": "Who has it open",
+  "usecases_description": "Anyone who needs to understand a circuit before touching one.",
   "use_cases": [
     {
-      "icon": "🎓",
-      "title": "Students",
-      "body": "Use a beginner-friendly circuit simulator free of charge. Practice house wiring online without risk of shocks or blown fuses."
+      "icon": "student",
+      "title": "Apprentices & students",
+      "body": "Practise domestic wiring with no shock risk and no consumables. Run the same exercise until the sequence is muscle memory."
     },
     {
-      "icon": "📚",
-      "title": "Teachers",
-      "body": "Create live circuit demonstrations in the classroom. Share circuits via URL for homework assignments."
+      "icon": "teacher",
+      "title": "Lecturers & trainers",
+      "body": "Demonstrate live on a projector, then hand out one seed so every learner gets the identical fault to diagnose."
     },
     {
-      "icon": "🔧",
-      "title": "Electricians",
-      "body": "Use it as electrician training software to prototype layouts, demonstrate fault scenarios, and validate circuit logic before going on-site."
+      "icon": "sparky",
+      "title": "Working electricians",
+      "body": "Sketch a board before you cut anything, prove a switching arrangement, or show a customer why the RCD keeps tripping."
     },
     {
-      "icon": "🤓",
-      "title": "Hobbyists",
-      "body": "Experiment with circuit ideas, test different configurations, and learn by doing at your own pace."
+      "icon": "hobby",
+      "title": "Hobbyists & makers",
+      "body": "Understand what is behind the faceplate. Relays, contactors, timers and PIR sensors, all safe to get wrong."
     }
   ],
-  "blog_label": "From the Blog",
-  "blog_heading": "Learn electrical wiring the easy way",
-  "blog_description": "Step-by-step guides to help you learn electrical wiring online — from household circuits to fault detection. Written for beginners and professionals alike.",
-  "cta_heading": "Ready to build your first circuit?",
-  "cta_description": "The free virtual electrical lab used by students, teachers and electricians. Simulate circuits online — no download, no sign-up, no risk.",
-  "cta_button": "⚡ Launch ElectraSim Free"
+
+  "blog_label": "Way 05 · Reference",
+  "blog_heading": "Wiring guides, written properly",
+  "blog_description": "Regulations, circuit theory and step-by-step installs — the same material the simulator is built on.",
+
+  "cta_heading": "Open the bench",
+  "cta_description": "Free, instant, and everything stays on your device. No account, no download, no risk.",
+  "cta_button": "Launch ElectraSim"
 }

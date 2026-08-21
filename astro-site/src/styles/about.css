@@ -386,3 +386,259 @@
     width: 100%;
   }
 }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   ABOUT — "the build log"
+   A supply riser runs the length of the page; each section taps off it.
+   ══════════════════════════════════════════════════════════════════════════ */
+.about-page-hero {
+  position: relative;
+  padding: 5rem 0 4rem;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+}
+.about-page-hero::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 2px;
+  background-color: var(--rail-ink);
+  background-image: linear-gradient(90deg, transparent 0 60%, var(--rail-glow) 70%, var(--live-2) 75%, var(--rail-glow) 80%, transparent 90% 100%);
+  background-size: 720px 100%;
+  background-repeat: repeat-x;
+  animation: scanX 5s linear infinite paused;
+}
+.is-live.about-page-hero::after {
+  animation-play-state: running;
+}
+.about-page-hero h1 {
+  font-size: clamp(2.1rem, 5vw, 3.6rem);
+  letter-spacing: -0.03em;
+  max-width: 19ch;
+  margin: 0 0 1rem;
+}
+.about-page-hero p {
+  max-width: 62ch;
+  margin: 0 0 2rem;
+  color: var(--text-mid);
+  font-size: 1.05rem;
+}
+.about-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: none;
+  border: 0;
+  padding: 0;
+  margin-bottom: 0.9rem;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--live);
+}
+.about-eyebrow span {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--live);
+  box-shadow: 0 0 0 3px var(--blue-l);
+}
+.about-hero-actions {
+  justify-content: flex-start;
+}
+
+/* The riser — one conductor down the left gutter of the whole page body. */
+.about-main {
+  position: relative;
+  padding: 4rem 0 5rem;
+}
+.about-main::before {
+  content: "";
+  position: absolute;
+  left: max(0.75rem, calc((100vw - var(--page)) / 2 + 0.4rem));
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background-color: var(--rail-ink);
+  background-image: linear-gradient(180deg, transparent 0 60%, var(--rail-glow) 70%, var(--live-2) 75%, var(--rail-glow) 80%, transparent 90% 100%);
+  background-size: 100% 620px;
+  background-repeat: repeat-y;
+  animation: scanY 7s linear infinite paused;
+  pointer-events: none;
+}
+.is-live.about-main::before {
+  animation-play-state: running;
+}
+@media (max-width: 900px) {
+  .about-main::before {
+    display: none;
+  }
+}
+
+/* Each section head is a terminal tapped off the riser. */
+.about-section-head,
+.about-prose-feature {
+  position: relative;
+}
+.section-kicker {
+  position: relative;
+}
+
+/* Mission panel = a drawing sheet with a title-block corner. */
+.about-intro {
+  gap: 1.5rem;
+}
+.about-prose {
+  position: relative;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 2rem;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+.about-prose::after {
+  content: "DOC-01";
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  padding: 0.35rem 0.7rem;
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.16em;
+  color: var(--text-dim);
+  border-top: 1px solid var(--border);
+  border-left: 1px solid var(--border);
+  border-radius: var(--radius) 0 var(--radius) 0;
+}
+
+/* Snapshot = a rating plate, one cell per figure. */
+.about-snapshot {
+  gap: 1px;
+  background: var(--border);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+.about-snapshot > div {
+  background: var(--bg-card);
+  border: 0;
+  border-radius: 0;
+  padding: 1.3rem 1.2rem;
+}
+.about-snapshot strong {
+  font-family: var(--font-display);
+  letter-spacing: -0.03em;
+  color: var(--text);
+}
+.about-snapshot span {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.08em;
+  color: var(--text-mid);
+}
+
+/* Principles = terminal blocks with reference designators. */
+.value-grid {
+  counter-reset: principle;
+}
+.value-card {
+  position: relative;
+  counter-increment: principle;
+  padding: 1.6rem;
+  border-radius: var(--radius);
+}
+.value-card::after {
+  content: "P-0" counter(principle);
+  position: absolute;
+  top: 1.6rem;
+  right: 1.4rem;
+  font-family: var(--font-mono);
+  font-size: 0.66rem;
+  letter-spacing: 0.14em;
+  color: var(--text-dim);
+}
+.value-icon {
+  width: 42px;
+  height: 42px;
+  border-radius: 10px;
+  background: var(--blue-l);
+  border: 1px solid var(--border-bright);
+  color: var(--live);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.24s, color 0.24s;
+}
+.value-card:hover .value-icon {
+  background: var(--live);
+  color: #fff;
+}
+
+/* Contact tap + closing CTA */
+.about-contact-card {
+  border-radius: var(--radius);
+}
+.about-cta-strip {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--radius-lg);
+  background: linear-gradient(135deg, #142a63 0%, #1d4ed8 55%, #2563eb 100%);
+  border: 0;
+}
+.about-cta-strip::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 3px;
+  background-image: linear-gradient(90deg, transparent 0 60%, rgba(255, 184, 0, 0.55) 70%, #ffd76a 75%, rgba(255, 184, 0, 0.55) 80%, transparent 90% 100%);
+  background-size: 620px 100%;
+  background-repeat: repeat-x;
+  animation: scanX 4.5s linear infinite paused;
+}
+.is-live .about-cta-strip::before {
+  animation-play-state: running;
+}
+
+/* The rating plate draws its own dividers, so drop the inherited frame. */
+.about-snapshot {
+  padding: 0;
+  background: var(--border);
+  border-radius: var(--radius);
+}
+
+/* ── Centred hero (house style for inner pages) ─────────────────────────── */
+.about-page-hero {
+  text-align: center;
+}
+.about-page-hero h1,
+.about-page-hero p {
+  margin-left: auto;
+  margin-right: auto;
+}
+.about-page-hero h1 {
+  max-width: 22ch;
+}
+.about-hero-actions {
+  justify-content: center;
+}
+
+/* The plate stretches to match the mission sheet, so use dividers rather than
+   a grey backdrop — otherwise the spare height shows as an empty grey band. */
+.about-snapshot {
+  background: var(--bg-card);
+  gap: 0;
+  align-content: start;
+}
+.about-snapshot > div {
+  border-bottom: 1px solid var(--border);
+}
+.about-snapshot > div:last-child {
+  border-bottom: 0;
+}

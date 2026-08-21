@@ -11,22 +11,26 @@ interface Props {
 const { label, heading, description, posts } = Astro.props;
 ---
 
-<section class="sec sec-alt" id="blog" aria-labelledby="blog-h">
+<section class="sec blog-highlights" id="blog" aria-labelledby="blog-h" data-live>
   <div class="wrap">
-    <div class="sh">
+    <div class="sec-head">
       <span class="label">{label}</span>
-      <h2 id="blog-h">{heading}</h2>
-      <p>{description}</p>
+      <h2 class="section-title" id="blog-h">{heading}</h2>
+      <p class="section-desc">{description}</p>
     </div>
-    <div class="bg-grid">
+    <div class="rail-x rail-signal" aria-hidden="true"><span class="pulse-march"></span></div>
+    <div class="highlight-grid">
       {posts.map((post) => (
-        <a href={`/blog/${post.id}/`} class="bc">
-          <span class="btag">{post.data.category}</span>
+        <a href={`/blog/${post.id}/`} class="highlight-card">
+          <span class="ref-tag">{post.data.category}</span>
           <h3>{post.data.title}</h3>
           <p>{post.data.description}</p>
-          <span class="bread">Read article →</span>
+          <span class="highlight-read">Read article →</span>
         </a>
       ))}
     </div>
+    <p class="highlight-more">
+      <a href="/blog/" class="btn-hero-secondary">Browse all articles</a>
+    </p>
   </div>
 </section>
