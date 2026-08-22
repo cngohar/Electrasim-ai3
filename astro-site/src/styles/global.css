@@ -115,6 +115,29 @@
   --footer-head: #f4f7f9;
 }
 
+/* ── Skip link ─────────────────────────────────────── */
+.skip-link {
+  position: fixed;
+  top: -100%;
+  left: 1rem;
+  z-index: 2000;
+  padding: .65rem 1.1rem;
+  border-radius: .65rem;
+  background: var(--action-bg);
+  color: var(--action-text);
+  font-weight: 700;
+  font-size: .9rem;
+  text-decoration: none;
+  box-shadow: 0 6px 18px var(--blue-glow);
+  transition: top .15s ease;
+}
+.skip-link:focus {
+  top: .75rem;
+}
+.skip-link:not(:focus) {
+  transition: none;
+}
+
 html {
   scroll-behavior: smooth;
 }

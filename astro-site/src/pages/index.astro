@@ -39,27 +39,29 @@ const blogHighlights = selectPostsById(
     <script is:inline defer src={`/js/landing-hero.js?v=${packageMetadata.version}`}></script>
   </Fragment>
 
-  <LandingHero
-    badge={d.hero_badge}
-    heading={d.hero_heading}
-    highlight={d.hero_heading_highlight}
-    description={d.hero_description}
-    primaryCta={d.hero_cta_primary}
-    secondaryCta={d.hero_cta_secondary}
-    trustItems={d.hero_trust_items}
-    statsLabel={d.stats_label}
-    stats={d.stats}
-  />
-  <LandingCoreSections content={d} />
-  <LandingBlogHighlights
-    label={d.blog_label}
-    heading={d.blog_heading}
-    description={d.blog_description}
-    posts={blogHighlights}
-  />
-  <LandingCta
-    heading={d.cta_heading}
-    description={d.cta_description}
-    button={d.cta_button}
-  />
+  <main id="main-content">
+    <LandingHero
+      badge={d.hero_badge}
+      heading={d.hero_heading}
+      highlight={d.hero_heading_highlight}
+      description={d.hero_description}
+      primaryCta={d.hero_cta_primary}
+      secondaryCta={d.hero_cta_secondary}
+      trustItems={d.hero_trust_items}
+      statsLabel={d.stats_label}
+      stats={d.stats}
+    />
+    <LandingCoreSections content={d} />
+    <LandingBlogHighlights
+      label={d.blog_label}
+      heading={d.blog_heading}
+      description={d.blog_description}
+      posts={blogHighlights}
+    />
+    <LandingCta
+      heading={d.cta_heading}
+      description={d.cta_description}
+      button={d.cta_button}
+    />
+  </main>
 </Base>

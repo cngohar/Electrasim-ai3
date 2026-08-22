@@ -98,19 +98,20 @@ const breadcrumbSchema = {
     {post.data.tags.map((tag: string) => <meta property="article:tag" content={tag} />)}
   </Fragment>
 
-  <div class="bc-wrap">
-    <div class="wrap">
-      <nav class="bc" aria-label="Breadcrumb">
-        <a href="/">Home</a>
-        <span class="bc-sep" aria-hidden="true">›</span>
-        <a href="/blog/">Blog</a>
-        <span class="bc-sep" aria-hidden="true">›</span>
-        <span aria-current="page">{post.data.title}</span>
-      </nav>
+  <main id="main-content">
+    <div class="bc-wrap">
+      <div class="wrap">
+        <nav class="bc" aria-label="Breadcrumb">
+          <a href="/">Home</a>
+          <span class="bc-sep" aria-hidden="true">›</span>
+          <a href="/blog/">Blog</a>
+          <span class="bc-sep" aria-hidden="true">›</span>
+          <span aria-current="page">{post.data.title}</span>
+        </nav>
+      </div>
     </div>
-  </div>
 
-  <div class="art-wrap" data-live>
+    <div class="art-wrap" data-live>
     <article class="art-inner">
       <span class="art-tag">{post.data.category}</span>
       <h1>{post.data.title}</h1>
@@ -155,5 +156,6 @@ const breadcrumbSchema = {
         </nav>
       )}
     </article>
-  </div>
+    </div>
+  </main>
 </Base>

@@ -21,7 +21,7 @@ const bodyHtml = marked.parse(data.content);
     </div>
   </div>
 
-  <main class="legal-wrap">
+  <main id="main-content" class="legal-wrap">
     <Fragment set:html={bodyHtml} />
   </main>
 </Base>

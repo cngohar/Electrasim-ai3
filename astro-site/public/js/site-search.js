@@ -7,6 +7,7 @@
 (() => {
   let searchIndex = null;
   let isFetching = false;
+  let fetchError = false;
   let activeFilter = 'all';
   let activeIndex = -1;
   let currentResults = [];
@@ -45,14 +46,17 @@
   async function loadSearchIndex() {
     if (searchIndex || isFetching) return searchIndex;
     isFetching = true;
+    fetchError = false;
     try {
       const response = await fetch('/search.json');
       if (response.ok) {
         searchIndex = await response.json();
       } else {
+        fetchError = true;
         console.warn('Search index fetch failed:', response.status);
       }
     } catch (err) {
+      fetchError = true;
       console.warn('Unable to load search index:', err);
     } finally {
       isFetching = false;
@@ -168,12 +172,21 @@
     const listEl = dialog.querySelector('#site-search-results');
     const emptyEl = dialog.querySelector('#site-search-empty');
     const quickLinksEl = dialog.querySelector('#site-search-quicklinks');
+    const loadingEl = dialog.querySelector('#site-search-loading');
+    const errorEl = dialog.querySelector('#site-search-error');
 
     if (!listEl) return;
 
     const trimmed = query.trim();
 
+    const showStatus = (status) => {
+      if (loadingEl) loadingEl.hidden = status !== 'loading';
+      if (errorEl) errorEl.hidden = status !== 'error';
+      if (status && emptyEl) emptyEl.hidden = true;
+    };
+
     if (!trimmed) {
+      showStatus(null);
       currentResults = QUICK_LINKS;
       if (emptyEl) emptyEl.hidden = true;
       if (quickLinksEl) quickLinksEl.hidden = false;
@@ -184,6 +197,22 @@
     }
 
     if (quickLinksEl) quickLinksEl.hidden = true;
+
+    // Index not ready yet: never claim "no results" while loading or on failure.
+    if (!searchIndex) {
+      currentResults = [];
+      listEl.innerHTML = '';
+      if (isFetching) {
+        showStatus('loading');
+      } else if (fetchError) {
+        showStatus('error');
+      } else {
+        loadSearchIndex().then(() => updateResultsView(dialog, query));
+      }
+      return;
+    }
+
+    showStatus(null);
     currentResults = search(trimmed);
 
     if (currentResults.length === 0) {
@@ -251,6 +280,7 @@
     }
 
     const input = dialog.querySelector('#site-search-input');
+    input?.setAttribute('aria-expanded', 'true');
     if (input) {
       input.value = '';
       activeIndex = 0;
@@ -268,6 +298,7 @@
     } else {
       dialog.removeAttribute('open');
     }
+    dialog.querySelector('#site-search-input')?.setAttribute('aria-expanded', 'false');
   }
 
   function init() {
@@ -291,6 +322,18 @@
     if (closeBtn) {
       closeBtn.addEventListener('click', closeSearchModal);
     }
+
+    // Retry after a failed index fetch
+    const retryBtn = dialog.querySelector('#site-search-retry-btn');
+    retryBtn?.addEventListener('click', () => {
+      const currentInput = dialog.querySelector('#site-search-input');
+      const value = currentInput ? currentInput.value : '';
+      updateResultsView(dialog, value);
+      loadSearchIndex().then(() => {
+        const dialogEl = document.getElementById('site-search-dialog');
+        if (dialogEl?.open) updateResultsView(dialogEl, value);
+      });
+    });
 
     // Light-dismiss fallback for browsers without native closedby support
     if (!('closedBy' in HTMLDialogElement.prototype)) {

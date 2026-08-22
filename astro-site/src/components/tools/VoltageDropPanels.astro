@@ -136,9 +136,9 @@
       <div class="form-group">
         <label class="form-label">System Type</label>
         <div class="segmented-pill-group" role="radiogroup" aria-label="System Type">
-          <button type="button" class="seg-btn" data-system-type="dc" role="radio" aria-checked="false">DC</button>
-          <button type="button" class="seg-btn active" data-system-type="single" role="radio" aria-checked="true">1-Φ AC</button>
-          <button type="button" class="seg-btn" data-system-type="three" role="radio" aria-checked="false">3-Φ AC</button>
+          <button type="button" class="seg-btn" data-system-type="dc" role="radio" aria-checked="false" tabindex="-1">DC</button>
+          <button type="button" class="seg-btn active" data-system-type="single" role="radio" aria-checked="true" tabindex="0">1-Φ AC</button>
+          <button type="button" class="seg-btn" data-system-type="three" role="radio" aria-checked="false" tabindex="-1">3-Φ AC</button>
         </div>
       </div>
 
@@ -158,6 +158,7 @@
             max="1000000"
             step="any"
             aria-label="System voltage"
+            aria-describedby="err-voltage"
           />
           <div class="unit-select-wrap">
             <select id="select-voltage-unit" class="unit-select" aria-label="Voltage unit">
@@ -186,6 +187,7 @@
             max="50000"
             step="any"
             aria-label="Load current in Amperes"
+            aria-describedby="err-current"
           />
           <span class="input-badge">A</span>
         </div>
@@ -208,6 +210,7 @@
             max="50000"
             step="any"
             aria-label="One-way cable length in meters"
+            aria-describedby="err-length"
           />
           <span class="input-badge">m</span>
         </div>
@@ -230,6 +233,7 @@
             max="2500"
             step="any"
             aria-label="Cable size in mm²"
+            aria-describedby="err-size"
           />
           <span class="input-badge">mm²</span>
         </div>
@@ -280,6 +284,7 @@
                 max="1.0"
                 step="0.01"
                 aria-label="Load power factor"
+                aria-describedby="err-pf"
               />
               <span class="input-badge">cos φ</span>
             </div>
@@ -302,6 +307,7 @@
                 max="250"
                 step="1"
                 aria-label="Conductor operating temperature in degrees Celsius"
+                aria-describedby="err-temp"
               />
               <span class="input-badge">°C</span>
             </div>
@@ -341,7 +347,7 @@
 
 <!-- RIGHT-BOTTOM FLOATING RESULTS PANEL -->
 <div class="results-panel-container">
-  <section id="results-panel" class="floating-panel results-panel" aria-label="Calculation Results Summary">
+  <section id="results-panel" class="floating-panel results-panel" aria-label="Calculation Results Summary" tabindex="-1">
     <div class="panel-header">
       <div class="panel-header-title">
         <h2>RESULT SUMMARY</h2>
@@ -425,7 +431,7 @@
 </div>
 
 <!-- BOTTOM-CENTER FLOATING LEGEND -->
-<div id="legend-panel" class="floating-legend" aria-label="Visual color legend">
+<div id="legend-panel" class="floating-legend" role="region" aria-label="Visual color legend">
   <div class="legend-content">
     <span class="legend-heading">LEGEND</span>
     <div class="legend-items">
@@ -466,7 +472,7 @@
 </div>
 
 <!-- BOTTOM-CENTER ROTATING INFO / TIPS BAR -->
-<div id="tips-bar" class="floating-tips-bar" aria-live="polite">
+<div id="tips-bar" class="floating-tips-bar">
   <div class="tips-bar-content">
     <span class="tips-info-icon">ℹ</span>
     <span id="tips-text" class="tips-text">
@@ -1371,12 +1377,30 @@
   }
 
   @media (max-width: 768px) {
-    .top-controls-bar,
-    .top-view-controls {
-      display: none;
-    }
     .mobile-bottom-bar {
       display: flex;
+    }
+    /* Keep scene controls reachable on mobile: compact pills under the header */
+    .top-controls-bar {
+      top: 0.5rem;
+      transform: translateX(-50%) scale(0.85);
+      transform-origin: top center;
+    }
+    .pill-btn {
+      padding: 0.35rem 0.6rem;
+      font-size: 0.72rem;
+    }
+    /* Reset & 3D become a compact row above the mobile bottom bar */
+    .top-view-controls {
+      flex-direction: row;
+      top: auto;
+      right: 0.75rem;
+      bottom: 4.4rem;
+    }
+    .view-action-btn {
+      width: 3.1rem;
+      padding: 0.45rem 0.25rem;
+      font-size: 0.62rem;
     }
     .inputs-panel-container {
       position: fixed;
@@ -1421,7 +1445,24 @@
     .results-panel {
       width: 100%;
       max-height: 80vh;
+      max-height: 80dvh;
       border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .pulse-indicator {
+      animation: none;
+    }
+    .tool-toast,
+    .floating-panel,
+    .tips-text {
+      animation: none !important;
+      transition-duration: 0.01ms !important;
+    }
+    .inputs-panel-container,
+    .results-panel-container {
+      transition: none;
     }
   }
 </style>

@@ -4,6 +4,7 @@ __pycache__/
 *.o
 *.obj
 dist/
+dist-astro/
 build/
 target/
 

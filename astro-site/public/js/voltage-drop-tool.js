@@ -5,6 +5,50 @@
  */
 
 (() => {
+  const REDUCED_MOTION = window.matchMedia('(prefers-reduced-motion: reduce)');
+  const MOBILE_VIEWPORT = window.matchMedia('(max-width: 768px)');
+  const FOCUSABLE_SELECTOR =
+    'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
+  // Overlay stack for focus trapping: dialogs push/pop as they open/close,
+  // and Tab is cycled within whichever dialog is on top of the stack.
+  const overlayStack = [];
+
+  function pushOverlay(el, trigger, initialFocus) {
+    if (!el) return;
+    overlayStack.push({ el, trigger: trigger || document.activeElement });
+    const target = initialFocus || el.querySelector(FOCUSABLE_SELECTOR);
+    if (target) target.focus();
+  }
+
+  function popOverlay(el) {
+    const idx = overlayStack.findIndex((o) => o.el === el);
+    if (idx === -1) return;
+    const entry = overlayStack.splice(idx, 1)[0];
+    if (overlayStack.length === 0 && entry.trigger instanceof HTMLElement) {
+      entry.trigger.focus();
+    }
+  }
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Tab' || overlayStack.length === 0) return;
+    const topEl = overlayStack[overlayStack.length - 1].el;
+    const items = Array.from(topEl.querySelectorAll(FOCUSABLE_SELECTOR));
+    if (!items.length) return;
+    const first = items[0];
+    const last = items[items.length - 1];
+    if (e.shiftKey && document.activeElement === first) {
+      e.preventDefault();
+      last.focus();
+    } else if (!e.shiftKey && document.activeElement === last) {
+      e.preventDefault();
+      first.focus();
+    } else if (!topEl.contains(document.activeElement)) {
+      e.preventDefault();
+      first.focus();
+    }
+  });
+
   // Conductor Constants
   const MATERIALS = {
     copper: { rho20: 0.0172, alpha: 0.00393 },
@@ -54,6 +98,16 @@
   // ─────────────────────────────────────────────────────────────
   // INPUT VALIDATION & FRIENDLY ERROR HANDLING
   // ─────────────────────────────────────────────────────────────
+
+  /**
+   * Errors are only painted for fields the user has left (blur) or after an
+   * explicit "Calculate" press. While typing, invalid intermediate states stay
+   * silent so the form never scolds mid-entry.
+   */
+  const FIELD_IDS = ['voltage', 'current', 'length', 'size', 'pf', 'temp'];
+  const touchedFields = new Set();
+  let displayedFieldErrorCount = 0;
+
   function validateAllInputs() {
     const errors = {};
     const errorNotices = [];
@@ -157,13 +211,16 @@
       { id: 'temp', wrap: 'wrap-temp', err: 'err-temp', input: 'input-temp' },
     ];
 
+    displayedFieldErrorCount = 0;
+
     fields.forEach(({ id, wrap, err, input }) => {
       const elWrap = document.getElementById(wrap);
       const elErr = document.getElementById(err);
       const elInput = document.getElementById(input);
-      const errMsg = errors[id];
+      const errMsg = touchedFields.has(id) ? errors[id] : undefined;
 
       if (errMsg) {
+        displayedFieldErrorCount += 1;
         if (elWrap) elWrap.classList.add('has-error');
         if (elInput) elInput.setAttribute('aria-invalid', 'true');
         if (elErr) {
@@ -318,14 +375,16 @@
     const elResultRowsGroup = document.getElementById('result-rows-group');
 
     if (!res.valid) {
-      // Display Friendly Error Notice
+      // Only swap results for the error card once errors are actually revealed
+      // (field blurred or Calculate pressed). Mid-typing, keep the last layout.
+      const showNoticeCard = displayedFieldErrorCount > 0;
       if (elErrorNoticeCard) {
-        elErrorNoticeCard.hidden = false;
+        elErrorNoticeCard.hidden = !showNoticeCard;
       }
       if (elResultRowsGroup) {
-        elResultRowsGroup.style.display = 'none';
+        elResultRowsGroup.style.display = showNoticeCard ? 'none' : 'flex';
       }
-      if (elErrorNoticeList && res.errorNotices) {
+      if (elErrorNoticeList && res.errorNotices && showNoticeCard) {
         elErrorNoticeList.innerHTML = res.errorNotices
           .map((notice) => `<li>${notice}</li>`)
           .join('');
@@ -349,9 +408,12 @@
         elStatusCard.className = 'status-card excessive';
       }
       if (elStatusTitle) elStatusTitle.textContent = 'Check Inputs';
-      if (elStatusDesc)
-        elStatusDesc.textContent = 'Fix the highlighted values to continue calculation.';
-      if (elMobileSummary) elMobileSummary.textContent = '⚠️ Check Inputs';
+      if (elStatusDesc) {
+        elStatusDesc.textContent = showNoticeCard
+          ? 'Fix the highlighted values to continue calculation.'
+          : 'Finish editing to update the calculation.';
+      }
+      if (elMobileSummary) elMobileSummary.textContent = showNoticeCard ? '⚠️ Check Inputs' : '…';
     } else {
       // Inputs are valid - Display calculations
       if (elErrorNoticeCard) {
@@ -545,22 +607,6 @@
     scaler.style.transform = `translate(-50%, -50%) scale(${scale})`;
   }
 
-  function handleMouseMove(e) {
-    if (!state.threeD) return;
-    const stage = document.getElementById('interactive-stage');
-    const wrapper = document.getElementById('scene-perspective-wrapper');
-    if (!stage || !wrapper) return;
-
-    const rect = stage.getBoundingClientRect();
-    const normX = ((e.clientX - rect.left) / rect.width) * 2 - 1;
-    const normY = ((e.clientY - rect.top) / rect.height) * 2 - 1;
-
-    state.parallax.x = normX;
-    state.parallax.y = normY;
-
-    wrapper.style.transform = `perspective(1200px) rotateY(${(normX * 6).toFixed(2)}deg) rotateX(${(-normY * 4).toFixed(2)}deg)`;
-  }
-
   // ─────────────────────────────────────────────────────────────
   // SETUP EVENT LISTENERS & WIRING
   // ─────────────────────────────────────────────────────────────
@@ -612,12 +658,15 @@
     }
 
     if (inLength) {
+      let longRunToastShown = false;
       inLength.addEventListener('input', (e) => {
         state.length = e.target.value;
         const lenNum = Number.parseFloat(e.target.value);
-        if (lenNum > 1000) {
+        const isLong = Number.isFinite(lenNum) && lenNum > 1000;
+        if (isLong && !longRunToastShown) {
           showToast('Long cable run (>1000m) entered. Industrial transmission rules apply.', 'ℹ️');
         }
+        longRunToastShown = isLong;
         updateUI();
       });
     }
@@ -660,12 +709,18 @@
 
     if (btnCalculate) {
       btnCalculate.addEventListener('click', () => {
+        FIELD_IDS.forEach((id) => touchedFields.add(id));
         updateUI();
         const elCard = document.getElementById('results-panel');
         if (elCard) {
           elCard.classList.remove('pop');
           void elCard.offsetWidth;
           elCard.classList.add('pop');
+          if (MOBILE_VIEWPORT.matches) {
+            openMobileResults(btnCalculate);
+          } else {
+            elCard.focus({ preventScroll: false });
+          }
         }
       });
     }
@@ -684,9 +739,33 @@
       });
     }
 
-    // 2. System Type Segmented Buttons
-    const segButtons = document.querySelectorAll('.seg-btn');
-    segButtons.forEach((btn) => {
+    // Errors reveal on blur ("reward early, punish late"): while typing, an
+    // invalid intermediate value stays silent; leaving the field judges it.
+    const blurFieldIds = [
+      ['inVoltage', 'voltage'],
+      ['inCurrent', 'current'],
+      ['inLength', 'length'],
+      ['inSize', 'size'],
+      ['inPf', 'pf'],
+      ['inTemp', 'temp'],
+    ];
+    blurFieldIds.forEach(([handle, id]) => {
+      const el = { inVoltage, inCurrent, inLength, inSize, inPf, inTemp }[handle];
+      if (!el) return;
+      el.addEventListener('blur', () => {
+        touchedFields.add(id);
+        updateUI();
+      });
+    });
+
+    // 2. System Type Segmented Buttons (radio pattern: roving tabindex + arrows)
+    const segButtons = Array.from(document.querySelectorAll('.seg-btn'));
+    const syncSegTabindex = () => {
+      segButtons.forEach((b) => {
+        b.setAttribute('tabindex', b.classList.contains('active') ? '0' : '-1');
+      });
+    };
+    segButtons.forEach((btn, index) => {
       btn.addEventListener('click', () => {
         const type = btn.getAttribute('data-system-type');
         if (!type) return;
@@ -697,9 +776,21 @@
         });
         btn.classList.add('active');
         btn.setAttribute('aria-checked', 'true');
+        syncSegTabindex();
         updateUI();
       });
+      btn.addEventListener('keydown', (e) => {
+        const forward = e.key === 'ArrowRight' || e.key === 'ArrowDown';
+        const backward = e.key === 'ArrowLeft' || e.key === 'ArrowUp';
+        if (!forward && !backward) return;
+        e.preventDefault();
+        const offset = forward ? 1 : -1;
+        const next = segButtons[(index + offset + segButtons.length) % segButtons.length];
+        next.click();
+        next.focus();
+      });
     });
+    syncSegTabindex();
 
     // 3. Advanced Options Accordion
     const advToggle = document.getElementById('btn-advanced-toggle');
@@ -830,14 +921,18 @@
       drawerAside.hidden = false;
       drawerBackdrop.hidden = false;
       if (btnDrawerOpen) btnDrawerOpen.setAttribute('aria-expanded', 'true');
-      if (drawerSearch) drawerSearch.focus();
+      document.body.style.overflow = 'hidden';
+      pushOverlay(drawerAside, btnDrawerOpen, drawerSearch);
     }
 
     function closeDrawer() {
       if (!drawerAside || !drawerBackdrop) return;
+      if (drawerAside.hidden) return;
       drawerAside.hidden = true;
       drawerBackdrop.hidden = true;
       if (btnDrawerOpen) btnDrawerOpen.setAttribute('aria-expanded', 'false');
+      document.body.style.overflow = '';
+      popOverlay(drawerAside);
     }
 
     if (btnDrawerOpen) btnDrawerOpen.addEventListener('click', openDrawer);
@@ -861,13 +956,11 @@
     const cmdTrigger = document.getElementById('cmd-palette-trigger');
     const cmdOpenFromSwitcher = document.getElementById('open-cmd-palette-btn');
 
-    function openCmdPalette() {
+    function openCmdPalette(trigger) {
       if (!cmdBackdrop) return;
       cmdBackdrop.hidden = false;
-      if (cmdInput) {
-        cmdInput.value = '';
-        cmdInput.focus();
-      }
+      document.body.style.overflow = 'hidden';
+      pushOverlay(cmdBackdrop, trigger, cmdInput);
       filterPalette('');
       closeDrawer();
       if (menuSwitcher) {
@@ -877,33 +970,66 @@
     }
 
     function closeCmdPalette() {
-      if (!cmdBackdrop) return;
+      if (!cmdBackdrop || cmdBackdrop.hidden) return;
       cmdBackdrop.hidden = true;
+      document.body.style.overflow = '';
+      popOverlay(cmdBackdrop);
     }
 
-    if (cmdTrigger) cmdTrigger.addEventListener('click', openCmdPalette);
-    if (cmdOpenFromSwitcher) cmdOpenFromSwitcher.addEventListener('click', openCmdPalette);
+    if (cmdTrigger) cmdTrigger.addEventListener('click', (e) => openCmdPalette(e.currentTarget));
+    if (cmdOpenFromSwitcher) {
+      cmdOpenFromSwitcher.addEventListener('click', (e) => openCmdPalette(e.currentTarget));
+    }
     if (cmdBackdrop) {
       cmdBackdrop.addEventListener('click', (e) => {
         if (e.target === cmdBackdrop) closeCmdPalette();
       });
     }
 
+    function setSelectedCmd(item) {
+      document.querySelectorAll('#cmd-results-list .cmd-item').forEach((it) => {
+        const selected = it === item;
+        it.classList.toggle('selected', selected);
+        it.setAttribute('aria-selected', selected ? 'true' : 'false');
+      });
+      if (cmdInput) {
+        if (item?.id) {
+          cmdInput.setAttribute('aria-activedescendant', item.id);
+        } else {
+          cmdInput.removeAttribute('aria-activedescendant');
+        }
+      }
+    }
+
+    function setGroupLabelVisibility(group, visible) {
+      const label = document.querySelector(
+        `#cmd-results-list .cmd-group-label[data-group="${group}"]`,
+      );
+      if (label) label.style.display = visible ? '' : 'none';
+    }
+
     function filterPalette(query) {
-      const items = document.querySelectorAll('#cmd-results-list .cmd-item');
+      const items = Array.from(document.querySelectorAll('#cmd-results-list .cmd-item'));
       let firstVisible = null;
       items.forEach((item) => {
         const title = (item.getAttribute('data-title') || '').toLowerCase();
         const match = title.includes(query.toLowerCase());
         item.style.display = match ? '' : 'none';
-        item.classList.remove('selected');
         if (match && !firstVisible) {
           firstVisible = item;
         }
       });
-      if (firstVisible) {
-        firstVisible.classList.add('selected');
-      }
+      setGroupLabelVisibility(
+        'tools',
+        items.some((i) => i.getAttribute('data-type') === 'tool' && i.style.display !== 'none'),
+      );
+      setGroupLabelVisibility(
+        'commands',
+        items.some((i) => i.getAttribute('data-type') === 'cmd' && i.style.display !== 'none'),
+      );
+      const emptyEl = document.getElementById('cmd-empty-state');
+      if (emptyEl) emptyEl.hidden = Boolean(firstVisible);
+      setSelectedCmd(firstVisible);
     }
 
     if (cmdInput) {
@@ -927,7 +1053,7 @@
           resetToDefaults();
           showToast('Reset all parameters to default values.', '🔄');
         } else if (action === 'help') openHelp();
-        else if (action === 'theme') toggleTheme();
+        else if (action === 'theme') document.getElementById('tool-theme-toggle')?.click();
         else if (action === '3d') {
           if (btn3d) btn3d.click();
         } else if (action === 'animate') {
@@ -964,7 +1090,7 @@
     }
     if (cmdTheme) {
       cmdTheme.addEventListener('click', () => {
-        toggleTheme();
+        document.getElementById('tool-theme-toggle')?.click();
         closeDrawer();
       });
     }
@@ -975,18 +1101,21 @@
     const btnHelpClose = document.getElementById('tool-help-close');
     const btnHelpGotIt = document.getElementById('tool-help-confirm');
 
-    function openHelp() {
+    function openHelp(trigger) {
       if (!helpBackdrop) return;
       helpBackdrop.hidden = false;
-      if (btnHelpGotIt) btnHelpGotIt.focus();
+      document.body.style.overflow = 'hidden';
+      pushOverlay(helpBackdrop, trigger, btnHelpGotIt);
     }
 
     function closeHelp() {
-      if (!helpBackdrop) return;
+      if (!helpBackdrop || helpBackdrop.hidden) return;
       helpBackdrop.hidden = true;
+      document.body.style.overflow = '';
+      popOverlay(helpBackdrop);
     }
 
-    if (btnHelp) btnHelp.addEventListener('click', openHelp);
+    if (btnHelp) btnHelp.addEventListener('click', (e) => openHelp(e.currentTarget));
     if (btnHelpClose) btnHelpClose.addEventListener('click', closeHelp);
     if (btnHelpGotIt) btnHelpGotIt.addEventListener('click', closeHelp);
     if (helpBackdrop) {
@@ -995,20 +1124,7 @@
       });
     }
 
-    // 11. Theme Toggle
-    const btnThemeToggle = document.getElementById('tool-theme-toggle');
-    function toggleTheme() {
-      const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
-      const newTheme = isDark ? 'light' : 'dark';
-      document.documentElement.setAttribute('data-theme', newTheme);
-      try {
-        localStorage.setItem('electrasim-theme', newTheme);
-      } catch (_) {}
-      if (btnThemeToggle) {
-        btnThemeToggle.setAttribute('aria-pressed', !isDark ? 'true' : 'false');
-      }
-    }
-    if (btnThemeToggle) btnThemeToggle.addEventListener('click', toggleTheme);
+    // 11. Theme toggle: handled globally by theme.js via [data-theme-toggle].
 
     // 12. Fullscreen Toggle
     const btnFullscreen = document.getElementById('tool-fullscreen-btn');
@@ -1016,10 +1132,24 @@
     const fsExitIcon = document.querySelector('.fs-icon-exit');
 
     function toggleFullscreen() {
+      const docEl = document.documentElement;
       if (!document.fullscreenElement) {
-        document.documentElement.requestFullscreen().catch(() => {});
+        const request =
+          docEl.requestFullscreen || docEl.webkitRequestFullscreen || docEl.msRequestFullscreen;
+        if (typeof request !== 'function') {
+          showToast("Fullscreen isn't supported on this browser or device.", '⚠️');
+          return;
+        }
+        try {
+          // Standard API returns a promise; legacy webkit/ms APIs return void.
+          Promise.resolve(request.call(docEl))
+            .then(() => showToast('Press Esc to exit fullscreen.', 'ℹ️', 2500))
+            .catch(() => showToast('Fullscreen was blocked by the browser.', '⚠️'));
+        } catch (_) {
+          showToast("Fullscreen isn't available here.", '⚠️');
+        }
       } else {
-        document.exitFullscreen().catch(() => {});
+        (document.exitFullscreen || document.webkitExitFullscreen)?.call(document);
       }
     }
 
@@ -1048,8 +1178,12 @@
     }
 
     setInterval(() => {
-      if (!state.showTips || !tipsText) return;
+      if (!state.showTips || !tipsText || document.hidden || REDUCED_MOTION.matches) return;
       state.tipIndex = (state.tipIndex + 1) % TIPS.length;
+      if (REDUCED_MOTION.matches) {
+        tipsText.textContent = TIPS[state.tipIndex];
+        return;
+      }
       tipsText.style.opacity = '0';
       setTimeout(() => {
         tipsText.textContent = TIPS[state.tipIndex];
@@ -1064,35 +1198,61 @@
     const panelResultsCont = document.querySelector('.results-panel-container');
     const panelScrim = document.getElementById('inputs-panel-scrim');
 
-    function openMobileInputs() {
+    function openMobileInputs(trigger) {
       if (panelInputsCont && panelScrim) {
         panelInputsCont.classList.add('open');
         panelScrim.hidden = false;
+        document.body.style.overflow = 'hidden';
+        const firstField = panelInputsCont.querySelector(FOCUSABLE_SELECTOR);
+        pushOverlay(panelInputsCont, trigger, firstField);
       }
     }
 
-    function openMobileResults() {
+    function openMobileResults(trigger) {
       if (panelResultsCont && panelScrim) {
         panelResultsCont.classList.add('open');
         panelScrim.hidden = false;
+        document.body.style.overflow = 'hidden';
+        pushOverlay(panelResultsCont, trigger, panelResultsCont);
       }
     }
 
     function closeMobilePanels() {
+      if (
+        !panelInputsCont?.classList.contains('open') &&
+        !panelResultsCont?.classList.contains('open')
+      ) {
+        return;
+      }
       if (panelInputsCont) panelInputsCont.classList.remove('open');
       if (panelResultsCont) panelResultsCont.classList.remove('open');
       if (panelScrim) panelScrim.hidden = true;
+      document.body.style.overflow = '';
+      popOverlay(panelResultsCont);
+      popOverlay(panelInputsCont);
     }
 
-    if (btnMobInputs) btnMobInputs.addEventListener('click', openMobileInputs);
-    if (btnMobResults) btnMobResults.addEventListener('click', openMobileResults);
+    if (btnMobInputs)
+      btnMobInputs.addEventListener('click', (e) => openMobileInputs(e.currentTarget));
+    if (btnMobResults)
+      btnMobResults.addEventListener('click', (e) => openMobileResults(e.currentTarget));
     if (panelScrim) panelScrim.addEventListener('click', closeMobilePanels);
 
     // 15. Global Keyboard Shortcuts
     window.addEventListener('keydown', (e) => {
       if (e.shiftKey && e.code === 'Space') {
+        const target = e.target;
+        const isTypingContext =
+          e.isComposing ||
+          (target &&
+            (target.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName)));
+        if (isTypingContext) return;
         e.preventDefault();
-        openCmdPalette();
+        if (cmdBackdrop && !cmdBackdrop.hidden) {
+          closeCmdPalette();
+        } else {
+          openCmdPalette();
+        }
         return;
       }
 
@@ -1118,16 +1278,14 @@
 
         if (e.key === 'ArrowDown') {
           e.preventDefault();
-          const nextIdx = (currentIdx + 1) % visibleItems.length;
-          visibleItems.forEach((it) => it.classList.remove('selected'));
-          visibleItems[nextIdx].classList.add('selected');
-          visibleItems[nextIdx].scrollIntoView({ block: 'nearest' });
+          const next = visibleItems[(currentIdx + 1) % visibleItems.length];
+          setSelectedCmd(next);
+          next.scrollIntoView({ block: 'nearest' });
         } else if (e.key === 'ArrowUp') {
           e.preventDefault();
-          const prevIdx = (currentIdx - 1 + visibleItems.length) % visibleItems.length;
-          visibleItems.forEach((it) => it.classList.remove('selected'));
-          visibleItems[prevIdx].classList.add('selected');
-          visibleItems[prevIdx].scrollIntoView({ block: 'nearest' });
+          const prev = visibleItems[(currentIdx - 1 + visibleItems.length) % visibleItems.length];
+          setSelectedCmd(prev);
+          prev.scrollIntoView({ block: 'nearest' });
         } else if (e.key === 'Enter') {
           e.preventDefault();
           if (currentIdx >= 0) {
@@ -1137,11 +1295,40 @@
       }
     });
 
-    // 16. Window resize & mouse move
-    window.addEventListener('resize', handleResize);
+    // 16. Window resize & mouse move (debounced / rAF-batched)
+    let resizeFrame = null;
+    window.addEventListener('resize', () => {
+      if (resizeFrame !== null) return;
+      resizeFrame = requestAnimationFrame(() => {
+        resizeFrame = null;
+        handleResize();
+      });
+    });
+
     const stage = document.getElementById('interactive-stage');
+    let parallaxFrame = null;
+    let parallaxCoords = null;
+    function applyParallax() {
+      parallaxFrame = null;
+      if (!parallaxCoords) return;
+      const wrapper = document.getElementById('scene-perspective-wrapper');
+      if (!wrapper) return;
+      wrapper.style.transform = `perspective(1200px) rotateY(${(parallaxCoords.x * 6).toFixed(2)}deg) rotateX(${(-parallaxCoords.y * 4).toFixed(2)}deg)`;
+    }
     if (stage) {
-      stage.addEventListener('mousemove', handleMouseMove);
+      stage.addEventListener('mousemove', (e) => {
+        if (!state.threeD || REDUCED_MOTION.matches) return;
+        const rect = stage.getBoundingClientRect();
+        parallaxCoords = {
+          x: ((e.clientX - rect.left) / rect.width) * 2 - 1,
+          y: ((e.clientY - rect.top) / rect.height) * 2 - 1,
+        };
+        state.parallax.x = parallaxCoords.x;
+        state.parallax.y = parallaxCoords.y;
+        if (parallaxFrame === null) {
+          parallaxFrame = requestAnimationFrame(applyParallax);
+        }
+      });
     }
   }
 
@@ -1198,6 +1385,7 @@
     });
 
     // Clear all field error notices
+    touchedFields.clear();
     displayFieldErrors({});
 
     updateUI();
@@ -1209,6 +1397,21 @@
   function init() {
     setupEvents();
     handleResize();
+
+    // Honour OS reduced-motion: freeze SMIL particles and mark the toggle off.
+    if (REDUCED_MOTION.matches) {
+      state.animate = false;
+      const svgSceneEl = document.getElementById('voltage-drop-svg');
+      const animBtn = document.getElementById('btn-toggle-animate');
+      if (svgSceneEl && typeof svgSceneEl.pauseAnimations === 'function') {
+        svgSceneEl.pauseAnimations();
+      }
+      if (animBtn) {
+        animBtn.classList.remove('active');
+        animBtn.setAttribute('aria-pressed', 'false');
+      }
+    }
+
     updateUI();
   }
 

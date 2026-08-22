@@ -21,7 +21,7 @@
           autocapitalize="off"
           spellcheck="false"
           role="combobox"
-          aria-expanded="true"
+          aria-expanded="false"
           aria-autocomplete="list"
           aria-controls="site-search-results"
           aria-label="Search guides, calculators, articles"
@@ -67,6 +67,20 @@
         <div class="empty-icon" aria-hidden="true">🔍</div>
         <p class="empty-title">No results found for "<span id="search-empty-query"></span>"</p>
         <p class="empty-desc">Try checking for spelling or searching with broader electrical terms (e.g. "RCD", "voltage", "switch").</p>
+      </div>
+
+      <!-- Loading State -->
+      <div id="site-search-loading" class="search-empty-state" role="status" aria-live="polite" hidden>
+        <div class="search-spinner" aria-hidden="true"></div>
+        <p class="empty-title">Searching…</p>
+      </div>
+
+      <!-- Error State -->
+      <div id="site-search-error" class="search-empty-state" role="alert" hidden>
+        <div class="empty-icon" aria-hidden="true">⚠️</div>
+        <p class="empty-title">Couldn't load search results</p>
+        <p class="empty-desc">Check your connection and try again.</p>
+        <button type="button" id="site-search-retry-btn" class="search-retry-btn">Retry</button>
       </div>
     </div>
 
@@ -352,6 +366,39 @@
     color: var(--text-mid);
     max-width: 380px;
     margin: 0 auto;
+  }
+
+  /* ── Loading & Error States ── */
+  .search-spinner {
+    width: 1.75rem;
+    height: 1.75rem;
+    margin: 0 auto 0.6rem;
+    border-radius: 50%;
+    border: 3px solid var(--border, #e2e8f0);
+    border-top-color: var(--blue, #2563eb);
+    animation: searchSpin 0.8s linear infinite;
+  }
+
+  @keyframes searchSpin {
+    to { transform: rotate(360deg); }
+  }
+
+  .search-retry-btn {
+    margin-top: 0.9rem;
+    padding: 0.45rem 1.25rem;
+    border-radius: 999px;
+    border: 1px solid var(--blue, #2563eb);
+    background: var(--blue, #2563eb);
+    color: #ffffff;
+    font-size: 0.82rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background 0.15s ease, border-color 0.15s ease;
+  }
+
+  .search-retry-btn:hover {
+    background: var(--action-hover, #1d4ed8);
+    border-color: var(--action-hover, #1d4ed8);
   }
 
   /* ── Modal Footer ── */

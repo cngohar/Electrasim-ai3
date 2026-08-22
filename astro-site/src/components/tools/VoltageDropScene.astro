@@ -11,6 +11,7 @@
         width="1440"
         height="810"
         class="scene-svg"
+        role="img"
         aria-label="Interactive electrical scenery illustrating voltage drop from source to load across a cable"
       >
         <defs>
@@ -683,5 +684,13 @@
   .scene-paused .star,
   .scene-paused .cable-thermal {
     animation-play-state: paused !important;
+  }
+
+  /* Reduced Motion: freeze all decorative scene animation */
+  @media (prefers-reduced-motion: reduce) {
+    .scene-svg *,
+    #scene-container * {
+      animation: none !important;
+    }
   }
 </style>

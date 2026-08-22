@@ -29,17 +29,23 @@ const { currentTool } = Astro.props;
         placeholder="Type a tool name or command..."
         autocomplete="off"
         spellcheck="false"
+        role="combobox"
+        aria-expanded="true"
+        aria-autocomplete="list"
+        aria-controls="cmd-results-list"
+        aria-label="Search tools and commands"
       />
       <kbd class="cmd-esc-badge">ESC</kbd>
     </div>
 
-    <div class="cmd-results-list nice-scroll" id="cmd-results-list" role="listbox">
+    <div class="cmd-results-list nice-scroll" id="cmd-results-list" role="listbox" aria-label="Tools and commands">
       <div class="cmd-group-label" data-group="tools">TOOLS</div>
       {TOOLBOX_REGISTRY.map((tool, idx) => (
         <div
           role="option"
           tabindex="-1"
-          aria-selected={idx === 0}
+          id={`cmd-opt-tool-${tool.id}`}
+          aria-selected="false"
           class={`cmd-item ${idx === 0 ? 'selected' : ''} ${tool.id === currentTool.id ? 'current-tool' : ''}`}
           data-type="tool"
           data-route={tool.route}
@@ -65,6 +71,7 @@ const { currentTool } = Astro.props;
       <div
         role="option"
         tabindex="-1"
+        id="cmd-opt-cmd-home"
         class="cmd-item"
         data-type="cmd"
         data-action="home"
@@ -82,6 +89,7 @@ const { currentTool } = Astro.props;
       <div
         role="option"
         tabindex="-1"
+        id="cmd-opt-cmd-app"
         class="cmd-item"
         data-type="cmd"
         data-action="app"
@@ -99,6 +107,7 @@ const { currentTool } = Astro.props;
       <div
         role="option"
         tabindex="-1"
+        id="cmd-opt-cmd-reset"
         class="cmd-item"
         data-type="cmd"
         data-action="reset"
@@ -116,6 +125,7 @@ const { currentTool } = Astro.props;
       <div
         role="option"
         tabindex="-1"
+        id="cmd-opt-cmd-help"
         class="cmd-item"
         data-type="cmd"
         data-action="help"
@@ -133,6 +143,7 @@ const { currentTool } = Astro.props;
       <div
         role="option"
         tabindex="-1"
+        id="cmd-opt-cmd-theme"
         class="cmd-item"
         data-type="cmd"
         data-action="theme"
@@ -150,6 +161,7 @@ const { currentTool } = Astro.props;
       <div
         role="option"
         tabindex="-1"
+        id="cmd-opt-cmd-3d"
         class="cmd-item"
         data-type="cmd"
         data-action="3d"
@@ -167,6 +179,7 @@ const { currentTool } = Astro.props;
       <div
         role="option"
         tabindex="-1"
+        id="cmd-opt-cmd-animate"
         class="cmd-item"
         data-type="cmd"
         data-action="animate"
@@ -179,6 +192,11 @@ const { currentTool } = Astro.props;
             <span class="cmd-item-sub">Pause or resume moving electrical particles</span>
           </div>
         </div>
+      </div>
+
+      <div id="cmd-empty-state" class="cmd-empty-state" hidden>
+        <span class="cmd-empty-icon" aria-hidden="true">🔍</span>
+        <p>No matching tools or commands. Try "reset", "help", or a tool name.</p>
       </div>
     </div>
 
@@ -207,6 +225,23 @@ const { currentTool } = Astro.props;
     padding-left: 1rem;
     padding-right: 1rem;
     z-index: 100;
+  }
+
+  .cmd-empty-state {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 1rem 0.85rem;
+    color: var(--text-mid, #64748b);
+    font-size: 0.85rem;
+    font-weight: 600;
+  }
+  .cmd-empty-state[hidden] {
+    display: none;
+  }
+  .cmd-empty-icon {
+    font-size: 1.1rem;
+    opacity: 0.7;
   }
   .cmd-palette-backdrop[hidden] {
     display: none;
