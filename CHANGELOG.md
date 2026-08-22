@@ -11,6 +11,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — Session 2026-08-22: Site-Wide Instant Search & Command Palette
+
+Implemented a zero-dependency, ultra-fast client-side instant search modal and keyboard command palette across the marketing site, blog, guides, and electrical calculators.
+
+- **Static Search Index API** (`astro-site/src/pages/search.json.ts`, `astro-site/src/lib/search.ts`): Build-time compiled search index aggregating all calculators, blog articles, guided circuits, and core landing pages with category metadata, tags, and descriptions. Tested in `astro-site/src/lib/search.test.ts` (passing).
+- **Search Modal & Navigation** (`SiteSearchModal.astro`, `SiteHeader.astro`): Accessible native `<dialog>` modal with backdrop blur, light-dismiss support, category filter pills (All, Calculators, Articles, Guides), and keyboard shortcut triggers (`Ctrl+K` / `⌘K` / `/`).
+- **Client Search Engine** (`astro-site/public/js/site-search.js`): Pure vanilla JS fuzzy ranking engine with query token scoring, highlight matches, debounced input, and keyboard navigation (`↑`/`↓`/`Enter`/`Esc`).
+- **E2E Production Verification** (`e2e/production.spec.ts`): Verified modal opening via hotkey, quick links rendering, real-time query filtering, category pill switching, and escape dismissal.
+
 ### Added — Session 2026-08-21: Electrical Toolbox & Interactive Voltage Drop Calculator (`ElectraSim_Electrical_Toolbox_Master_Plan.md`)
 
 Implemented the full Electrical Toolbox architecture and the first flagship tool: the **Voltage Drop Calculator** (`/tools/voltage-drop-calculator/`), built purely with native Astro, HTML5 SVG vector graphics, CSS, and lightweight vanilla client scripts (zero React islands in Astro site, full CSP compliance).

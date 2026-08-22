@@ -7,6 +7,27 @@ A running, append-only log of work on the ElectraSim rewrite. Every coding sessi
 
 ---
 
+## Session 2026-08-22 — Astro 7 Upgrade & Site-Wide Instant Search
+
+**Done:** Upgraded Astro to the latest stable `v7.2.4` and implemented an ultra-fast, zero-dependency **Instant Search & Command Palette** modal across the entire website (`/`, `/blog/`, `/guide/`, `/tools/`, `/compare/`).
+
+- **Astro v7 Upgrade & Strict Linter Alignment:**
+  - Upgraded `astro` (`^7.2.4`), `@astrojs/sitemap` (`^3.7.3`), and `@astrojs/check` (`^0.9.4`).
+  - Decoupled Content Layer imports to `import { z } from 'astro/zod'` conforming to Zod 4.
+  - Added `is:inline` to all `<script type="application/ld+json">` tags to silence Astro 7 compiler warnings.
+  - Fixed fallback OG image reference from `/images/landing-og-image.png` to `/og-image.png`.
+- **Site-Wide Instant Search System:**
+  - Built static search index generator [`search.json.ts`](astro-site/src/pages/search.json.ts) and index compiler [`search.ts`](astro-site/src/lib/search.ts), generating `dist/search.json` with all tools, articles, guides, and core pages.
+  - Built native dialog search modal [`SiteSearchModal.astro`](astro-site/src/components/layout/SiteSearchModal.astro) with backdrop blur, light-dismiss support, category filters (`Calculators`, `Articles`, `Guides`), and keyboard hints.
+  - Built pure vanilla JS client search engine [`site-search.js`](astro-site/public/js/site-search.js) with token weighting, match highlighting, debounced input, and keyboard navigation (`↑`/`↓`/`Enter`/`Esc`, `Ctrl+K` / `⌘K` / `/` hotkey).
+- **Verification:**
+  - `npx astro check`: **0 errors, 0 warnings, 0 hints across 77 files**.
+  - `npm run check` (Typecheck, Biome Lint, Vitest): **61 test files passed (850/850 tests)**.
+  - `npm run build && npm run check:links`: **0 broken links across 140 HTML files**.
+  - Playwright E2E (`npm run e2e:production`): **20/20 production tests passed (100%)**.
+
+---
+
 ## Session 2026-08-21 — Electrical Toolbox & Voltage Drop Calculator (`ElectraSim_Electrical_Toolbox_Master_Plan.md`)
 
 **Done:** Architected and fully implemented the **ElectraSim Electrical Toolbox** and the flagship **Interactive Voltage Drop Calculator** (`/tools/voltage-drop-calculator/`), adhering strictly to native Astro templates, HTML5 SVG, and vanilla TypeScript/DOM scripts with zero React islands in `astro-site/` (respecting user constraints and CSP policies).
