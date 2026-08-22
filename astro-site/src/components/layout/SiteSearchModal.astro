@@ -1,0 +1,410 @@
+---
+// SiteSearchModal.astro - Global Instant Search Modal for ElectraSim
+---
+
+<dialog id="site-search-dialog" class="site-search-dialog" closedby="any" aria-label="Search ElectraSim">
+  <div class="search-modal-box">
+    <!-- Header with Search Input -->
+    <header class="search-modal-header">
+      <div class="search-input-wrap">
+        <svg class="search-icon-svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <circle cx="11" cy="11" r="8" />
+          <line x1="21" y1="21" x2="16.65" y2="16.65" />
+        </svg>
+        <input
+          type="search"
+          id="site-search-input"
+          class="site-search-input"
+          placeholder="Search guides, calculators, articles..."
+          autocomplete="off"
+          autocorrect="off"
+          autocapitalize="off"
+          spellcheck="false"
+          role="combobox"
+          aria-expanded="true"
+          aria-autocomplete="list"
+          aria-controls="site-search-results"
+          aria-label="Search guides, calculators, articles"
+        />
+      </div>
+      <button type="button" id="site-search-close-btn" class="search-close-btn" aria-label="Close search (Escape)">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="18" y1="6" x2="6" y2="18" />
+          <line x1="6" y1="6" x2="18" y2="18" />
+        </svg>
+      </button>
+    </header>
+
+    <!-- Category Filter Tabs -->
+    <div class="search-filters" role="group" aria-label="Filter search results by type">
+      <button type="button" class="search-filter-pill active" data-filter="all" aria-pressed="true">
+        All
+      </button>
+      <button type="button" class="search-filter-pill" data-filter="tool" aria-pressed="false">
+        ⚡ Calculators
+      </button>
+      <button type="button" class="search-filter-pill" data-filter="article" aria-pressed="false">
+        📖 Articles
+      </button>
+      <button type="button" class="search-filter-pill" data-filter="guide" aria-pressed="false">
+        📐 Guides
+      </button>
+    </div>
+
+    <!-- Quick Links Heading (visible when empty query) -->
+    <div id="site-search-quicklinks" class="search-section-label">
+      <span>POPULAR & QUICK ACCESS</span>
+    </div>
+
+    <!-- Results Container -->
+    <div class="search-results-wrap">
+      <ul id="site-search-results" class="search-results-list" role="listbox" aria-label="Search suggestions">
+        <!-- Dynamically populated by site-search.js -->
+      </ul>
+
+      <!-- No Results State -->
+      <div id="site-search-empty" class="search-empty-state" hidden>
+        <div class="empty-icon" aria-hidden="true">🔍</div>
+        <p class="empty-title">No results found for "<span id="search-empty-query"></span>"</p>
+        <p class="empty-desc">Try checking for spelling or searching with broader electrical terms (e.g. "RCD", "voltage", "switch").</p>
+      </div>
+    </div>
+
+    <!-- Keyboard Navigation Footer -->
+    <footer class="search-modal-footer">
+      <div class="footer-keys">
+        <span class="footer-key-item"><kbd class="key-badge">↑</kbd><kbd class="key-badge">↓</kbd> <span>Navigate</span></span>
+        <span class="footer-key-item"><kbd class="key-badge">↵</kbd> <span>Open</span></span>
+        <span class="footer-key-item"><kbd class="key-badge">Esc</kbd> <span>Close</span></span>
+      </div>
+      <div class="footer-brand">ElectraSim Instant Search</div>
+    </footer>
+  </div>
+</dialog>
+
+<style>
+  /* ── Native Dialog & Backdrop ── */
+  .site-search-dialog {
+    padding: 0;
+    border: none;
+    background: transparent;
+    max-width: 640px;
+    width: 90vw;
+    margin: 4.5rem auto auto;
+    border-radius: var(--radius-lg, 1rem);
+    box-shadow: 0 24px 60px -12px rgba(0, 0, 0, 0.35);
+    overflow: visible;
+  }
+
+  .site-search-dialog::backdrop {
+    background: rgba(15, 23, 42, 0.65);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    animation: dialogFadeIn 0.15s ease-out;
+  }
+
+  @keyframes dialogFadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  .search-modal-box {
+    background: var(--surface-glass, rgba(255, 255, 255, 0.98));
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg, 1rem);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    color: var(--text);
+  }
+
+  :global(:root[data-theme="dark"]) .search-modal-box {
+    background: rgba(22, 27, 34, 0.98);
+    border-color: rgba(255, 255, 255, 0.12);
+  }
+
+  /* ── Header & Input ── */
+  .search-modal-header {
+    display: flex;
+    align-items: center;
+    padding: 0.85rem 1.25rem;
+    border-bottom: 1px solid var(--border);
+    gap: 0.75rem;
+  }
+
+  .search-input-wrap {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex: 1;
+  }
+
+  .search-icon-svg {
+    color: var(--blue, #2563eb);
+    flex-shrink: 0;
+  }
+
+  .site-search-input {
+    flex: 1;
+    border: none;
+    background: transparent;
+    font-family: var(--font-display, inherit);
+    font-size: 1.05rem;
+    font-weight: 600;
+    color: var(--text);
+    outline: none;
+  }
+
+  .site-search-input::placeholder {
+    color: var(--text-dim, #94a3b8);
+    font-weight: 500;
+  }
+
+  .search-close-btn {
+    width: 2rem;
+    height: 2rem;
+    border-radius: var(--radius-sm, 0.35rem);
+    border: 1px solid var(--border);
+    background: var(--bg-2, #f1f5f9);
+    color: var(--text-mid, #64748b);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+
+  .search-close-btn:hover {
+    background: var(--bg-3, #e2e8f0);
+    color: var(--text);
+  }
+
+  /* ── Filter Tabs ── */
+  .search-filters {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.65rem 1.25rem;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg-2, #f8fafc);
+  }
+
+  :global(:root[data-theme="dark"]) .search-filters {
+    background: rgba(15, 23, 42, 0.4);
+  }
+
+  .search-filter-pill {
+    padding: 0.3rem 0.75rem;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: var(--bg-card, #ffffff);
+    color: var(--text-mid, #64748b);
+    font-size: 0.78rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+
+  .search-filter-pill:hover {
+    color: var(--text);
+    border-color: var(--border-bright);
+  }
+
+  .search-filter-pill.active {
+    background: var(--blue, #2563eb);
+    color: #ffffff;
+    border-color: var(--blue, #2563eb);
+  }
+
+  .search-section-label {
+    padding: 0.65rem 1.25rem 0.25rem;
+    font-size: 0.68rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    color: var(--text-dim, #94a3b8);
+  }
+
+  /* ── Results Container & Items ── */
+  .search-results-wrap {
+    max-height: 380px;
+    overflow-y: auto;
+    padding: 0.5rem;
+  }
+
+  .search-results-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+  }
+
+  :global(.search-result-item) {
+    border-radius: var(--radius, 0.5rem);
+    border: 1px solid transparent;
+    transition: all 0.12s ease;
+  }
+
+  :global(.search-result-item:hover),
+  :global(.search-result-item.selected) {
+    background: var(--blue-l, rgba(37, 99, 235, 0.08));
+    border-color: var(--border-bright, rgba(37, 99, 235, 0.2));
+  }
+
+  :global(.search-result-link) {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    padding: 0.65rem 0.85rem;
+    text-decoration: none;
+    color: var(--text);
+  }
+
+  :global(.search-result-header) {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  :global(.search-type-badge) {
+    font-size: 0.68rem;
+    font-weight: 800;
+    padding: 0.15rem 0.45rem;
+    border-radius: 0.3rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  :global(.type-badge-tool) {
+    background: rgba(37, 99, 235, 0.15);
+    color: var(--blue, #2563eb);
+  }
+
+  :global(.type-badge-article) {
+    background: rgba(16, 185, 129, 0.15);
+    color: #10b981;
+  }
+
+  :global(.type-badge-guide) {
+    background: rgba(245, 158, 11, 0.15);
+    color: #f59e0b;
+  }
+
+  :global(.type-badge-page) {
+    background: rgba(100, 116, 139, 0.15);
+    color: var(--text-mid);
+  }
+
+  :global(.search-category-tag) {
+    font-size: 0.72rem;
+    color: var(--text-dim, #94a3b8);
+    font-weight: 600;
+  }
+
+  :global(.search-result-title) {
+    font-family: var(--font-display, inherit);
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--text);
+    line-height: 1.3;
+  }
+
+  :global(.search-result-desc) {
+    font-size: 0.82rem;
+    color: var(--text-mid, #64748b);
+    line-height: 1.4;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  :global(.search-highlight) {
+    background: rgba(234, 179, 8, 0.3);
+    color: inherit;
+    font-weight: 800;
+    border-radius: 0.15rem;
+    padding: 0 0.15rem;
+  }
+
+  /* ── Empty State ── */
+  .search-empty-state {
+    text-align: center;
+    padding: 2.5rem 1.5rem;
+  }
+
+  .empty-icon {
+    font-size: 2rem;
+    margin-bottom: 0.5rem;
+    opacity: 0.6;
+  }
+
+  .empty-title {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: 0.35rem;
+  }
+
+  .empty-desc {
+    font-size: 0.82rem;
+    color: var(--text-mid);
+    max-width: 380px;
+    margin: 0 auto;
+  }
+
+  /* ── Modal Footer ── */
+  .search-modal-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.65rem 1.25rem;
+    border-top: 1px solid var(--border);
+    background: var(--bg-2, #f8fafc);
+    font-size: 0.74rem;
+    color: var(--text-dim, #94a3b8);
+  }
+
+  :global(:root[data-theme="dark"]) .search-modal-footer {
+    background: rgba(15, 23, 42, 0.4);
+  }
+
+  .footer-keys {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+  }
+
+  .footer-key-item {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+  }
+
+  .key-badge {
+    font-family: var(--font-mono, monospace);
+    font-size: 0.68rem;
+    padding: 0.1rem 0.35rem;
+    border-radius: 0.25rem;
+    background: var(--bg-card, #ffffff);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-weight: 700;
+  }
+
+  .footer-brand {
+    font-weight: 600;
+    opacity: 0.75;
+  }
+
+  @media (max-width: 640px) {
+    .site-search-dialog {
+      margin: 1.5rem auto auto;
+      width: 95vw;
+    }
+    .footer-keys {
+      display: none;
+    }
+  }
+</style>

@@ -1,4 +1,4 @@
-@import './fonts.css';
+@import "./fonts.css";
 
 *,
 *::before,
@@ -497,6 +497,65 @@ a {
   font: inherit;
   transition: background .15s, border-color .15s, color .15s;
 }
+.search-toggle-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.4rem 0.75rem;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+  color: var(--text-mid);
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.search-toggle-btn:hover {
+  border-color: var(--border-bright);
+  background: var(--blue-l);
+  color: var(--blue);
+}
+.search-toggle-btn:focus-visible {
+  outline: 3px solid var(--blue-glow);
+  outline-offset: 2px;
+}
+.nav-search-icon {
+  color: var(--blue);
+  flex-shrink: 0;
+}
+.nav-search-kbd {
+  font-family: var(--font-mono, monospace);
+  font-size: 0.65rem;
+  font-weight: 700;
+  padding: 0.1rem 0.35rem;
+  border-radius: 0.25rem;
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+}
+.search-toggle-mobile {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  padding: 0.75rem 1rem;
+  border-radius: 0.5rem;
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  margin-bottom: 0.25rem;
+}
+.search-toggle-mobile:hover {
+  background: var(--blue-l);
+  color: var(--blue);
+}
 .theme-toggle {
   width: 2.5rem;
   height: 2.5rem;
@@ -923,7 +982,6 @@ footer .ft-top {
     padding: 0 1rem;
   }
 }
-
 
 /* ══════════════════════════════════════════════════════════════════════════
    LIVING SCHEMATIC — ElectraSim design system
@@ -1805,11 +1863,7 @@ footer .ft-bot a:hover {
 .pulse-march {
   position: absolute;
   inset: 0;
-  background-image: repeating-linear-gradient(
-    90deg,
-    var(--live) 0 7px,
-    transparent 7px 17px
-  );
+  background-image: repeating-linear-gradient(90deg, var(--live) 0 7px, transparent 7px 17px);
   opacity: 0.55;
   animation: march 0.75s linear infinite paused;
 }
@@ -1820,11 +1874,21 @@ footer .ft-bot a:hover {
 }
 
 /* Phase offsets. Negative delays start mid-cycle so nothing waits to begin. */
-.pd-1 { animation-delay: -0.9s; }
-.pd-2 { animation-delay: -1.8s; }
-.pd-3 { animation-delay: -2.7s; }
-.ps-slow { animation-duration: 7s; }
-.ps-fast { animation-duration: 2.6s; }
+.pd-1 {
+  animation-delay: -0.9s;
+}
+.pd-2 {
+  animation-delay: -1.8s;
+}
+.pd-3 {
+  animation-delay: -2.7s;
+}
+.ps-slow {
+  animation-duration: 7s;
+}
+.ps-fast {
+  animation-duration: 2.6s;
+}
 
 /* Shared rail chrome */
 .rail-x {

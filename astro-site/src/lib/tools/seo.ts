@@ -3,6 +3,7 @@ import type { ToolEntry } from './registry';
 export interface StructuredDataGraph {
   '@context': 'https://schema.org';
   '@graph': Array<Record<string, unknown>>;
+  [key: string]: unknown;
 }
 
 /**

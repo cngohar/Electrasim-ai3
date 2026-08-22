@@ -225,6 +225,44 @@ test.describe('production Pages output', () => {
     );
   });
 
+  test('opens instant search modal, filters results, and navigates via keyboard', async ({
+    page,
+  }) => {
+    await page.goto('/');
+
+    const searchDialog = page.locator('#site-search-dialog');
+    await expect(searchDialog).not.toHaveAttribute('open', '');
+
+    // 1. Open via keyboard shortcut (Control+K or Slash)
+    await page.keyboard.press('Control+k');
+    await expect(searchDialog).toHaveAttribute('open', '');
+
+    const searchInput = page.locator('#site-search-input');
+    await expect(searchInput).toBeFocused();
+
+    // 2. Initial state shows popular quick links
+    await expect(page.locator('#site-search-quicklinks')).toBeVisible();
+    await expect(page.locator('#site-search-results')).toContainText('Voltage Drop Calculator');
+
+    // 3. Type query "voltage"
+    await searchInput.fill('voltage');
+    await page.waitForTimeout(100);
+
+    const firstResult = page.locator('.search-result-item').first();
+    await expect(firstResult).toBeVisible();
+    await expect(firstResult).toContainText('Voltage');
+
+    // 4. Test category filter pill
+    const filterTools = page.locator('.search-filter-pill[data-filter="tool"]');
+    await filterTools.click();
+    await expect(filterTools).toHaveClass(/active/);
+    await expect(page.locator('.search-type-badge').first()).toContainText('Calculator');
+
+    // 5. Close with Escape
+    await page.keyboard.press('Escape');
+    await expect(searchDialog).not.toHaveAttribute('open', '');
+  });
+
   test('changes and persists the app theme through Settings', async ({ page }) => {
     await page.addInitScript(() => {
       window.localStorage.setItem('electrasim:welcomed', '1');

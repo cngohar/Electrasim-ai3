@@ -12,16 +12,21 @@ describe('Toolbox SEO & Structured Data Foundation', () => {
     expect(Array.isArray(schema['@graph'])).toBe(true);
 
     // 1. WebApplication
-    const webApp = schema['@graph'].find((item) => item['@type'] === 'WebApplication');
+    const webApp = schema['@graph'].find((item) => item['@type'] === 'WebApplication') as
+      | Record<string, unknown>
+      | undefined;
     expect(webApp).toBeDefined();
     expect(webApp?.name).toBe('Voltage Drop Calculator');
     expect(webApp?.url).toBe('https://electrasim.com/tools/voltage-drop-calculator/');
     expect(webApp?.applicationCategory).toBe('EducationalApplication');
     expect(webApp?.isAccessibleForFree).toBe(true);
-    expect(webApp?.offers?.price).toBe('0');
+    const offers = webApp?.offers as Record<string, unknown> | undefined;
+    expect(offers?.price).toBe('0');
 
     // 2. Breadcrumbs
-    const breadcrumbs = schema['@graph'].find((item) => item['@type'] === 'BreadcrumbList');
+    const breadcrumbs = schema['@graph'].find((item) => item['@type'] === 'BreadcrumbList') as
+      | { itemListElement: Array<{ name: string }> }
+      | undefined;
     expect(breadcrumbs).toBeDefined();
     expect(breadcrumbs?.itemListElement).toHaveLength(3);
     expect(breadcrumbs?.itemListElement[0].name).toBe('Home');
@@ -29,7 +34,15 @@ describe('Toolbox SEO & Structured Data Foundation', () => {
     expect(breadcrumbs?.itemListElement[2].name).toBe('Voltage Drop Calculator');
 
     // 3. FAQPage
-    const faqPage = schema['@graph'].find((item) => item['@type'] === 'FAQPage');
+    const faqPage = schema['@graph'].find((item) => item['@type'] === 'FAQPage') as
+      | {
+          mainEntity: Array<{
+            '@type': string;
+            name: string;
+            acceptedAnswer: { '@type': string };
+          }>;
+        }
+      | undefined;
     expect(faqPage).toBeDefined();
     expect(faqPage?.mainEntity.length).toBeGreaterThanOrEqual(4);
     expect(faqPage?.mainEntity[0]['@type']).toBe('Question');
@@ -37,14 +50,22 @@ describe('Toolbox SEO & Structured Data Foundation', () => {
     expect(faqPage?.mainEntity[0].name).toContain('BS 7671');
 
     // 4. HowTo
-    const howTo = schema['@graph'].find((item) => item['@type'] === 'HowTo');
+    const howTo = schema['@graph'].find((item) => item['@type'] === 'HowTo') as
+      | { name: string; step: unknown[] }
+      | undefined;
     expect(howTo).toBeDefined();
     expect(howTo?.name).toBe('How to Calculate Voltage Drop');
     expect(howTo?.step.length).toBeGreaterThanOrEqual(3);
   });
 
   it('generates valid Schema.org for Toolbox Hub (/tools/)', () => {
-    const hubSchema = generateToolboxHubStructuredData(TOOLBOX_REGISTRY);
+    const hubSchema = generateToolboxHubStructuredData(TOOLBOX_REGISTRY) as {
+      '@context': string;
+      '@type': string;
+      url: string;
+      mainEntity: { '@type': string; itemListElement: unknown[] };
+      breadcrumb: { '@type': string };
+    };
     expect(hubSchema['@context']).toBe('https://schema.org');
     expect(hubSchema['@type']).toBe('CollectionPage');
     expect(hubSchema.url).toBe('https://electrasim.com/tools/');

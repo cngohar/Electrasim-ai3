@@ -4,6 +4,7 @@ import ScrollTop from '../components/layout/ScrollTop.astro';
 import SiteBackdrop from '../components/layout/SiteBackdrop.astro';
 import SiteFooter from '../components/layout/SiteFooter.astro';
 import SiteHeader from '../components/layout/SiteHeader.astro';
+import SiteSearchModal from '../components/layout/SiteSearchModal.astro';
 import '../styles/global.css';
 import packageMetadata from '../../../package.json';
 
@@ -113,6 +114,8 @@ const websiteSchema = {
   <FloatingContact />
   <SiteFooter />
   <ScrollTop assetVersion={packageMetadata.version} />
+  <SiteSearchModal />
   <script is:inline defer src={`/js/schematic.js?v=${packageMetadata.version}`}></script>
+  <script is:inline defer src={`/js/site-search.js?v=${packageMetadata.version}`}></script>
 </body>
 </html>
