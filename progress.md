@@ -7,6 +7,27 @@ A running, append-only log of work on the ElectraSim rewrite. Every coding sessi
 
 ---
 
+## Session 2026-08-22 — Site-Wide A11y Pass & Voltage Drop Calculator UX Overhaul
+
+**Done:** Audit-driven accessibility and UX hardening across the Astro marketing site and the Voltage Drop Calculator, in three passes (site-wide a11y batch, calculator audit, 18-item calculator fix batch).
+
+- **Site-Wide Accessibility:**
+  - Mobile nav: removed invalid `role="menu"`, rewrote [`site-nav.js`](astro-site/public/js/site-nav.js) with Escape/outside-click dismissal, focus into menu on open + restore to toggle on close, body scroll lock, Open/Close label swap, and breakpoint reset.
+  - Added skip link in [`Base.astro`](astro-site/src/layouts/Base.astro) targeting `<main id="main-content">`; wrapped homepage/blog articles/404 in `<main>` and added the id to all existing page mains.
+  - Fixed tool-page theme toggle: bound via `data-theme-toggle` so `theme.js` syncs ARIA state and persists under the correct `electrasim:color-scheme` key; removed a duplicate handler writing an orphaned `electrasim-theme` key (and a dangling `toggleTheme` reference that would have thrown from the palette/drawer).
+  - Site search ([`site-search.js`](astro-site/public/js/site-search.js)): loading spinner (`role="status"`), error panel with Retry, truthful combobox `aria-expanded`.
+- **Voltage Drop Calculator — 18-Item Fix Batch:**
+  - A11y: sr-only `<h1>`; `aria-describedby` on all six inputs; radio-group pattern (roving tabindex + arrows); overlay stack with Tab trapping + focus restore for drawer/palette/help/sheets; palette combobox semantics with synced `aria-selected`, hidden group labels, and empty state; legend `role="region"`; scene `role="img"`.
+  - Reduced motion: CSS kill-switches plus SMIL pause-on-load, parallax off, tips fade skipped.
+  - Interaction: blur-gated validation errors (no mid-typing scolding); IME-safe `Shift+Space` guard with palette toggle; fullscreen toast fallback incl. legacy webkit/ms APIs (caught by probe); one-shot >1000 m toast; Calculate focuses results / opens mobile sheet.
+  - Mobile & perf: `100dvh` stage with capped min-height; sheets lock scroll + move focus; Animate/Values/Legend/Reset/3D controls kept reachable on phones; rAF-debounced resize; frame-batched parallax.
+- **Verification:**
+  - `npx astro check`: **0 errors / 0 warnings across 77 files**; Biome clean; build **138 pages**; internal-link check **140 HTML files pass**.
+  - Custom Playwright probe: **27/27 checks pass, zero page errors** (validation timing, traps, palette semantics, reduced motion, mobile sheets, fullscreen fallback).
+  - `npm run e2e:production`: **20/20 tests passed**, including all 7 toolbox specs.
+
+---
+
 ## Session 2026-08-22 — Astro 7 Upgrade & Site-Wide Instant Search
 
 **Done:** Upgraded Astro to the latest stable `v7.2.4` and implemented an ultra-fast, zero-dependency **Instant Search & Command Palette** modal across the entire website (`/`, `/blog/`, `/guide/`, `/tools/`, `/compare/`).

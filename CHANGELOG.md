@@ -11,6 +11,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed — Session 2026-08-22: Site-Wide Accessibility & Voltage Drop Calculator UX Overhaul
+
+Audit-driven accessibility and UX hardening across the Astro marketing site and the Voltage Drop Calculator. Verified with a 27-check Playwright probe plus the full production E2E suite (20/20 passing).
+
+- **Site-Wide Accessibility** (`SiteHeader.astro`, `Base.astro`, `site-nav.js`, `global.css`): Removed invalid `role="menu"` from the mobile nav; added Escape-to-close, outside-click dismissal, focus management (focus into menu on open, restore to toggle on close), body scroll lock, and an Open/Close label swap; added a skip link targeting `<main id="main-content">` landmarks now present on every Base-layout page (homepage, blog articles, and 404 previously lacked `<main>`).
+- **Tool Theme Persistence Fix** (`ToolHeader.astro`, `voltage-drop-tool.js`): The tool-page theme toggle now binds through `theme.js` via `data-theme-toggle` (ARIA state synced, correct `electrasim:color-scheme` storage key, `theme-color` meta updates); removed a duplicate handler that wrote an orphaned `electrasim-theme` key.
+- **Honest Search States** (`SiteSearchModal.astro`, `site-search.js`): Typing before `/search.json` resolves now shows a spinner (`role="status"`) instead of a false "No results"; fetch failures show an error panel with a working Retry button; combobox `aria-expanded` is managed on open/close.
+- **Voltage Drop Calculator A11y** (`ToolWorkspace.astro`, `VoltageDropPanels.astro`, `CommandPalette.astro`, `voltage-drop-tool.js`): Added sr-only `<h1>`; wired all field error messages via `aria-describedby`; implemented the radio-group pattern (roving tabindex + arrow keys) for system type; focus trap + focus restore for drawer, command palette, help modal, and mobile sheets; command palette input is a proper combobox with synced `aria-selected`/`aria-activedescendant`, group-label hiding, and an empty-results state; legend promoted to `role="region"`; scene SVG given `role="img"`.
+- **Reduced Motion Support**: New `prefers-reduced-motion` handling across the tool page — CSS animation kill-switches for stage/panels/scene, SMIL particles paused on load, parallax disabled, tips fade skipped.
+- **Validation & Interaction Timing**: Field errors are blur-gated ("reward early, punish late") so invalid intermediate states never paint while typing; results panel no longer swaps to the error card mid-entry; `Shift+Space` no longer hijacks typing in inputs (IME-safe) and toggles the palette elsewhere; fullscreen failures surface a toast (legacy webkit/ms fullscreen APIs handled); >1000 m info toast fires once per threshold crossing instead of per keystroke; Calculate marks all fields reviewed, then focuses the results panel (desktop) or opens the results sheet (mobile).
+- **Mobile & Performance**: Interactive stage sized with `100dvh` (vh fallbacks) and viewport-capped `min-height`; bottom sheets lock background scroll and manage focus; Animate/Values/Legend pills and Reset/3D controls remain reachable on phones (compact restyle above the bottom bar); resize handler rAF-debounced and mousemove parallax batched to one transform write per frame.
+
 ### Added — Session 2026-08-22: Site-Wide Instant Search & Command Palette
 
 Implemented a zero-dependency, ultra-fast client-side instant search modal and keyboard command palette across the marketing site, blog, guides, and electrical calculators.
