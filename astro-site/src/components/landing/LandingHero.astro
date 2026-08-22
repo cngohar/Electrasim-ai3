@@ -59,7 +59,7 @@ const bulbs = [
             width={bulb.w}
             height={bulb.h}
             decoding="async"
-            fetchpriority="low"
+            fetchpriority={bulb.id === 0 ? 'high' : 'low'}
           />
         </picture>
         <figcaption class="lamp-tag">{bulb.tag}</figcaption>

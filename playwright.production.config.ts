@@ -5,7 +5,7 @@ const baseURL = remoteBaseURL ?? 'http://127.0.0.1:8788';
 
 export default defineConfig({
   testDir: 'e2e',
-  testMatch: 'production.spec.ts',
+  testMatch: /(production|toolbox)\.spec\.ts/,
   fullyParallel: false,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
@@ -20,7 +20,7 @@ export default defineConfig({
   webServer: remoteBaseURL
     ? undefined
     : {
-        command: 'npm run preview',
+        command: 'node scripts/preview-server.mjs',
         url: baseURL,
         reuseExistingServer: !process.env.CI,
         timeout: 60_000,

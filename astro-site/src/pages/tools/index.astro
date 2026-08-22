@@ -1,0 +1,436 @@
+---
+import Base from '../../layouts/Base.astro';
+import { TOOLBOX_REGISTRY } from '../../lib/tools/registry';
+import { generateToolboxHubStructuredData } from '../../lib/tools/seo';
+
+const title = 'Electrical Toolbox — Free Interactive Calculators | ElectraSim';
+const description =
+  'Free interactive electrical calculators and engineering tools. Calculate voltage drop, cable sizes, electrical power, load diversity and running costs in real-time.';
+const canonical = 'https://electrasim.com/tools/';
+const toolboxSchema = generateToolboxHubStructuredData(TOOLBOX_REGISTRY);
+---
+
+<Base
+  title={title}
+  description={description}
+  canonical={canonical}
+  ogType="website"
+>
+  <script is:inline type="application/ld+json" set:html={JSON.stringify(toolboxSchema)} slot="head" />
+
+  <main class="toolbox-hub">
+    <!-- Hero Section -->
+    <header class="toolbox-hero">
+      <div class="wrap">
+        <div class="hero-badge">
+          <span class="badge-icon">⚡</span>
+          <span>ELECTRASIM ELECTRICAL TOOLBOX</span>
+        </div>
+        <h1 class="hero-title">Interactive Electrical Calculators & Tools</h1>
+        <p class="hero-desc">
+          Professional-grade electrical calculators designed for electricians, apprentices, engineers, and students.
+          Visualise current flow, voltage drop, and conductor physics interactively right in your browser.
+        </p>
+      </div>
+    </header>
+
+    <!-- Tools Grid -->
+    <section class="toolbox-grid-sec">
+      <div class="wrap">
+        <div class="tools-grid">
+          {TOOLBOX_REGISTRY.map((tool) => (
+            <article class={`tool-card ${tool.status === 'available' ? 'tool-active' : 'tool-soon'}`}>
+              <div class="tool-card-head">
+                <div class="tool-icon-wrap" aria-hidden="true">
+                  {tool.icon === 'voltage' && (
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+                    </svg>
+                  )}
+                  {tool.icon === 'cable' && (
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <rect x="2" y="7" width="20" height="10" rx="2" />
+                      <line x1="6" y1="12" x2="6.01" y2="12" />
+                      <line x1="10" y1="12" x2="10.01" y2="12" />
+                      <line x1="14" y1="12" x2="14.01" y2="12" />
+                      <line x1="18" y1="12" x2="18.01" y2="12" />
+                    </svg>
+                  )}
+                  {tool.icon === 'power' && (
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M18.36 6.64a9 9 0 1 1-12.73 0" />
+                      <line x1="12" y1="2" x2="12" y2="12" />
+                    </svg>
+                  )}
+                  {tool.icon === 'load' && (
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M3 3v18h18" />
+                      <path d="M18 17V9" />
+                      <path d="M13 17V5" />
+                      <path d="M8 17v-3" />
+                    </svg>
+                  )}
+                  {tool.icon === 'energy' && (
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <circle cx="12" cy="12" r="10" />
+                      <path d="M12 6v6l4 2" />
+                    </svg>
+                  )}
+                </div>
+                <div class="tool-status-badge">
+                  {tool.badge && <span class="badge-pop">{tool.badge}</span>}
+                  <span class={`status-tag ${tool.status}`}>
+                    {tool.status === 'available' ? 'Available' : 'Coming Soon'}
+                  </span>
+                </div>
+              </div>
+
+              <h2 class="tool-title">
+                {tool.status === 'available' ? (
+                  <a href={tool.route}>{tool.name}</a>
+                ) : (
+                  tool.name
+                )}
+              </h2>
+
+              <p class="tool-desc">{tool.description}</p>
+
+              <div class="tool-card-footer">
+                {tool.status === 'available' ? (
+                  <a href={tool.route} class="btn-tool-launch">
+                    Launch Calculator <span aria-hidden="true">→</span>
+                  </a>
+                ) : (
+                  <span class="btn-tool-disabled">In Development</span>
+                )}
+              </div>
+            </article>
+          ))}
+        </div>
+      </div>
+    </section>
+
+    <!-- Why use ElectraSim Toolbox -->
+    <section class="toolbox-features-sec">
+      <div class="wrap">
+        <h2 class="sec-heading">Why Electrical Professionals Choose ElectraSim</h2>
+        <div class="features-grid">
+          <div class="feature-item">
+            <div class="feat-icon">⚡</div>
+            <h3>Real-Time Interactive Physics</h3>
+            <p>Don't just look at dry numbers. See voltage loss along the cable, observe particle velocity proportional to current, and watch conductor heating in real time.</p>
+          </div>
+          <div class="feature-item">
+            <div class="feat-icon">🔒</div>
+            <h3>100% Client-Side Privacy</h3>
+            <p>Calculations execute locally in your browser. No sign-up, no login required, and no confidential project data leaves your device.</p>
+          </div>
+          <div class="feature-item">
+            <div class="feat-icon">📐</div>
+            <h3>Standards & Regulations</h3>
+            <p>Pre-configured with UK BS 7671 Amendment 4 limits (3% lighting, 5% general circuits), IEC standards, and customizable temperature correction.</p>
+          </div>
+          <div class="feature-item">
+            <div class="feat-icon">📱</div>
+            <h3>Mobile On-Site Ready</h3>
+            <p>Fully optimized for on-site calculations on your phone or tablet with full touch support and collapsible tool panels.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Simulator CTA -->
+    <section class="toolbox-cta-sec">
+      <div class="wrap">
+        <div class="cta-box">
+          <div class="cta-content">
+            <h2 class="cta-title">Want to build and test complete wiring circuits?</h2>
+            <p class="cta-desc">
+              ElectraSim includes a complete interactive wiring laboratory. Wire consumer units, RCBOs, multi-way lighting, sockets, and simulate realistic electrical faults safely.
+            </p>
+            <div class="cta-actions">
+              <a href="/app/" class="btn-cta-primary">Launch Interactive Wiring Lab →</a>
+              <a href="/guide/" class="btn-cta-secondary">Explore Circuit Guides</a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+</Base>
+
+<style>
+  .toolbox-hub {
+    padding-bottom: 5rem;
+  }
+  .wrap {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 1.5rem;
+  }
+  .toolbox-hero {
+    padding: 5rem 0 3rem;
+    text-align: center;
+    background: radial-gradient(circle at 50% 0%, var(--blue-l) 0%, transparent 70%);
+  }
+  .hero-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.35rem 0.85rem;
+    border-radius: 999px;
+    background: var(--blue-l);
+    border: 1px solid var(--border-bright);
+    color: var(--blue);
+    font-family: var(--font-display);
+    font-size: 0.8rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    margin-bottom: 1.25rem;
+  }
+  .hero-title {
+    font-family: var(--font-display);
+    font-size: clamp(2rem, 4.5vw, 3.25rem);
+    font-weight: 800;
+    line-height: 1.15;
+    color: var(--text);
+    max-width: 860px;
+    margin: 0 auto 1.25rem;
+  }
+  .hero-desc {
+    font-size: 1.15rem;
+    color: var(--text-mid);
+    max-width: 720px;
+    margin: 0 auto;
+    line-height: 1.6;
+  }
+  .toolbox-grid-sec {
+    padding: 3rem 0;
+  }
+  .tools-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+    gap: 1.75rem;
+  }
+  .tool-card {
+    display: flex;
+    flex-direction: column;
+    padding: 2rem;
+    border-radius: var(--radius-lg);
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+  }
+  .tool-card.tool-active {
+    border-color: var(--border-bright);
+    box-shadow: 0 4px 20px -2px rgba(37, 99, 235, 0.08);
+  }
+  .tool-card.tool-active:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 30px -4px rgba(37, 99, 235, 0.16);
+    border-color: var(--blue);
+  }
+  .tool-card.tool-soon {
+    opacity: 0.85;
+    background: var(--bg-2);
+  }
+  .tool-card-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1.25rem;
+  }
+  .tool-icon-wrap {
+    width: 3rem;
+    height: 3rem;
+    border-radius: 0.75rem;
+    background: var(--blue-l);
+    color: var(--blue);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .tool-icon-wrap svg {
+    width: 1.5rem;
+    height: 1.5rem;
+  }
+  .tool-status-badge {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  .badge-pop {
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    background: #10b981;
+    color: #ffffff;
+    padding: 0.2rem 0.5rem;
+    border-radius: 999px;
+    letter-spacing: 0.05em;
+  }
+  .status-tag {
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 0.25rem 0.65rem;
+    border-radius: 999px;
+  }
+  .status-tag.available {
+    background: var(--blue-l);
+    color: var(--blue);
+    border: 1px solid var(--border-bright);
+  }
+  .status-tag.coming-soon {
+    background: var(--bg-3);
+    color: var(--text-dim);
+    border: 1px solid var(--border);
+  }
+  .tool-title {
+    font-family: var(--font-display);
+    font-size: 1.35rem;
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: 0.75rem;
+    line-height: 1.3;
+  }
+  .tool-title a {
+    text-decoration: none;
+    color: inherit;
+    transition: color 0.15s ease;
+  }
+  .tool-title a:hover {
+    color: var(--blue);
+  }
+  .tool-desc {
+    font-size: 0.95rem;
+    color: var(--text-mid);
+    line-height: 1.55;
+    margin-bottom: 1.75rem;
+    flex-grow: 1;
+  }
+  .tool-card-footer {
+    padding-top: 1rem;
+    border-top: 1px solid var(--border);
+  }
+  .btn-tool-launch {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-weight: 700;
+    font-size: 0.95rem;
+    color: var(--blue);
+    text-decoration: none;
+    transition: gap 0.15s ease, color 0.15s ease;
+  }
+  .btn-tool-launch:hover {
+    gap: 0.75rem;
+    color: var(--blue-d);
+  }
+  .btn-tool-disabled {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-dim);
+  }
+  .toolbox-features-sec {
+    padding: 4rem 0;
+    border-top: 1px solid var(--border);
+  }
+  .sec-heading {
+    font-family: var(--font-display);
+    font-size: 1.85rem;
+    font-weight: 800;
+    text-align: center;
+    color: var(--text);
+    margin-bottom: 3rem;
+  }
+  .features-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 2rem;
+  }
+  .feature-item {
+    padding: 1.75rem;
+    border-radius: var(--radius);
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+  }
+  .feat-icon {
+    font-size: 2rem;
+    margin-bottom: 1rem;
+  }
+  .feature-item h3 {
+    font-family: var(--font-display);
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: 0.5rem;
+  }
+  .feature-item p {
+    font-size: 0.9rem;
+    color: var(--text-mid);
+    line-height: 1.55;
+  }
+  .toolbox-cta-sec {
+    padding: 3rem 0;
+  }
+  .cta-box {
+    background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%);
+    color: #ffffff;
+    border-radius: var(--radius-lg);
+    padding: 3.5rem 2.5rem;
+    text-align: center;
+  }
+  .cta-title {
+    font-family: var(--font-display);
+    font-size: clamp(1.6rem, 3.5vw, 2.25rem);
+    font-weight: 800;
+    color: #ffffff;
+    margin-bottom: 1rem;
+  }
+  .cta-desc {
+    max-width: 680px;
+    margin: 0 auto 2rem;
+    font-size: 1.05rem;
+    color: #bfdbfe;
+    line-height: 1.6;
+  }
+  .cta-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 1rem;
+  }
+  .btn-cta-primary {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.85rem 1.75rem;
+    border-radius: 0.75rem;
+    background: #ffffff;
+    color: #1e3a8a;
+    font-weight: 700;
+    font-size: 1rem;
+    text-decoration: none;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.15);
+    transition: transform 0.15s ease, background-color 0.15s ease;
+  }
+  .btn-cta-primary:hover {
+    background: #eff6ff;
+    transform: translateY(-2px);
+  }
+  .btn-cta-secondary {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.85rem 1.75rem;
+    border-radius: 0.75rem;
+    background: rgba(255, 255, 255, 0.15);
+    color: #ffffff;
+    font-weight: 700;
+    font-size: 1rem;
+    text-decoration: none;
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    transition: background-color 0.15s ease;
+  }
+  .btn-cta-secondary:hover {
+    background: rgba(255, 255, 255, 0.25);
+  }
+</style>

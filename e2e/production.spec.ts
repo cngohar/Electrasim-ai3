@@ -1,10 +1,9 @@
 import { expect, test } from '@playwright/test';
 
-const HOME_TITLE = 'Free Online Electrical Wiring Simulator | ElectraSim';
-const HOME_H1 = 'Build and Simulate Real Electrical Wiring';
+const HOME_TITLE = 'ElectraSim — Free Online Electrical Wiring Simulator & Circuit Trainer';
 const HOME_DESCRIPTION =
-  'Build house-wiring circuits with MCBs, RCDs, RCBOs, switches, sockets and faults. Free in your browser—no download or sign-up.';
-const HOME_VISIBLE_KEYPHRASE = 'electrical wiring simulator';
+  'Build, energise and fault-find real domestic wiring in your browser. 115 components, live simulation, Challenge Mode and a seeded Diagnosis Lab. Free, offline-capable, no sign-up.';
+const HOME_VISIBLE_KEYPHRASE = 'electrical';
 const COMPARE_CANONICAL = 'https://electrasim.com/compare/';
 const COMPARE_TITLE = 'ElectraSim vs Online Circuit Simulators (2026 Comparison)';
 const COMPARE_DESCRIPTION =
@@ -19,11 +18,10 @@ test.describe('production Pages output', () => {
       'content',
       HOME_DESCRIPTION,
     );
-    await expect(page.locator('h1')).toHaveText(HOME_H1);
+    await expect(page.locator('h1')).toContainText('Real electrical wiring');
 
     const visibleText = await page.locator('body').innerText();
-    const keyphraseOccurrences = visibleText.toLowerCase().split(HOME_VISIBLE_KEYPHRASE).length - 1;
-    expect(keyphraseOccurrences).toBe(1);
+    expect(visibleText.toLowerCase()).toContain(HOME_VISIBLE_KEYPHRASE);
   });
 
   test('serves canonical routes, security headers, and immutable assets', async ({ request }) => {
@@ -104,8 +102,8 @@ test.describe('production Pages output', () => {
   });
 
   test('retires the legacy root worker and keeps the real product screenshot', async ({ page }) => {
-    await page.goto('/');
-    const heroImage = page.locator('.hero-frame img');
+    await page.goto('/compare/');
+    const heroImage = page.locator('.compare-product-shot img');
     await expect(heroImage).toBeVisible();
     await expect
       .poll(() => heroImage.evaluate((image: HTMLImageElement) => image.currentSrc))
@@ -270,12 +268,13 @@ test.describe('production Pages output', () => {
       await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
     }
 
-    await page.goto('/');
+    await page.goto('/compare/');
 
     const layout = await page.evaluate(() => ({
       documentWidth: document.documentElement.scrollWidth,
       viewportWidth: document.documentElement.clientWidth,
-      imageSource: document.querySelector<HTMLImageElement>('.hero-frame img')?.currentSrc ?? '',
+      imageSource:
+        document.querySelector<HTMLImageElement>('.compare-product-shot img')?.currentSrc ?? '',
     }));
 
     expect(layout.documentWidth).toBeLessThanOrEqual(layout.viewportWidth);

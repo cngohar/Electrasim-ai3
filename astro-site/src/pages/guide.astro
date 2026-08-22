@@ -19,7 +19,7 @@ const guidedTemplates = data.guided_templates as GuidedTemplate[];
   canonical="https://electrasim.com/guide/"
 >
   <Fragment slot="head">
-    <script type="application/ld+json" set:html={JSON.stringify({
+    <script is:inline type="application/ld+json" set:html={JSON.stringify({
       "@context": "https://schema.org",
       "@type": "HowTo",
       "name": "How to Build and Simulate Electrical Circuits in ElectraSim",

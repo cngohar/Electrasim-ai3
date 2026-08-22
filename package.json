@@ -20,7 +20,7 @@
     "benchmark:browser": "PERF=1 playwright test e2e/performance.spec.ts --project=chromium",
     "check:perf": "node scripts/check-performance.mjs",
     "check:links": "node scripts/check-internal-links.mjs",
-    "preview": "wrangler pages dev dist --ip 127.0.0.1 --port 8788",
+    "preview": "wrangler pages dev dist --ip 127.0.0.1 --port 8788 --no-bundle",
     "verify": "npm run check && npm run build && npm run check:perf && npm run check:links && npm run benchmark:simulation && npm run benchmark:browser && npm run e2e && npm run e2e:production",
     "deploy": "npm run verify && wrangler pages deploy dist/ --project-name=electrasim",
     "clean": "rm -rf dist coverage playwright-report test-results",

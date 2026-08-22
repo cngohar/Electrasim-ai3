@@ -1,0 +1,69 @@
+---
+import type { ToolEntry } from '../../lib/tools/registry';
+import ToolHeader from './ToolHeader.astro';
+import ToolDrawer from './ToolDrawer.astro';
+import CommandPalette from './CommandPalette.astro';
+import ToolHelpModal from './ToolHelpModal.astro';
+import VoltageDropScene from './VoltageDropScene.astro';
+import VoltageDropPanels from './VoltageDropPanels.astro';
+import ToolSeoContent from './ToolSeoContent.astro';
+import packageMetadata from '../../../../package.json';
+
+interface Props {
+  currentTool: ToolEntry;
+}
+
+const { currentTool } = Astro.props;
+---
+
+<div class="tool-workspace-shell" id="tool-workspace-shell">
+  <!-- Header -->
+  <ToolHeader currentTool={currentTool} />
+
+  <!-- Navigation Drawer (Hamburger) -->
+  <ToolDrawer currentTool={currentTool} />
+
+  <!-- Command Palette Modal -->
+  <CommandPalette currentTool={currentTool} />
+
+  <!-- Educational Help Modal -->
+  <ToolHelpModal />
+
+  <!-- Main Full-Screen Workspace Area -->
+  <div class="tool-interactive-stage" id="interactive-stage">
+    <VoltageDropScene />
+    <VoltageDropPanels />
+  </div>
+
+  <!-- Crawlable Educational SEO Content -->
+  <ToolSeoContent tool={currentTool} />
+</div>
+
+<!-- Load Client Script (Pure vanilla TypeScript compiled / ESM JS, zero React dependencies) -->
+<script is:inline defer src={`/js/voltage-drop-tool.js?v=${packageMetadata.version}`}></script>
+
+<style>
+  .tool-workspace-shell {
+    display: flex;
+    flex-direction: column;
+    width: 100vw;
+    min-height: 100vh;
+    background: var(--bg);
+    overflow-x: hidden;
+    position: relative;
+  }
+  .tool-interactive-stage {
+    position: relative;
+    width: 100vw;
+    height: calc(100vh - 3.75rem);
+    min-height: 540px;
+    overflow: hidden;
+  }
+
+  @media (max-width: 1080px) {
+    .tool-interactive-stage {
+      height: 70vh;
+      min-height: 480px;
+    }
+  }
+</style>

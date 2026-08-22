@@ -18,7 +18,7 @@ const richText = (value: string) =>
   canonical="https://electrasim.com/about/"
 >
   <Fragment slot="head">
-    <script type="application/ld+json" set:html={JSON.stringify({
+    <script is:inline type="application/ld+json" set:html={JSON.stringify({
       "@context": "https://schema.org",
       "@type": "AboutPage",
       "name": "About ElectraSim",

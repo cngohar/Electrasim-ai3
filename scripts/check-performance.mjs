@@ -1,8 +1,10 @@
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { gzipSync } from 'node:zlib';
 
 const DIST = new URL('../dist/', import.meta.url);
+const distPath = fileURLToPath(DIST);
 const limits = {
   initialJsGzip: 115_000,
   initialCssGzip: 15_000,
@@ -29,7 +31,6 @@ function filesRecursively(directory, predicate) {
   });
 }
 
-const distPath = DIST.pathname;
 const appHtmlPath = join(distPath, 'app/index.html');
 if (!existsSync(appHtmlPath)) {
   console.error('Build output is missing. Run `npm run build` before `npm run check:perf`.');

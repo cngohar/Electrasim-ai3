@@ -1,0 +1,20 @@
+---
+import ToolLayout from '../../layouts/ToolLayout.astro';
+import ToolWorkspace from '../../components/tools/ToolWorkspace.astro';
+import { getToolById } from '../../lib/tools/registry';
+import { generateToolStructuredData } from '../../lib/tools/seo';
+
+const tool = getToolById('voltage-drop')!;
+const structuredData = generateToolStructuredData(tool);
+---
+
+<ToolLayout
+  title={tool.metaTitle}
+  description={tool.metaDescription}
+  canonical={`https://electrasim.com${tool.route}`}
+  keywords={tool.keywords}
+  ogImage={tool.ogImage}
+  structuredData={structuredData}
+>
+  <ToolWorkspace currentTool={tool} />
+</ToolLayout>

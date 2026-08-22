@@ -1,0 +1,380 @@
+---
+import type { ToolEntry } from '../../lib/tools/registry';
+import { TOOLBOX_REGISTRY } from '../../lib/tools/registry';
+
+interface Props {
+  currentTool: ToolEntry;
+}
+
+const { currentTool } = Astro.props;
+---
+
+<div id="cmd-palette-backdrop" class="cmd-palette-backdrop" hidden>
+  <div
+    id="cmd-palette-dialog"
+    class="cmd-palette-dialog"
+    role="dialog"
+    aria-modal="true"
+    aria-label="Command Palette"
+  >
+    <div class="cmd-input-wrap">
+      <svg class="cmd-input-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="11" cy="11" r="8" />
+        <line x1="21" y1="21" x2="16.65" y2="16.65" />
+      </svg>
+      <input
+        type="text"
+        id="cmd-palette-input"
+        class="cmd-input"
+        placeholder="Type a tool name or command..."
+        autocomplete="off"
+        spellcheck="false"
+      />
+      <kbd class="cmd-esc-badge">ESC</kbd>
+    </div>
+
+    <div class="cmd-results-list nice-scroll" id="cmd-results-list" role="listbox">
+      <div class="cmd-group-label" data-group="tools">TOOLS</div>
+      {TOOLBOX_REGISTRY.map((tool, idx) => (
+        <div
+          role="option"
+          tabindex="-1"
+          aria-selected={idx === 0}
+          class={`cmd-item ${idx === 0 ? 'selected' : ''} ${tool.id === currentTool.id ? 'current-tool' : ''}`}
+          data-type="tool"
+          data-route={tool.route}
+          data-status={tool.status}
+          data-title={tool.name.toLowerCase()}
+          data-id={tool.id}
+        >
+          <div class="cmd-item-left">
+            <span class="cmd-item-glyph">⚡</span>
+            <div class="cmd-item-texts">
+              <span class="cmd-item-title">{tool.name}</span>
+              <span class="cmd-item-sub">{tool.description}</span>
+            </div>
+          </div>
+          <div class="cmd-item-right">
+            {tool.id === currentTool.id && <span class="cmd-badge-active">Current</span>}
+            {tool.status !== 'available' && <span class="cmd-badge-soon">Soon</span>}
+          </div>
+        </div>
+      ))}
+
+      <div class="cmd-group-label" data-group="commands">COMMANDS</div>
+      <div
+        role="option"
+        tabindex="-1"
+        class="cmd-item"
+        data-type="cmd"
+        data-action="home"
+        data-title="toolbox home"
+      >
+        <div class="cmd-item-left">
+          <span class="cmd-item-glyph">🏠</span>
+          <div class="cmd-item-texts">
+            <span class="cmd-item-title">Toolbox Home</span>
+            <span class="cmd-item-sub">Return to the Electrical Toolbox index</span>
+          </div>
+        </div>
+      </div>
+
+      <div
+        role="option"
+        tabindex="-1"
+        class="cmd-item"
+        data-type="cmd"
+        data-action="app"
+        data-title="launch wiring lab simulator app"
+      >
+        <div class="cmd-item-left">
+          <span class="cmd-item-glyph">⚡</span>
+          <div class="cmd-item-texts">
+            <span class="cmd-item-title">Launch Interactive Wiring Lab</span>
+            <span class="cmd-item-sub">Open full circuit simulation and testing lab</span>
+          </div>
+        </div>
+      </div>
+
+      <div
+        role="option"
+        tabindex="-1"
+        class="cmd-item"
+        data-type="cmd"
+        data-action="reset"
+        data-title="reset current tool values defaults"
+      >
+        <div class="cmd-item-left">
+          <span class="cmd-item-glyph">↺</span>
+          <div class="cmd-item-texts">
+            <span class="cmd-item-title">Reset Current Tool</span>
+            <span class="cmd-item-sub">Restore all inputs to default parameters</span>
+          </div>
+        </div>
+      </div>
+
+      <div
+        role="option"
+        tabindex="-1"
+        class="cmd-item"
+        data-type="cmd"
+        data-action="help"
+        data-title="help how voltage drop works guide"
+      >
+        <div class="cmd-item-left">
+          <span class="cmd-item-glyph">❓</span>
+          <div class="cmd-item-texts">
+            <span class="cmd-item-title">How Voltage Drop Works</span>
+            <span class="cmd-item-sub">Formulas, calculations, and standards reference</span>
+          </div>
+        </div>
+      </div>
+
+      <div
+        role="option"
+        tabindex="-1"
+        class="cmd-item"
+        data-type="cmd"
+        data-action="theme"
+        data-title="toggle dark light mode appearance theme"
+      >
+        <div class="cmd-item-left">
+          <span class="cmd-item-glyph">🌓</span>
+          <div class="cmd-item-texts">
+            <span class="cmd-item-title">Toggle Appearance</span>
+            <span class="cmd-item-sub">Switch between Light Mode and Dark Mode</span>
+          </div>
+        </div>
+      </div>
+
+      <div
+        role="option"
+        tabindex="-1"
+        class="cmd-item"
+        data-type="cmd"
+        data-action="3d"
+        data-title="toggle 3d view perspective"
+      >
+        <div class="cmd-item-left">
+          <span class="cmd-item-glyph">🧊</span>
+          <div class="cmd-item-texts">
+            <span class="cmd-item-title">Toggle 3D View</span>
+            <span class="cmd-item-sub">Enable or disable 3D mouse parallax</span>
+          </div>
+        </div>
+      </div>
+
+      <div
+        role="option"
+        tabindex="-1"
+        class="cmd-item"
+        data-type="cmd"
+        data-action="animate"
+        data-title="toggle animation particles electricity flow"
+      >
+        <div class="cmd-item-left">
+          <span class="cmd-item-glyph">▷</span>
+          <div class="cmd-item-texts">
+            <span class="cmd-item-title">Toggle Electricity Animation</span>
+            <span class="cmd-item-sub">Pause or resume moving electrical particles</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="cmd-footer">
+      <div class="cmd-footer-keys">
+        <span><kbd class="kbd-hint">↑</kbd> <kbd class="kbd-hint">↓</kbd> Navigate</span>
+        <span><kbd class="kbd-hint">↵</kbd> Select</span>
+        <span><kbd class="kbd-hint">ESC</kbd> Close</span>
+      </div>
+      <div class="cmd-footer-brand">ElectraSim Toolbox</div>
+    </div>
+  </div>
+</div>
+
+<style>
+  .cmd-palette-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.55);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding-top: 12vh;
+    padding-left: 1rem;
+    padding-right: 1rem;
+    z-index: 100;
+  }
+  .cmd-palette-backdrop[hidden] {
+    display: none;
+  }
+  .cmd-palette-dialog {
+    width: 620px;
+    max-width: 100%;
+    border-radius: var(--radius-lg);
+    background: var(--surface-glass, #ffffff);
+    border: 1px solid var(--border);
+    box-shadow: 0 25px 60px -10px rgba(0, 0, 0, 0.3);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    animation: cmdPop 0.2s cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+  @keyframes cmdPop {
+    from {
+      opacity: 0;
+      transform: scale(0.95) translateY(-8px);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1) translateY(0);
+    }
+  }
+  .cmd-input-wrap {
+    display: flex;
+    align-items: center;
+    padding: 0.95rem 1.25rem;
+    border-bottom: 1px solid var(--border);
+    gap: 0.75rem;
+  }
+  .cmd-input-icon {
+    color: var(--text-dim);
+    shrink: 0;
+  }
+  .cmd-input {
+    flex: 1;
+    border: none;
+    background: transparent;
+    font-size: 1.05rem;
+    color: var(--text);
+    font-family: inherit;
+    outline: none;
+  }
+  .cmd-esc-badge {
+    font-family: var(--font-mono, monospace);
+    font-size: 0.7rem;
+    font-weight: 700;
+    padding: 0.2rem 0.45rem;
+    border-radius: 0.35rem;
+    background: var(--bg-2);
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+  }
+  .cmd-results-list {
+    max-height: 380px;
+    overflow-y: auto;
+    padding: 0.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+  }
+  .cmd-group-label {
+    font-size: 0.68rem;
+    font-weight: 800;
+    color: var(--text-dim);
+    letter-spacing: 0.08em;
+    padding: 0.5rem 0.75rem 0.25rem;
+  }
+  .cmd-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.65rem 0.85rem;
+    border-radius: 0.6rem;
+    cursor: pointer;
+    transition: background 0.1s ease, color 0.1s ease;
+    user-select: none;
+  }
+  .cmd-item:hover,
+  .cmd-item.selected {
+    background: var(--blue-l);
+    color: var(--blue-ink, var(--blue));
+  }
+  .cmd-item.selected .cmd-item-title {
+    color: var(--blue);
+  }
+  .cmd-item-left {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    min-width: 0;
+  }
+  .cmd-item-glyph {
+    font-size: 1.15rem;
+    width: 1.5rem;
+    text-align: center;
+    color: var(--blue);
+  }
+  .cmd-item-texts {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+  .cmd-item-title {
+    font-size: 0.92rem;
+    font-weight: 600;
+    color: var(--text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .cmd-item-sub {
+    font-size: 0.78rem;
+    color: var(--text-dim);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .cmd-item-right {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    shrink: 0;
+  }
+  .cmd-badge-active {
+    font-size: 0.7rem;
+    font-weight: 700;
+    padding: 0.15rem 0.5rem;
+    border-radius: 999px;
+    background: var(--blue-l);
+    color: var(--blue);
+    border: 1px solid var(--border-bright);
+  }
+  .cmd-badge-soon {
+    font-size: 0.7rem;
+    font-weight: 600;
+    padding: 0.15rem 0.45rem;
+    border-radius: 999px;
+    background: var(--bg-3);
+    color: var(--text-dim);
+  }
+  .cmd-footer {
+    padding: 0.65rem 1.25rem;
+    border-top: 1px solid var(--border);
+    background: var(--bg-2);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 0.75rem;
+    color: var(--text-dim);
+  }
+  .cmd-footer-keys {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+  }
+  .cmd-footer-keys span {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+  }
+  .cmd-footer-brand {
+    font-weight: 600;
+    color: var(--text-mid);
+  }
+</style>

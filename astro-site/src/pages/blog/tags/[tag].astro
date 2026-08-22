@@ -42,7 +42,7 @@ const breadcrumbSchema = {
   canonical={canonical}
 >
   <Fragment slot="head">
-    <script type="application/ld+json" set:html={JSON.stringify(breadcrumbSchema)} />
+    <script is:inline type="application/ld+json" set:html={JSON.stringify(breadcrumbSchema)} />
   </Fragment>
 
   <div class="tag-hero page-hero" data-live>

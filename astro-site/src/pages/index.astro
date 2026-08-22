@@ -24,7 +24,7 @@ const blogHighlights = selectPostsById(
   canonical="https://electrasim.com/"
 >
   <Fragment slot="head">
-    <script type="application/ld+json" set:html={JSON.stringify({
+    <script is:inline type="application/ld+json" set:html={JSON.stringify({
       "@context":"https://schema.org",
       "@type":"SoftwareApplication",
       "name":"ElectraSim",

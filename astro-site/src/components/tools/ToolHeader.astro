@@ -1,0 +1,441 @@
+---
+import type { ToolEntry } from '../../lib/tools/registry';
+import { TOOLBOX_REGISTRY } from '../../lib/tools/registry';
+
+interface Props {
+  currentTool: ToolEntry;
+}
+
+const { currentTool } = Astro.props;
+---
+
+<header class="tool-app-header" role="banner">
+  <div class="tool-header-left">
+    <button
+      type="button"
+      id="tool-drawer-btn"
+      class="tool-btn-icon"
+      aria-label="Open Electrical Toolbox menu"
+      aria-expanded="false"
+      aria-controls="tool-drawer-menu"
+      title="Open Electrical Toolbox menu"
+    >
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="3" y1="6" x2="21" y2="6" />
+        <line x1="3" y1="12" x2="21" y2="12" />
+        <line x1="3" y1="18" x2="21" y2="18" />
+      </svg>
+    </button>
+
+    <a href="/tools/" class="tool-brand" title="Electrical Toolbox Home">
+      <div class="tool-brand-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+        </svg>
+      </div>
+      <div class="tool-brand-text">
+        <span class="tool-brand-name">Electra<span class="brand-accent">Sim</span></span>
+        <span class="tool-brand-sub">Electrical Toolbox</span>
+      </div>
+    </a>
+  </div>
+
+  <!-- Center Tool Selector / Switcher -->
+  <div class="tool-header-center">
+    <div class="tool-selector-dropdown">
+      <button
+        type="button"
+        id="tool-switcher-btn"
+        class="tool-switcher-btn"
+        aria-label={`Current tool: ${currentTool.name}. Click to switch tools.`}
+        aria-haspopup="listbox"
+        aria-expanded="false"
+        aria-controls="tool-switcher-menu"
+      >
+        <span class="tool-switcher-icon" aria-hidden="true">⚡</span>
+        <span class="tool-switcher-title">{currentTool.name}</span>
+        <svg class="tool-switcher-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <polyline points="6 9 12 15 18 9" />
+        </svg>
+      </button>
+
+      <div id="tool-switcher-menu" class="tool-switcher-menu" role="listbox" aria-label="Electrical Tools" hidden>
+        <div class="tool-switcher-heading">SELECT TOOL</div>
+        {TOOLBOX_REGISTRY.map((tool) => (
+          <a
+            href={tool.status === 'available' ? tool.route : '/tools/'}
+            role="option"
+            aria-selected={tool.id === currentTool.id}
+            class={`tool-switcher-item ${tool.id === currentTool.id ? 'active' : ''} ${tool.status !== 'available' ? 'soon' : ''}`}
+          >
+            <div class="switcher-item-left">
+              <span class="switcher-item-check" aria-hidden="true">{tool.id === currentTool.id ? '✓' : '•'}</span>
+              <span class="switcher-item-name">{tool.name}</span>
+            </div>
+            {tool.status !== 'available' && <span class="switcher-item-tag">Soon</span>}
+          </a>
+        ))}
+        <div class="tool-switcher-footer">
+          <button type="button" id="open-cmd-palette-btn" class="tool-switcher-cmd-btn">
+            <span>Command Palette</span>
+            <kbd class="kbd-hint">⇧ Space</kbd>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Right Actions -->
+  <div class="tool-header-right">
+    <button
+      type="button"
+      id="cmd-palette-trigger"
+      class="tool-btn-cmd hide-sm"
+      aria-label="Open Command Palette (Shift + Space)"
+      title="Search tools & commands (Shift + Space)"
+    >
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="11" cy="11" r="8" />
+        <line x1="21" y1="21" x2="16.65" y2="16.65" />
+      </svg>
+      <span class="cmd-text">Search</span>
+      <kbd class="kbd-hint">⇧ Space</kbd>
+    </button>
+
+    <button
+      type="button"
+      id="tool-theme-toggle"
+      class="tool-btn-action"
+      aria-label="Toggle dark mode"
+      aria-pressed="false"
+      title="Toggle appearance"
+    >
+      <span class="theme-icon-sun" aria-hidden="true">☀️</span>
+      <span class="theme-icon-moon" aria-hidden="true">🌙</span>
+      <span class="btn-label hide-xs">Mode</span>
+    </button>
+
+    <button
+      type="button"
+      id="tool-help-btn"
+      class="tool-btn-action"
+      aria-label="Open calculation explanation and help"
+      title="How it works"
+    >
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="10" />
+        <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
+        <line x1="12" y1="17" x2="12.01" y2="17" />
+      </svg>
+      <span class="btn-label hide-xs">Help</span>
+    </button>
+
+    <button
+      type="button"
+      id="tool-fullscreen-btn"
+      class="tool-btn-icon"
+      aria-label="Toggle fullscreen"
+      title="Toggle fullscreen"
+    >
+      <svg class="fs-icon-enter" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3" />
+      </svg>
+      <svg class="fs-icon-exit" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none;">
+        <path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3" />
+      </svg>
+    </button>
+  </div>
+</header>
+
+<style>
+  .tool-app-header {
+    height: 3.75rem;
+    background: var(--surface-glass, rgba(255, 255, 255, 0.95));
+    border-bottom: 1px solid var(--border);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 1.25rem;
+    position: relative;
+    z-index: 30;
+    user-select: none;
+  }
+  .tool-header-left {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+  .tool-btn-icon {
+    width: 2.25rem;
+    height: 2.25rem;
+    border-radius: 0.5rem;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background 0.15s ease, border-color 0.15s ease;
+  }
+  .tool-btn-icon:hover {
+    background: var(--bg-2);
+    border-color: var(--border-bright);
+  }
+  .tool-brand {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    text-decoration: none;
+    color: var(--text);
+  }
+  .tool-brand-icon {
+    width: 2rem;
+    height: 2rem;
+    border-radius: 0.5rem;
+    background: var(--blue);
+    color: #ffffff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .tool-brand-icon svg {
+    width: 1.15rem;
+    height: 1.15rem;
+  }
+  .tool-brand-text {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.15;
+  }
+  .tool-brand-name {
+    font-family: var(--font-display);
+    font-size: 1.05rem;
+    font-weight: 800;
+    letter-spacing: -0.01em;
+  }
+  .brand-accent {
+    color: var(--blue);
+  }
+  .tool-brand-sub {
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: var(--blue);
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+  }
+  .tool-header-center {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+  }
+  .tool-selector-dropdown {
+    position: relative;
+  }
+  .tool-switcher-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.45rem 0.85rem;
+    border-radius: 0.65rem;
+    border: 1px solid var(--border);
+    background: var(--bg-2);
+    color: var(--text);
+    font-family: var(--font-display);
+    font-size: 0.95rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+  .tool-switcher-btn:hover {
+    background: var(--bg-card);
+    border-color: var(--blue);
+    box-shadow: 0 2px 8px rgba(37, 99, 235, 0.12);
+  }
+  .tool-switcher-icon {
+    color: var(--blue);
+    font-size: 1rem;
+  }
+  .tool-switcher-chevron {
+    color: var(--text-dim);
+    transition: transform 0.2s ease;
+  }
+  .tool-switcher-btn[aria-expanded="true"] .tool-switcher-chevron {
+    transform: rotate(180deg);
+  }
+  .tool-switcher-menu {
+    position: absolute;
+    top: calc(100% + 0.5rem);
+    left: 50%;
+    transform: translateX(-50%);
+    width: 320px;
+    border-radius: var(--radius);
+    background: var(--surface-glass, #ffffff);
+    border: 1px solid var(--border);
+    box-shadow: 0 12px 36px -4px rgba(0, 0, 0, 0.16);
+    padding: 0.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    backdrop-filter: blur(16px);
+    z-index: 50;
+  }
+  .tool-switcher-menu[hidden] {
+    display: none;
+  }
+  .tool-switcher-heading {
+    font-size: 0.7rem;
+    font-weight: 800;
+    color: var(--text-dim);
+    letter-spacing: 0.08em;
+    padding: 0.4rem 0.75rem 0.25rem;
+  }
+  .tool-switcher-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.6rem 0.75rem;
+    border-radius: 0.5rem;
+    text-decoration: none;
+    color: var(--text);
+    font-size: 0.88rem;
+    font-weight: 600;
+    transition: background 0.12s ease, color 0.12s ease;
+  }
+  .tool-switcher-item:hover {
+    background: var(--bg-2);
+    color: var(--blue);
+  }
+  .tool-switcher-item.active {
+    background: var(--blue-l);
+    color: var(--blue);
+    font-weight: 700;
+  }
+  .tool-switcher-item.soon {
+    opacity: 0.7;
+  }
+  .switcher-item-left {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  .switcher-item-check {
+    font-weight: 800;
+    color: var(--blue);
+    width: 1rem;
+  }
+  .switcher-item-tag {
+    font-size: 0.68rem;
+    font-weight: 700;
+    padding: 0.15rem 0.4rem;
+    border-radius: 999px;
+    background: var(--bg-3);
+    color: var(--text-dim);
+  }
+  .tool-switcher-footer {
+    padding-top: 0.5rem;
+    margin-top: 0.25rem;
+    border-top: 1px solid var(--border);
+  }
+  .tool-switcher-cmd-btn {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.5rem 0.75rem;
+    border-radius: 0.5rem;
+    border: none;
+    background: transparent;
+    color: var(--text-mid);
+    font-size: 0.82rem;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .tool-switcher-cmd-btn:hover {
+    background: var(--bg-2);
+    color: var(--text);
+  }
+  .tool-header-right {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  .tool-btn-cmd {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.4rem 0.75rem;
+    border-radius: 0.55rem;
+    border: 1px solid var(--border);
+    background: var(--bg-2);
+    color: var(--text-mid);
+    font-size: 0.82rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+  .tool-btn-cmd:hover {
+    background: var(--bg-card);
+    border-color: var(--border-bright);
+    color: var(--text);
+  }
+  .tool-btn-action {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.4rem 0.75rem;
+    border-radius: 0.55rem;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text);
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+  .tool-btn-action:hover {
+    background: var(--bg-2);
+    border-color: var(--border-bright);
+  }
+  .kbd-hint {
+    font-family: var(--font-mono, monospace);
+    font-size: 0.68rem;
+    padding: 0.15rem 0.35rem;
+    border-radius: 0.3rem;
+    background: var(--bg-3);
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+  }
+  .theme-icon-moon {
+    display: none;
+  }
+  :global(:root[data-theme="dark"]) .theme-icon-sun {
+    display: none;
+  }
+  :global(:root[data-theme="dark"]) .theme-icon-moon {
+    display: inline;
+  }
+
+  @media (max-width: 860px) {
+    .hide-sm {
+      display: none !important;
+    }
+    .tool-switcher-title {
+      font-size: 0.85rem;
+      max-width: 140px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+  }
+  @media (max-width: 600px) {
+    .hide-xs {
+      display: none !important;
+    }
+    .tool-brand-sub {
+      display: none;
+    }
+  }
+</style>

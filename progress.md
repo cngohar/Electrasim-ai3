@@ -7,7 +7,28 @@ A running, append-only log of work on the ElectraSim rewrite. Every coding sessi
 
 ---
 
-## Session 2026-08-20 — Foundation Lock + declarative Challenge Mode (§5–§26)
+## Session 2026-08-21 — Electrical Toolbox & Voltage Drop Calculator (`ElectraSim_Electrical_Toolbox_Master_Plan.md`)
+
+**Done:** Architected and fully implemented the **ElectraSim Electrical Toolbox** and the flagship **Interactive Voltage Drop Calculator** (`/tools/voltage-drop-calculator/`), adhering strictly to native Astro templates, HTML5 SVG, and vanilla TypeScript/DOM scripts with zero React islands in `astro-site/` (respecting user constraints and CSP policies).
+
+- **Toolbox Registry & Sitemap:** Built [`registry.ts`](astro-site/src/lib/tools/registry.ts) registering Voltage Drop (available) and upcoming tools (Cable Size, Power, Electrical Load, Energy Cost) with structured metadata (keywords, equations, steps, FAQs, related guides). Added `/tools/` and `/tools/*` routes to `astro.config.mjs` sitemap with `priority: 0.9` and `changefreq: weekly`.
+- **Toolbox Hub (`/tools/`):** Created high-converting Astro landing hub with Schema.org `CollectionPage` / `ItemList` / `BreadcrumbList` JSON-LD, responsive tool grid, and breadcrumb-free UI navigation.
+- **Unified Tool SEO & Structured Data Engine:** Created [`seo.ts`](astro-site/src/lib/tools/seo.ts) generating rich, valid Schema.org `@graph` JSON-LD for any tool (`WebApplication`, `FAQPage`, `BreadcrumbList`, and `HowTo`). Tested with 3 new Vitest unit tests in [`seo.test.ts`](astro-site/src/lib/tools/seo.test.ts).
+- **Voltage Drop Pure Domain Engine:** Created [`calculation.ts`](astro-site/src/lib/tools/voltage-drop/calculation.ts) with full support for DC, 1-Phase AC, 3-Phase AC ($\sqrt{3}$ multiplier), conductor temperature resistivity scaling, power factor $\cos\varphi$, reactance $x$, and BS 7671 limits ($\le 3\%$ good, $3\text{--}5\%$ warning, $> 5\%$ excessive). Tested with 13 Vitest unit tests in [`voltage-drop.test.ts`](astro-site/src/lib/tools/voltage-drop/voltage-drop.test.ts) — **13/13 passing**.
+- **Interactive Scenery & Physics Graphics:** Created [`VoltageDropScene.astro`](astro-site/src/components/tools/VoltageDropScene.astro) with animated SVG sky gradients, clouds, firmly anchored swaying trees (`transform-box: fill-box; transform-origin: 50% 100%`), source substation box with cable gland at $(510, 395)$, catenary overhead cable run connecting directly to the house service weatherhead socket at $(1032, 428)$, dynamic length-dependent catenary sag, load house with brownout window dimming, conductor thermal overheat aura ($I^2R$), and 16 moving electrical energy particles.
+- **Floating UI Panels & Responsive Controls:** Created [`VoltageDropPanels.astro`](astro-site/src/components/tools/VoltageDropPanels.astro) (left collapsible inputs panel, bottom-right results panel, top-center controls, top-right 3D view/reset controls, bottom legend, and rotating tips bar).
+- **Navigation & Accessibility Components:** Built [`ToolHeader.astro`](astro-site/src/components/tools/ToolHeader.astro), [`ToolDrawer.astro`](astro-site/src/components/tools/ToolDrawer.astro), [`CommandPalette.astro`](astro-site/src/components/tools/CommandPalette.astro) (`Shift + Space` hotkey + arrow key navigation), and [`ToolHelpModal.astro`](astro-site/src/components/tools/ToolHelpModal.astro).
+- **Crawlable SEO Guide & FAQ Accordions:** Built dynamic [`ToolSeoContent.astro`](astro-site/src/components/tools/ToolSeoContent.astro) and [`ToolLayout.astro`](astro-site/src/layouts/ToolLayout.astro) with semantic H2/H3 headings, formulas, step-by-step How-To calculation guide, BS 7671 limits table, reduction techniques, accessible `<details>` FAQ accordion, internal blog guide links, and interactive simulator CTA to `/app/`.
+- **Vanilla JS Reactive Client Engine:** Created [`voltage-drop-tool.js`](astro-site/public/js/voltage-drop-tool.js) handling real-time recalculations, SVG catenary sag morphing, particle velocities, window brownout lighting, thermal overload auras, modals, 3D mouse parallax, and dark mode toggles.
+- **Verification:**
+  - `npm run test` (Vitest): **849/849 passing across 60 test files**.
+  - `npm run typecheck`: **Clean 0 errors**.
+  - `npm run build`: **140 pages built cleanly**.
+  - `node scripts/check-internal-links.mjs dist`: **0 broken links across 140 HTML files**.
+  - Playwright E2E (`e2e/toolbox.spec.ts`): **7/7 tests passing** across desktop, keyboard shortcuts, modals, theme toggles, JSON-LD Schema.org graph, FAQ accordions, and mobile bottom sheets.
+
+---
+
 
 **Done:** executed the Circuit Generator Foundation test plan end to end, then replaced the generator-based Challenge Mode with the declarative system from `ElectraSim-Challenge-Mode-Plan.md`.
 

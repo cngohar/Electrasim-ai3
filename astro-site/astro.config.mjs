@@ -1,5 +1,5 @@
 // @ts-check
-import sitemap from '@astrojs/sitemap';
+import sitemap, { ChangeFreqEnum } from '@astrojs/sitemap';
 import { defineConfig } from 'astro/config';
 
 const SITE = 'https://electrasim.com';
@@ -30,18 +30,24 @@ export default defineConfig({
       serialize(item) {
         const url = item.url;
         if (url === `${SITE}/` || url === `${SITE}/app/`) {
-          return { ...item, changefreq: 'weekly', priority: 1.0 };
+          return { ...item, changefreq: ChangeFreqEnum.WEEKLY, priority: 1.0 };
         }
         if (url.includes('/blog/') && url !== `${SITE}/blog/`) {
-          return { ...item, changefreq: 'monthly', priority: 0.7 };
+          return { ...item, changefreq: ChangeFreqEnum.MONTHLY, priority: 0.7 };
         }
         if (url === `${SITE}/blog/`) {
-          return { ...item, changefreq: 'weekly', priority: 0.8 };
+          return { ...item, changefreq: ChangeFreqEnum.WEEKLY, priority: 0.8 };
         }
-        if (url === `${SITE}/compare/`) {
-          return { ...item, changefreq: 'monthly', priority: 0.8 };
+        if (url === `${SITE}/tools/`) {
+          return { ...item, changefreq: ChangeFreqEnum.WEEKLY, priority: 0.9 };
         }
-        return { ...item, changefreq: 'monthly', priority: 0.6 };
+        if (url.includes('/tools/')) {
+          return { ...item, changefreq: ChangeFreqEnum.WEEKLY, priority: 0.9 };
+        }
+        if (url.includes('/compare/')) {
+          return { ...item, changefreq: ChangeFreqEnum.MONTHLY, priority: 0.8 };
+        }
+        return { ...item, changefreq: ChangeFreqEnum.MONTHLY, priority: 0.6 };
       },
     }),
   ],
